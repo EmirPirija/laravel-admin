@@ -1,0 +1,2588 @@
+name,parent_id,description,is_job_category,price_optional,sequence
+Vozila,,,0,1,1
+Nekretnine,,,0,0,2
+Životinje,,,0,1,22
+"Odjeća i obuća",,,0,1,19
+Tehnika,,,0,1,5
+Računari,,,0,1,4
+Mobiteli,,,0,1,3
+"Moda i ljepota",,,0,1,17
+"Biznis i industrija",,,0,1,21
+"Sport i rekreacija",,,0,1,20
+Ostalo,,,0,1,23
+Automobili,,,0,1,1
+Motocikli,,,0,1,2
+"Teretna i dostavna",,,0,1,3
+Nautika,,,0,1,4
+"Dijelovi i oprema",,,0,1,6
+"Stanovi i Apartmani",,,0,1,
+"Smeštaj na dan",,,0,1,
+Kuće,,,0,1,
+Vikendice,,,0,1,
+"Poslovni prostori",,,0,1,
+Sobe,,,0,1,
+Garaže,,,0,1,
+Zemljišta,,,0,1,
+"Skladišta i hale",,,0,1,
+"Domaće životinje",,,0,1,
+"Kućni ljubimci",,,0,1,
+"Oprema za životinje",,,0,1,
+Ostalo,,,0,1,
+Žene,,,0,1,
+Muškarci,,,0,1,
+"Bijela tehnika",,,0,1,2
+"Multimedija i audio oprema",,,0,1,5
+"TV uređaji, oprema i dijelovi",,,0,1,1
+"Kamere i fotoaparati",,,0,1,4
+"Dronovi i RC letjelice",,,0,1,3
+"Dijelovi i oprema za dronove",,,0,1,24
+"Bluetooth i bežični zvučnici",,,0,1,6
+"Video, iPod i MP3 playeri",,,0,1,14
+"DVD / Blu-ray uređaji",,,0,1,25
+"Kućna kina i sound sistemi",,,0,1,7
+"Smart sistemi i IoT uređaji",,,0,1,10
+"Virtuelna realnost (VR uređaji)",,,0,1,13
+"Teleskopi i optička oprema",,,0,1,23
+"Lupe i povećala",,,0,1,27
+"Digitroni i kalkulatori",,,0,1,26
+"Mjerni i regulacioni instrumenti",,,0,1,19
+"Elektromaterijal i komponente",,,0,1,17
+"Solarna oprema i instalacije",,,0,1,16
+"Radio uređaji i walkmani",,,0,1,22
+"Radio amaterska oprema",,,0,1,21
+"Telekomunikacije i oprema",,,0,1,15
+"Baterije i punjači",,,0,1,12
+"Hoverboard i električni skuteri",,,0,1,9
+"Elektronske cigarete i grijači duhana",,,0,1,11
+"Medicinska i laboratorijska oprema",,,0,1,18
+"Termometri i mjerni uređaji",,,0,1,20
+"TV box i streaming uređaji",,,0,1,8
+Ostalo,,,0,1,28
+"Desktop računari",,,0,1,2
+Laptopi,,,0,1,1
+"Periferija i dodatna oprema",,,0,1,6
+"Mreže i komunikacijska oprema",,,0,1,7
+"Softver i licence",,,0,1,8
+Ostalo,,,0,1,10
+Mobiteli,,,0,1,
+Tableti,,,0,1,
+"Pametni satovi (Smartwatch)",,,0,1,
+"Bluetooth uređaji i dodaci",,,0,1,
+"Dijelovi i oprema za telefone i tablete",,,0,1,
+"PDA i Pocket PC uređaji",,,0,1,
+"eBook readeri (čitači elektronskih knjiga)",,,0,1,
+Ostalo,,,0,1,
+"Borilački sportovi",,,0,1,
+"Ekstremni sportovi",,,0,1,
+"Fitness i trening",,,0,1,
+"Planinarenje i alpinizam",,,0,1,
+"Tenis i raketni sportovi",,,0,1,
+"Timski sportovi",,,0,1,
+"Vanjski sportovi",,,0,1,
+"Vodeni sportovi",,,0,1,
+"Zimski sportovi",,,0,1,
+"Oprema za ostalo",,,0,1,
+"Njega kože i tijela",,,0,1,
+"Njega kose i brade",,,0,1,
+"Njega noktiju i manikura",,,0,1,
+"Oralna higijena",,,0,1,
+"Šminka i kozmetika",,,0,1,
+"Parfemi i mirisi",,,0,1,
+"Naočale i optička oprema",,,0,1,
+"Umjetne trepavice i dodatna kozmetika",,,0,1,
+"Zdravlje i wellness proizvodi",,,0,1,
+"Zaštitne maske i rukavice",,,0,1,
+Ostalo,,,0,1,
+"Mašine i alati",,,0,1,
+"Poljoprivredna oprema i mehanizacija",,,0,1,
+"Građevinska oprema i alati",,,0,1,
+"Poslovna oprema i biznis rješenja",,,0,1,
+"Ulja, maziva i boje",,,0,1,
+"Aparati i varilice za pakovanje",,,0,1,
+"Rashladne i toplotne vitrine",,,0,1,
+"Industrijske grijalice i toplotni topovi",,,0,1,
+"Kancelarijski materijal i namještaj",,,0,1,
+"Materijali, dijelovi i industrijska oprema",,,0,1,
+"Oprema za pakovanje",,,0,1,
+"Zaštitna oprema i sigurnost na radu",,,0,1,
+"Selotejp i industrijske trake",,,0,1,
+"Trgovačka i prodajna oprema",,,0,1,
+"Ugostiteljska oprema",,,0,1,
+Ostalo,,,0,1,
+Bebe,,,0,1,15
+"Autosjedalice za bebe",,,0,1,2
+"Flašice i cucle",,,0,1,6
+"Gnijezda i jastučići za bebe",,,0,1,20
+"Hodalice i guralice za bebe",,,0,1,16
+"Hranilice i pribor za hranjenje",,,0,1,5
+"Igračke za bebe",,,0,1,8
+"Igraonice i podloge za igru",,,0,1,15
+"Izdajalice i oprema za dojenje",,,0,1,10
+"Dekice i pokrivači za bebe",,,0,1,19
+"Kadice i kupaonska oprema",,,0,1,17
+"Kolica za bebe",,,0,1,1
+"Krevetići i ogradice za bebe",,,0,1,4
+"Ležaljke i sjedalice za bebe",,,0,1,13
+"Ljulje i viseće kolijevke",,,0,1,14
+"Monitori i baby kamere",,,0,1,12
+"Nosiljke i marame za nošenje",,,0,1,11
+"Noše i potty oprema",,,0,1,24
+"Njega i higijena za bebe",,,0,1,9
+"Pelene i potrošni materijal",,,0,1,7
+"Podloge i prostirke za presvlačenje",,,0,1,21
+"Posteljina i ogradice za krevet",,,0,1,18
+"Siperci i podbradnici",,,0,1,25
+"Torbe za mame i bebe",,,0,1,22
+"Uređaji i pribor za bebe",,,0,1,23
+Ostalo,,,0,1,26
+"Igre i igračke",,,0,1,16
+"Društvene igre i slagalice",,,0,1,
+"Akcione figure i likovi",,,0,1,
+"Kockice i konstrukcione igračke",,,0,1,
+"Igračke na baterije i daljinsko upravljanje",,,0,1,
+"Montessori i edukativne igračke",,,0,1,
+"Plišane igračke",,,0,1,
+"Tobogani, klackalice i kućne igraonice",,,0,1,
+"Igračke za djevojčice",,,0,1,
+"Igračke za dječake",,,0,1,
+Ostale,,,0,1,
+"Video igre i konzole",,,0,1,6
+"Konzole za video igre",,,0,1,4
+"Igre za PC i konzole",,,0,1,2
+"Dijelovi i oprema za konzole",,,0,1,1
+"Internet i browser igre",,,0,1,3
+Ostalo,,,0,1,5
+"Muzika i audio oprema",,,0,1,8
+"Muzički instrumenti",,,0,1,
+"Muzička oprema i pribor",,,0,1,
+"Hi-Fi komponente i audio sistemi",,,0,1,
+"Muzičke linije i stereo sistemi",,,0,1,
+Ostalo,,,0,1,
+Literatura,,,0,1,9
+Knjige,,,0,1,1
+Audioknjige,,,0,1,4
+"E-knjige (elektronske knjige)",,,0,1,3
+"Stripovi i grafički romani",,,0,1,2
+"Školski pribor i edukativni materijali",,,0,1,6
+"Katalozi i priručnici",,,0,1,7
+"Magazini i časopisi",,,0,1,5
+"Ostala literatura",,,0,1,8
+"Umjetnost i dekoracija",,,0,1,10
+"Umjetničke slike",,,0,1,1
+"Fotografije i printovi",,,0,1,4
+"Ikone i levhe",,,0,1,3
+"Posteri i plakati",,,0,1,5
+"Skulpture i figure",,,0,1,2
+"Tattoo i body art oprema",,,0,1,9
+Ostalo,,,0,1,10
+Kolekcionarstvo,,,0,1,11
+"Filatelija (poštanske marke i zbirke)",,,0,1,2
+"Maketarstvo i modelarstvo",,,0,1,4
+"Militarija i vojni predmeti",,,0,1,3
+"Numizmatika (kovanice i novčanice)",,,0,1,1
+"Figurice i statue",,,0,1,5
+"Plakete i medalje",,,0,1,10
+"Razglednice i čestitke",,,0,1,15
+"Religijski predmeti i ikonografija",,,0,1,8
+"Salvete i suvenir papirni materijal",,,0,1,18
+"Sličice i albumi",,,0,1,6
+"Sportski pehari i oznake",,,0,1,12
+"Stare ulaznice i memorabilije",,,0,1,13
+Suveniri,,,0,1,9
+"Tablice za vozila",,,0,1,14
+"Telefonske kartice",,,0,1,17
+"Zastave i zastavice",,,0,1,11
+"Značke i bedževi",,,0,1,7
+"Žetoni i tokeni",,,0,1,16
+"Ostalo kolekcionarstvo",,,0,1,19
+Antikviteti,,,0,1,12
+"Gramofoni i ploče",,,0,1,4
+"Antik keramika i staklo",,,0,1,5
+"Knjige i dokumenti",,,0,1,9
+"Antik predmeti, pribor i oprema",,,0,1,7
+"Antik nakit i satovi",,,0,1,3
+"Antik namještaj",,,0,1,1
+"Pisaće mašine",,,0,1,12
+"Narodna nošnja i tekstil",,,0,1,10
+"Ponjave i dekorativni tkanini predmeti",,,0,1,11
+"Antik predmeti od metala",,,0,1,6
+"Antik slike, gobleni i umjetnički predmeti",,,0,1,2
+"Antik uređaji i aparati",,,0,1,8
+Ostalo,,,0,1,13
+"Moj dom",,,0,1,7
+Namještaj,,,0,1,1
+"Grijanje i hlađenje",,,0,1,3
+"Kuhinja i kuhinjska oprema",,,0,1,2
+"Kupatilo i sanitarije",,,0,1,4
+"Stolarija i drvena oprema",,,0,1,7
+"Vrt, biljke i vrtlarstvo",,,0,1,5
+"Lampe i rasvjeta",,,0,1,10
+"Bazeni i oprema za bazene",,,0,1,16
+"Ćilimi, tepisi, etisoni i podne obloge",,,0,1,11
+"Dekoracije i ukrasi",,,0,1,13
+"Filteri za vodu i pročišćivači",,,0,1,20
+"Keramičke pločice i zidne obloge",,,0,1,15
+"Poštanska sandučad i kućna oprema",,,0,1,22
+"Sigurnosni uređaji i alarmi",,,0,1,19
+"Sredstva i uređaji za čišćenje",,,0,1,21
+"Tekstilni proizvodi (posteljina, zavjese, jastuci)",,,0,1,12
+"Vodoinstalacije i oprema",,,0,1,9
+Ostalo,,,0,1,23
+"Hrana i piće",,,0,1,14
+"Biljni proizvodi",,,0,1,3
+"Životinjski proizvodi",,,0,1,2
+"Mliječni proizvodi",,,0,1,1
+"Dezerti i slastice",,,0,1,7
+Pića,,,0,1,6
+"Prerada hrane i konzervirani proizvodi",,,0,1,4
+"Ulja, začini i začinske smjese",,,0,1,5
+"Paketi proizvoda i poklon setovi",,,0,1,8
+Ostalo,,,0,1,9
+"Nakit i satovi",,,0,1,18
+"Ručni satovi",,,0,1,1
+"Zidni i stoni satovi",,,0,1,8
+"Džepni satovi",,,0,1,9
+"Lančići i ogrlice",,,0,1,2
+Narukvice,,,0,1,3
+Naušnice,,,0,1,5
+Prstenje,,,0,1,4
+"Privjesci za nakit",,,0,1,10
+"Broševi i bedževi",,,0,1,11
+"Piercing nakit",,,0,1,12
+"Kristali, drago i poludrago kamenje",,,0,1,7
+"Poluge i dukati",,,0,1,6
+"Kutije i etui za satove i nakit",,,0,1,13
+"Dijelovi za satove",,,0,1,15
+"Repromaterijal za nakit",,,0,1,14
+"Pribor i alati za nakit i satove",,,0,1,16
+Ostalo,,,0,1,17
+"Karte i ulaznice",,,0,1,13
+"Karte za kino",,,0,1,
+"Karte za pozorišta",,,0,1,
+"Karte za koncerte",,,0,1,
+"Karte za sportske događaje",,,0,1,
+"Ostale karte i ulaznice",,,0,1,
+Pirotehnika,,,0,1,
+"Pokloni i dekorativni predmeti",,,0,1,
+"Poklanjam / darujem",,,0,1,
+Kostimi,,,0,1,
+"Sigurnosna i špijunska oprema",,,0,1,
+"Zabavna i rekreativna oprema",,,0,1,
+"Oprema za pušače",,,0,1,
+Kuhinja,,,0,1,
+"WC / Toilet",,,0,1,
+Ostalo,,,0,1,
+"Ostali dijelovi",,,0,1,
+"Veš mašine i sušilice",,,0,1,
+"Ugradbene ploče i pećnice",,,0,1,
+Tosteri,,,0,1,
+"Sokovnici / Cijedilice za voće",,,0,1,
+"Pekači hljeba i peciva",,,0,1,
+"Mikrovalne pećnice",,,0,1,
+"Mašine za suđe",,,0,1,
+"Kuhinjski mikseri",,,0,1,
+"Kuhinjski bojleri",,,0,1,
+"Kuhinjske nape",,,0,1,
+"Kuhala za vodu i filteri",,,0,1,
+"Aparati za kafu",,,0,1,
+"Frižideri i zamrzivači",,,0,1,
+"Električni šporeti",,,0,1,
+"Električni rezači",,,0,1,
+"Dijelovi za kuhinjske aparate",,,0,1,
+Blenderi,,,0,1,
+PlayStation,,,0,1,
+Xbox,,,0,1,
+Nintendo,,,0,1,
+Retro,,,0,1,
+Ručne,,,0,1,
+"Modovane / posebna izdanja",,,0,1,
+PC,,,0,1,
+PlayStation,,,0,1,
+Xbox,,,0,1,
+Nintendo,,,0,1,
+"Digitalni ključevi / kodovi",,,0,1,
+Retro,,,0,1,
+VR,,,0,1,
+"Kontroleri / Joysticki",,,0,1,
+"Punjači i kablovi",,,0,1,
+"Memorijske kartice i SSD-ovi",,,0,1,
+Headsetovi,,,0,1,
+"Dock stanice / stalci",,,0,1,
+"Zaštitne futrole i torbe",,,0,1,
+"Ostali dijelovi",,,0,1,
+"Dnevni boravak",,,0,1,
+"Spavaće sobe",,,0,1,
+Trpezarije,,,0,1,
+"Radne sobe i kancelarija",,,0,1,
+"Enterijer za hodnike i predsob",,,0,1,
+"Namještaj po mjeri",,,0,1,
+Ostalo,,,0,1,
+"Klima uređaji",,,0,1,
+Ventilatori,,,0,1,
+"Grijalice i radijatori",,,0,1,
+"Peći na drva i peleti",,,0,1,
+"Termostati i dodatna oprema",,,0,1,
+"Kuhinjski elementi i ormarići",,,0,1,
+"Radne ploče i kuhinjski otoci",,,0,1,
+"Sudoperi i slavine",,,0,1,
+"Ugradbeni aparati",,,0,1,
+"Mali kuhinjski aparati",,,0,1,
+Ostalo,,,0,1,
+"WC šolje i pisoari",,,0,1,
+"Umivaonici i slavine",,,0,1,
+"Tuševi, kade i tuš kabine",,,0,1,
+"Ormarići i police za kupatilo",,,0,1,
+"Ogledala i dodaci",,,0,1,
+"Vrata i okviri",,,0,1,
+"Prozori i prozorske klupice",,,0,1,
+"Stepenice, rukohvati i gelende",,,0,1,
+"Drvene dekoracije i paneli",,,0,1,
+"Namještaj po mjeri i dodatna oprema",,,0,1,
+Ostalo,,,0,1,
+"Biljke, cvijeće i bonsai",,,0,1,
+"Sjeme i sadnice",,,0,1,
+"Vrtni alati i pribor",,,0,1,
+"Vrtni namještaj i garniture",,,0,1,
+"Baštenska dekoracija",,,0,1,
+"Sistem za navodnjavanje i crpke",,,0,1,
+"Stolne lampe i lampe za čitanje",,,0,1,
+"Podne lampe i stalci",,,0,1,
+"Plafonska rasvjeta",,,0,1,
+"Zidne lampe i reflektori",,,0,1,
+"Vanjska rasvjeta i vrtne lampe",,,0,1,
+"Dekorativna rasvjeta i LED trakice",,,0,1,
+"Ostala rasvjeta",,,0,1,
+Bazeni,,,0,1,
+"Filteri i pumpe",,,0,1,
+"Oprema za održavanje",,,0,1,
+"Pokrivači, tende i zaštitni sistemi",,,0,1,
+"Igračke i dodatna oprema",,,0,1,
+"Tepisi i ćilimi",,,0,1,
+"Laminat, parketi i vinil",,,0,1,
+"Etisoni i podne trake",,,0,1,
+"Protuklizne podloge i podloge za djecu",,,0,1,
+"Samoljepljive pločice i dekorativni podovi",,,0,1,
+"Zidni ukrasi i slike",,,0,1,
+"Ogledala i okviri",,,0,1,
+"Vaze, figurice i skulpture",,,0,1,
+"Svijećnjaci i lampe",,,0,1,
+"Sezonski ukrasi i tematski setovi",,,0,1,
+"Filteri za kućne slavine",,,0,1,
+"Filteri za frižidere",,,0,1,
+"Pročišćivači i ionizatori",,,0,0,
+"Patroni i zamjenski filteri",,,0,1,
+"Pločice za pod",,,0,1,
+"Pločice za zid",,,0,1,
+"Mozaici i dekorativne pločice",,,0,1,
+"Samoljepljive i privremene pločice",,,0,1,
+"Poštanska sandučad",,,0,1,
+"Kućni interfoni i zvona",,,0,1,
+"Sigurnosna vrata i brave",,,0,1,
+"Ostala kućna oprema",,,0,1,
+"Sigurnosne kamere",,,0,1,
+"Alarmni sistemi i senzori",,,0,1,
+"Detektori dima, plina i curenja vode",,,0,1,
+"Sigurnosne brave i dodaci",,,0,1,
+Usisivači,,,0,1,
+"Uređaji za pranje podova",,,0,1,
+"Sredstva za čišćenje",,,0,1,
+"Četke, mopovi i pribor",,,0,1,
+"Posteljina, popluni i jastuci",,,0,1,
+"Zavjese i rolete",,,0,1,
+"Prekrivači i navlake",,,0,1,
+"Jastuci za dekoraciju i sjedenje",,,0,1,
+"Cijevi, fitinzi i ventili",,,0,1,
+"Slavine i pumpe",,,0,1,
+"Rezervoari i bojleri",,,0,1,
+"Filteri i dodatna oprema",,,0,1,
+"Ostala oprema",,,0,1,
+"Ostali kućni uređaji",,,0,1,
+"Kućni alati i dodaci",,,0,1,
+"Dekoracije i neklasifikovani predmeti",,,0,1,
+Gitare,,,0,1,
+"Klavijature i klaviri",,,0,1,
+"Bubnjevi i udaraljke",,,0,1,
+"Duvački instrumenti",,,0,1,
+"Žičani instrumenti",,,0,1,
+"Ostali instrumenti",,,0,1,
+"Mikrofon i pribor",,,0,1,
+"Pojačala i zvučnici",,,0,1,
+"Efekti i pedale",,,0,1,
+"DJ oprema",,,0,1,
+"Studio oprema",,,0,1,
+"Kabli i adapteri",,,0,1,
+"Ostala muzička oprema",,,0,1,
+"Kućni audio sistemi",,,0,1,
+"Zvučnici i soundbarovi",,,0,1,
+"Pojačala i DAC",,,0,1,
+"Pribor i kablovi",,,0,1,
+"Kompleti za kućnu upotrebu",,,0,1,
+"Kućni teatar",,,0,1,
+"Prenosivi audio sistemi",,,0,1,
+"DJ i party linije",,,0,1,
+Ostalo,,,0,1,
+"Električne gitare",,,0,1,
+"Akustične gitare",,,0,1,
+"Bas gitare",,,0,1,
+"Pribor i dijelovi za gitare",,,0,1,
+"Digitalni klaviri",,,0,1,
+"Akustični klaviri",,,0,1,
+"Sintisajzeri i MIDI kontroleri",,,0,1,
+"Pribor i pedale",,,0,1,
+"Akustični bubnjevi",,,0,1,
+"Elektronski bubnjevi",,,0,1,
+Perkusije,,,0,1,
+"Trube, saksofoni, flaute, klarineti",,,0,1,
+"Violine, violončela, kontrabasi",,,0,1,
+"Harmonike, ukulele, sitar, didgeridoo",,,0,1,
+"Kondenzatorski i dinamički mikrofoni",,,0,1,
+"Stativi, pop filteri",,,0,1,
+"Gitarska pojačala",,,0,1,
+"Bas pojačala",,,0,1,
+"Aktivni i pasivni zvučnici",,,0,1,
+"Gitarske pedale",,,0,1,
+Multi-efekti,,,0,1,
+"DJ kontroleri",,,0,1,
+"Mikset table",,,0,1,
+"Turntable ploče i gramofoni",,,0,1,
+"Audio interfejsi",,,0,1,
+"Monitoring zvučnici",,,0,1,
+"Pribor za snimanje",,,0,1,
+"Hi-Fi setovi",,,0,1,
+"Stereo receiveri",,,0,1,
+"CD/MP3 playeri",,,0,1,
+"Aktivni zvučnici",,,0,1,
+"Pasivni zvučnici",,,0,1,
+"Soundbar sistemi",,,0,1,
+"Integrisana pojačala",,,0,1,
+"Preamp i DAC uređaji",,,0,1,
+"Audio kablovi",,,0,1,
+"Stativi i držači",,,0,1,
+"Stereo linije",,,0,1,
+"Mini Hi-Fi setovi",,,0,1,
+"Surround sistemi",,,0,1,
+Subwooferi,,,0,1,
+"Bluetooth zvučnici",,,0,1,
+"Bežični sistemi",,,0,1,
+"Aktive zvučne kutije",,,0,1,
+"Mixer + pojačalo setovi",,,0,1,
+"Beletristika / Romani",,,0,1,
+"Ljubavni romani",,,0,1,
+"Trileri i misterije",,,0,1,
+"Drama i klasici",,,0,1,
+"Sci-Fi i Fantasy",,,0,1,
+"Stručna literatura",,,0,1,
+"Medicina i zdravstvo",,,0,1,
+"Ekonomija i biznis",,,0,1,
+Psihologija,,,0,1,
+"Religija / duhovnost",,,0,1,
+"Pravo i politika",,,0,1,
+"Dječije knjige",,,0,1,
+Slikovnice,,,0,1,
+"Knjige za školsku djecu",,,0,1,
+"Edukativne knjige za djecu",,,0,1,
+"Popularna nauka",,,0,1,
+Historija,,,0,1,
+"Nauka i priroda",,,0,1,
+Ostalo,,,0,1,
+Ostalo,,,0,1,
+Ostalo,,,0,1,
+Ostalo,,,0,1,
+"Kuharice i priručnici za dom",,,0,1,
+"Umjetnost i dizajn",,,0,1,
+"Rijetke i kolekcionarske knjige",,,0,1,
+"Ostale knjige",,,0,1,
+"Beletristika / Romani (audio)",,,0,1,
+"Stručna literatura (audio)",,,0,1,
+"Dječije audioknjige",,,0,1,
+"Biografije i eseji (audio)",,,0,1,
+"Self-help i motivacija (audio)",,,0,1,
+"PDF / ePub romani",,,0,1,
+"Edukativne i stručne e-knjige",,,0,1,
+"E-knjige za djecu",,,0,1,
+"Digitalni priručnici",,,0,1,
+Stripovi,,,0,1,
+Manga,,,0,1,
+"Grafički romani i kolekcionarska izdanja",,,0,1,
+"Albumi i specijalna izdanja",,,0,1,
+"Školske potrepštine",,,0,1,
+"Udžbenici i radne sveske",,,0,1,
+"Edukativni materijali i setovi",,,0,1,
+"Katalozi proizvoda",,,0,1,
+"Tehnički priručnici",,,0,1,
+"Servisni i mehanički priručnici",,,0,1,
+"Uputstva i vodiči za rad",,,0,1,
+"Hobi priručnici",,,0,1,
+"Moda i lifestyle magazini",,,0,1,
+"Automoto magazini",,,0,1,
+"Kuhanje i dom",,,0,1,
+"Biznis i tehnologija",,,0,1,
+"Sportski magazini",,,0,1,
+"Nauka i edukacija",,,0,1,
+"Hobi i specijalizovani časopisi",,,0,1,
+Ostalo,,,0,1,
+Putopisi,,,0,1,
+Poezija,,,0,1,
+Eseji,,,0,1,
+"Džepna izdanja",,,0,1,
+"Stare i antikvarne knjige",,,0,1,
+"Ulje na platnu",,,0,1,
+"Akrilne slike",,,0,1,
+"Akvarel / vodene boje",,,0,1,
+"Crteži i skice",,,0,1,
+"Moderna i apstraktna umjetnost",,,0,1,
+"Realistične i pejzažne slike",,,0,1,
+"Portreti i figure",,,0,1,
+"Prilagođene slike po narudžbi",,,0,1,
+"Umjetničke fotografije",,,0,1,
+"Pejzaži i priroda",,,0,1,
+Portreti,,,0,1,
+"Arhitektura i ulice",,,0,1,
+"Crno-bijela fotografija",,,0,1,
+"Štampani motivi / reprodukcije",,,0,1,
+"Ograničene serije",,,0,1,
+"Pravoslavne ikone",,,0,1,
+"Katoličke ikone",,,0,1,
+"Islamske levhe",,,0,1,
+"Ručno rađene ikone i levhe",,,0,1,
+"Štampane ikone i levhe",,,0,1,
+"Izrada po narudžbi",,,0,1,
+"Filmovi i serije",,,0,1,
+"Muzika i izvođači",,,0,1,
+"Motivacioni i citati",,,0,1,
+"Umjetnički posteri",,,0,1,
+"Retro i vintage plakati",,,0,1,
+"Sportski plakati",,,0,1,
+"Edukativni posteri i karte",,,0,1,
+"Dekorativne skulpture",,,0,1,
+"Metalne skulpture",,,0,1,
+"Metalne skulpture",,,0,1,
+"Drvene skulpture",,,0,1,
+"Keramičke i glinene figure",,,0,1,
+"Staklene skulpture",,,0,1,
+"Kolekcionarske figure",,,0,1,
+"3D printane figure",,,0,1,
+"Edukativni posteri i karte",,,0,1,
+"Mašinice za tetoviranje",,,0,1,
+"Igle i patroni",,,0,1,
+"Boje i pigmenti",,,0,1,
+"Sredstva za sterilizaciju i njegu",,,0,1,
+"Šabloni i transfer papiri",,,0,1,
+"Oprema za pirsing",,,0,1,
+"Umjetnički katalozi i knjige",,,0,1,
+"Materijal za umjetnike",,,0,1,
+"Ramovi i oprema za uokviravanje",,,0,1,7
+"Digitalna umjetnost",,,0,1,6
+"Razni dekorativni predmeti",,,0,1,8
+Goveda,,,0,1,
+"Ovce i koze",,,0,1,
+"Konji i magarci",,,0,1,
+Svinje,,,0,1,
+Perad,,,0,1,
+Kunići,,,0,1,
+"Pčele i pčelarska oprema",,,0,1,
+"Domaće životinje za rasplod",,,0,1,
+Psi,,,0,1,
+Mačke,,,0,1,
+Ptice,,,0,1,
+"Ribe i akvaristika",,,0,1,
+"Male životinje (hrčci, zamorci, činčile)",,,0,1,
+"Reptili i egzotični ljubimci",,,0,1,
+"Adopcija i udomljavanje",,,0,1,
+"Hrana za životinje",,,0,1,
+"Oprema za pse i mačke",,,0,1,
+"Transporteri i kavezi",,,0,1,
+"Akvarijumi i oprema za akvaristiku",,,0,1,
+"Terarijumi i oprema za reptile",,,0,1,
+"Posude, pojilice i hranilice",,,0,1,
+"Igračke i dodatna oprema",,,0,1,
+"Njega i higijena životinja",,,0,1,
+Pepeljare,,,0,1,
+"Upaljači i punjači",,,0,1,
+"Kutije i futrole za cigarete",,,0,1,
+"Cigaretnici i etuiji",,,0,1,
+"Lule i pribor za lule",,,0,1,
+"Nargile i dodatna oprema",,,0,1,
+"Party oprema",,,0,1,
+"Društvene igre",,,0,1,
+"Rekviziti za rođendane i proslave",,,0,1,
+"Sportska rekreativna oprema",,,0,1,
+"Oprema za kampiranje i boravak u prirodi",,,0,1,
+"Igračke i zabavni predmeti",,,0,1,
+"Kućne sigurnosne kamere",,,0,1,
+"Alarmni sistemi",,,0,1,
+"Video nadzor za domaćinstvo",,,0,1,
+"Detektori (dim, gas, CO2)",,,0,1,
+"Ručni alati",,,0,1,
+"Električni alati",,,0,1,
+"Pneumatski alati",,,0,1,
+"Mašine za radionicu",,,0,1,
+"Rezni i brusni alati",,,0,1,
+"Mjerne alatke",,,0,1,
+"Kompresori i oprema",,,0,1,
+"Generatori struje",,,0,1,
+"Ostalo iz mašine i alati",,,0,1,
+Traktori,,,0,1,
+"Priključci za traktore",,,0,1,
+"Motokultivatori i freze",,,0,1,
+"Poljoprivredne mašine",,,0,1,
+"Oprema za stočarstvo",,,0,1,
+"Pčelarska oprema",,,0,1,
+"Sistemi za navodnjavanje",,,0,1,
+"Poljoprivredne prikolice",,,0,1,
+"Ostalo iz poljoprivredna oprema i mehanizacija",,,0,1,
+"Građevinske mašine",,,0,1,
+"Vibracijske ploče i nabijači",,,0,1,
+"Skela i oplate",,,0,1,
+"Bušilice, brusilice, čekić-bušilice",,,0,1,
+"Mješalice za beton",,,0,1,
+"Pumpe za vodu",,,0,1,
+"Alati za zidare i keramičare",,,0,1,
+"Rezači betona, cigle i pločica",,,0,1,
+"Ostalo iz građevinska oprema i alati",,,0,1,
+"Fiskalne kase i POS sistemi",,,0,1,
+"Uredska oprema",,,0,1,
+"Mašine za obradu dokumenata",,,0,1,
+"Reklamni i promotivni materijali",,,0,1,
+"Oprema za radionice i servise",,,0,1,
+"Maloprodajni sistemi i oprema",,,0,1,
+"Ostalo iz poslovna oprema i biznis rješenja",,,0,1,
+"Motorna ulja",,,0,1,
+"Industrijska ulja i maziva",,,0,1,
+"Masti i tehnička sredstva",,,0,1,
+"Lakovi i boje",,,0,1,
+"Auto-boje i materijali",,,0,1,
+"Oprema za farbanje",,,0,1,
+"Ostala ulja, maziva i boje",,,0,1,
+"Mašine za vakumiranje",,,0,1,
+"Mašine za zatvaranje i zavarivanje vrećica",,,0,1,
+"Termo zavarivači",,,0,1,
+"Mašine za foliranje",,,0,1,
+"Industrijski pakirni aparati",,,0,1,
+"Ostalo iz aparati i varilice za pakovanje",,,0,1,
+"Rashladne vitrine",,,0,1,
+"Toplotne vitrine",,,0,1,
+"Kombinovane vitrine",,,0,1,
+"Mini vitrine",,,0,1,
+"Profesionalne ugostiteljske vitrine",,,0,1,
+"Ostalo iz rashladne i toplotne vitrine",,,0,1,
+"Dizel grijalice",,,0,1,
+"Plinske grijalice",,,0,1,
+"Električne grijalice",,,0,1,
+"Toplotni topovi",,,0,1,
+"Industrijski grijači prostora",,,0,1,
+"Ostalo iz industrijske grijalice i toplotni topovi",,,0,1,
+"Uredski stolovi i stolice",,,0,1,
+"Ormari i arhivske police",,,0,1,
+"Uredski potrošni materijal",,,0,1,
+"Registratori, mape i fascikle",,,0,1,
+"Oprema za prezentacije",,,0,1,
+"Tabla i planeri",,,0,1,
+"Ostalo iz kancelarijski materijal i namještaj",,,0,1,
+"Industrijski rezervni dijelovi",,,0,1,
+Elektromaterijal,,,0,1,
+Elektromaterijal,,,0,1,
+"Ventili, pumpe i armature",,,0,1,
+"Industrijske cijevi i spojevi",,,0,1,
+"Industrijske mašine i komponente",,,0,1,
+"Pogonska oprema",,,0,1,
+Ostalo,,,0,1,
+Ambalaža,,,0,1,
+"Folije raznih vrsta",,,0,1,
+"Kartonska ambalaža",,,0,1,
+"Plastična ambalaža",,,0,1,
+"Etikete i oprema za etiketiranje",,,0,1,
+"Punilice i mjerne posude",,,0,1,
+"Ostala oprema za pakovanje",,,0,1,
+"Zaštitne kacige i maske",,,0,1,
+"Rukavice i radna odjeća",,,0,1,
+"Zaštitna obuća",,,0,1,
+"Oprema za visinske radove",,,0,1,
+"Sigurnosne naočale i štitnici",,,0,1,
+"Protivpožarna oprema",,,0,1,
+"Ostala zaštitna oprema",,,0,1,
+"Ljepljive trake za pakovanje",,,0,1,
+"Industrijske trake",,,0,1,
+"Obostrane trake",,,0,1,
+"Izolacione trake",,,0,1,
+"Specijalne tehničke trake",,,0,1,
+"Ostale trake",,,0,1,
+"Police i regali",,,0,1,
+"Kasirne kase i uređaji",,,0,1,
+"Vage i mjerne jedinice",,,0,1,
+"Prodajni pultovi",,,0,1,
+"Reklamni stalci",,,0,1,
+"Potrošni materijal za trgovine",,,0,1,
+Ostalo,,,0,1,
+"Oprema za kuhinje",,,0,1,
+"Aparati za pića i napitke",,,0,1,
+"Posuđe i pribor za ugostiteljstvo",,,0,1,
+"Rashladni uređaji",,,0,1,
+"Grilovi i roštilji",,,0,1,
+"Profesionalni kuhinjski elementi",,,0,1,
+Ostalo,,,0,1,
+"Rukavice i bandaže",,,0,1,
+"Štitnici i zaštitna oprema",,,0,1,
+"Kimona i odjeća za borilačke sportove",,,0,1,
+"Džakovi za udaranje i oprema za vježbanje",,,0,1,
+"Tatami i podloge",,,0,1,
+"Rekviziti za trening",,,0,1,
+Ostalo,,,0,1,
+"Skateboard i oprema",,,0,1,
+"BMX i freestyle bicikli",,,0,1,
+"Role i zaštitna oprema",,,0,1,
+"Oprema za penjanje",,,0,1,
+"Oprema za padobranstvo i paragajding",,,0,1,
+"Tegovi i bučice",,,0,1,
+"Grije (kettlebell) oprema",,,0,1,
+"Trake za vježbanje",,,0,1,
+"Kardio oprema",,,0,1,
+"Prostirke i podloge",,,0,1,
+"Sportska odjeća i rukavice",,,0,1,
+"Nutricijski dodaci",,,0,1,
+Ostalo,,,0,1,
+"Ruksaci i planinarska oprema",,,0,1,
+"Planinarska obuća",,,0,1,
+"Odjeća za planinarenje",,,0,1,
+"Štapovi za hodanje",,,0,1,
+"Šatori i kamp oprema",,,0,1,
+"Penjačka oprema",,,0,1,
+"Navigacija i sigurnosna oprema",,,0,1,
+Ostalo,,,0,1,
+"Teniski reketaši",,,0,1,
+"Lopte i mreže",,,0,1,
+"Badminton oprema",,,0,1,
+"Stoni tenis",,,0,1,
+"Tašne i futrole za rekete",,,0,1,
+"Teniska odjeća i dodatna oprema",,,0,1,
+Ostalo,,,0,1,
+Fudbal,,,0,1,
+Košarka,,,0,1,
+Rukomet,,,0,1,
+Odbojka,,,0,1,
+"Ragbi oprema",,,0,1,
+"Dresovi i sportska odjeća",,,0,1,
+"Treninzi i rekviziti",,,0,1,
+Ostalo,,,0,1,
+"Kamp oprema",,,0,1,
+"Oprema za trčanje",,,0,1,
+"Biciklistička oprema",,,0,1,
+"Rolanje i oprema",,,0,1,
+"Piknik i rekreativna oprema",,,0,1,
+"Oprema za boravak u prirodi",,,0,1,
+"Rekreativni rekviziti",,,0,1,
+"Oprema za plivanje",,,0,1,
+"Ronilačka i podvodna oprema",,,0,1,
+"Daske za veslanje",,,0,1,
+"Kajaci i oprema",,,0,1,
+"Daske za talase",,,0,1,
+"Plivački rekviziti",,,0,1,
+Ostalo,,,0,1,
+Ostalo,,,0,1,
+"Skije i oprema",,,0,1,
+"Snowboard oprema",,,0,1,
+Klizaljke,,,0,1,
+"Zimske kacige i naočale",,,0,1,
+"Odjeća za zimske sportove",,,0,1,
+"Razni zimski rekviziti",,,0,1,
+Ostalo,,,0,1,
+Odjeća,,,0,1,
+Obuća,,,0,1,
+"Modni dodaci",,,0,1,
+"Torbe i ruksaci",,,0,1,
+"Sportska odjeća",,,0,1,
+"Sezonska oprema",,,0,1,
+Odjeća,,,0,1,
+Obuća,,,0,1,
+"Modni dodaci",,,0,1,
+"Torbice i ruksaci",,,0,1,
+"Donji veš i pidžame",,,0,1,
+"Sezonska oprema",,,0,1,
+"Majice i topovi",,,0,1,
+"Košulje i bluze",,,0,1,
+"Dukserice i duks majice",,,0,1,
+"Jakne i kaputi",,,0,1,
+"Kardigani i džemperi",,,0,1,
+Haljine,,,0,1,
+Suknje,,,0,1,
+Pantalone,,,0,1,
+Farmerke,,,0,1,
+Šorcevi,,,0,1,
+Trenerke,,,0,1,
+Kombinezoni,,,0,1,
+"Odijela i sako kompleti",,,0,1,
+"Donji veš",,,0,1,
+"Spavaćice i pidžame",,,0,1,
+"Kupaći kostimi",,,0,1,
+"Odjeća za trudnice",,,0,1,
+"Tradicionalna odjeća",,,0,1,
+Patike,,,0,1,
+Cipele,,,0,1,
+Čizme,,,0,1,
+Sandale,,,0,1,
+Papuče,,,0,1,
+Baletanke,,,0,1,
+Štikle,,,0,1,
+"Sportska obuća",,,0,1,
+Nakit,,,0,1,
+Naočale,,,0,1,
+Kape,,,0,1,
+Šalovi,,,0,1,
+Rukavice,,,0,1,
+"Pojas / kaiševi",,,0,1,
+Kišobrani,,,0,1,
+Marame,,,0,1,
+"Torbe preko ramena",,,0,1,
+"Ručne torbe",,,0,1,
+Ruksaci,,,0,1,
+"Sportske torbe",,,0,1,
+"Elegantne torbice",,,0,1,
+"Sportske majice",,,0,1,
+"Sportske trenerke",,,0,1,
+"Sportski šorcevi",,,0,1,
+"Sportski grudnjaci",,,0,1,
+"Sportske jakne",,,0,1,
+"Patike za trening",,,0,1,
+"Zimski setovi",,,0,1,
+"Ljetni dodaci",,,0,1,
+Majice,,,0,1,
+Košulje,,,0,1,
+Dukserice,,,0,1,
+Jakne,,,0,1,
+Kaputi,,,0,1,
+Džemperi,,,0,1,
+Pantalone,,,0,1,
+Farmerke,,,0,1,
+Šorcevi,,,0,1,
+Trenerke,,,0,1,
+Odijela,,,0,1,
+Sakoi,,,0,1,
+"Donji veš",,,0,1,
+Pidžame,,,0,1,
+"Tradicionalna odjeća",,,0,1,
+"Radna odjeća",,,0,1,
+Patike,,,0,1,
+Cipele,,,0,1,
+"Duboke cipele",,,0,1,
+Čizme,,,0,1,
+Sandale,,,0,1,
+Papuče,,,0,1,
+"Radna obuća",,,0,1,
+"Sportska obuća",,,0,1,
+Naočale,,,0,1,
+Kape,,,0,1,
+Kačketi,,,0,1,
+Šalovi,,,0,1,
+Rukavice,,,0,1,
+Kaiševi,,,0,1,
+Nakit,,,0,1,
+Ruksaci,,,0,1,
+"Sportske torbe",,,0,1,
+"Torbice preko ramena",,,0,1,
+"Poslovne torbe",,,0,1,
+"Sportska odjeća i obuća",,,0,1,
+"Sportske majice",,,0,1,
+Trenerke,,,0,1,
+"Sportske jakne",,,0,1,
+"Sportski šorcevi",,,0,1,
+"Patike za trening",,,0,1,
+"Zimski setovi",,,0,1,
+"Ljetni dodaci",,,0,1,
+Bicikli,,,0,1,5
+"Bluetooth adapteri i predajnici",,,0,1,
+"Bluetooth audio prijemnici",,,0,1,
+"Bluetooth slušalice (Bubice)",,,0,1,
+"Bluetooth slušalice (Naglavne)",,,0,1,
+"Bluetooth tastature i miševi",,,0,1,
+"Bluetooth zvučnici",,,0,1,
+"Handsfree uređaji za automobile",,,0,1,
+"Ostali bluetooth dodaci",,,0,1,
+"Pametni privjesci za praćenje",,,0,1,
+"Pametni satovi i narukvice",,,0,1,
+"Sportske bluetooth slušalice",,,0,1,
+"Alati za popravku telefona",,,0,1,
+"Baterije za telefone i tablete",,,0,1,
+"Držači i stalci (Car & Desk)",,,0,1,
+"Ekran i staklo (LCD, Touchscreen)",,,0,1,
+"Futrole, maske i torbice",,,0,1,
+"Kablovi, adapteri i konektori",,,0,1,
+"Memorijske kartice",,,0,1,
+"Olovke za tablete (Stylus)",,,0,1,
+"Ostali rezervni dijelovi",,,0,1,
+"Punjači (Kućni i auto)",,,0,1,
+"Slušalice i handsfree oprema",,,0,1,
+"Stakla i folije za zaštitu ekrana",,,0,1,
+"Vanjske baterije (Power bank)",,,0,1,
+"Adapteri i konverteri",,,0,1,
+"Bluetooth i Wi-Fi adapteri",,,0,1,
+"Čitači kartica (Card readers)",,,0,1,
+"Čišćenje i održavanje (Sprejevi, krpe)",,,0,1,
+"Džojstici i kontroleri (Gaming)",,,0,1,
+"Eksterni optički uređaji (DVD/Blu-ray)",,,0,1,
+"Grafičke table za crtanje",,,0,1,
+"Kablovi (HDMI, DisplayPort, USB, LAN)",,,0,1,
+"Kompjuterski zvučnici",,,0,1,
+Mikrofoni,,,0,1,
+Miševi,,,0,1,
+"Monitor nosači i stalci",,,0,1,
+"Ostala oprema i periferija",,,0,1,
+"Podloge za miševe",,,0,1,
+"Slušalice (Headsets)",,,0,1,
+Tastature,,,0,1,
+"Tastature i miševi (Setovi)",,,0,1,
+"Torbe i ruksaci za laptop",,,0,1,
+"UPS uređaji i prenaponska zaštita",,,0,1,
+"USB Flash memorije",,,0,1,
+"USB hubovi i razdjelnici",,,0,1,
+"Web kamere",,,0,1,
+"Adapteri i baterije za kalkulatore",,,0,1,1
+"Finansijski i poslovni kalkulatori",,,0,1,2
+"Grafički kalkulatori sa ekranom",,,0,1,3
+"Inženjerski i naučni (Scientific) kalkulatori",,,0,1,4
+"Kalkulatori sa trakom (Stoni printeri)",,,0,1,5
+"Kolekcionarski i retro kalkulatori",,,0,1,6
+"Kombinovani digitroni (Satovi, lenjiri i sl.)",,,0,1,7
+"Obični džepni kalkulatori",,,0,1,8
+"Ostala oprema za kalkulatore",,,0,1,9
+"Programabilni kalkulatori",,,0,1,10
+"Solarni i ekološki kalkulatori",,,0,1,11
+"Standardni stoni kalkulatori (Veliki tasteri)",,,0,1,12
+"Zaštitne futrole i poklopci",,,0,1,13
+"4K i 8K Ultra HD Streaming uređaji",,,0,1,1
+"AirMouse i tastature za TV boxove",,,0,1,2
+"Android TV Box uređaji",,,0,1,3
+"Antene i prijemnici za streaming",,,0,1,4
+"Dizajnirani stalci i nosači za boxove",,,0,1,5
+"HDMI Dongle i Stick uređaji",,,0,1,6
+"Igraće konzole sa streaming funkcijama",,,0,1,7
+"IPTV prijemnici i set-top boxovi",,,0,1,8
+"Kablovi i adapteri (HDMI, napajanje)",,,0,1,9
+"Linux i Open-Source TV boxovi",,,0,1,10
+"Mini PC uređaji za TV",,,0,1,11
+"Ostala oprema za streaming",,,0,1,12
+"Pametni daljinski upravljači i kontroleri",,,0,1,13
+"Sistemi za bežični prenos slike (Casting)",,,0,1,14
+"Anemometri (Mjerači brzine vjetra)",,,0,1,1
+"Barometri i hidrometri (Vlažnost i pritisak)",,,0,1,2
+"Beskontaktni infracrveni termometri",,,0,1,3
+"Daljinomeri (Laserski mjerači razdaljine)",,,0,1,4
+"Detektori metala, instalacija i struje",,,0,1,5
+"Digitalni i analogni kuhinjski termometri",,,0,1,6
+"Higrometri (Mjerači vlažnosti vazduha)",,,0,1,7
+"Infracrvene termovizijske kamere",,,0,1,8
+"Laboratorijski i precizni termometri",,,0,1,9
+"Laserske nivele i vaservage",,,0,1,10
+"Luxmetri (Mjerači intenziteta svjetlosti)",,,0,1,11
+"Medicinski termometri (Toplomjeri)",,,0,1,12
+"Mjerači kvalitete zraka (CO2, PM čestice)",,,0,1,13
+"Multimetri i ispitivači napona",,,0,1,14
+"Ostali mjerni uređaji i senzori",,,0,1,15
+"Ph metri i testeri za vodu",,,0,1,16
+"Pribor i oprema (Baterije, sonde, stalci)",,,0,1,17
+"Ubodni termometri za hranu i tečnosti",,,0,1,18
+"Vremenske stanice za kuću",,,0,1,19
+"Analitički instrumenti i analizatori",,,0,1,1
+"Centrifuge i mješalice",,,0,1,2
+"Diagnostički uređaji (EKG, EEG, Ultrazvuk)",,,0,1,3
+"Inhalatori i aspiratori",,,0,1,4
+"Inkubatori i sterilizatori (Autoklavi)",,,0,1,5
+"Invalidska kolica i pomagala za kretanje",,,0,1,6
+"Laboratorijsko posuđe (Staklo i plastika)",,,0,1,7
+"Laboratorijski mikroskopi i oprema",,,0,1,8
+"Medicinski kreveti i namještaj",,,0,1,9
+"Mjerači krvnog pritiska (Tlakomjeri)",,,0,1,10
+"Mjerači šećera u krvi (Glukometri)",,,0,1,11
+"Odjeća i zaštitna oprema (Uniforme, maske)",,,0,1,12
+"Oprema za prvu pomoć i reanimaciju",,,0,1,13
+"Oprema za stomatološke ordinacije",,,0,1,14
+"Ortopedska pomagala i proteze",,,0,1,15
+"Ostala medicinska i laboratorijska oprema",,,0,1,16
+"Oksimetri (Mjerači zasićenosti kisikom)",,,0,1,17
+"Pipete i dozatori",,,0,1,18
+"Potrošni medicinski materijal (Igle, šprice)",,,0,1,19
+"Reagensi i hemikalije",,,0,1,20
+"Slušni aparati i pribor",,,0,1,21
+"Stetoskopi i osnovni pregledni setovi",,,0,1,22
+"Terapijska oprema (Fizikalna i masaža)",,,0,1,23
+"Vage (Medicinske i laboratorijske precizne)",,,0,1,24
+"Alati za reparaciju (Pincete, motalice, makaze)",,,0,1,1
+"Baterije za modove (18650, 21700 i dr.)",,,0,1,2
+"DIY oprema (Baze, arome i bočice)",,,0,1,3
+"Drip tips (Nastavci za usta)",,,0,1,4
+"Elektronske cigarete (Pod sistemi)",,,0,1,5
+"Elektronske nargile (Vape)",,,0,1,6
+"Grijači za elektronske cigarete (Coils)",,,0,1,7
+"Grijači duhana (HNB - Heat Not Burn uređaji)",,,0,1,8
+"Jednokratne elektronske cigarete (Disposable)",,,0,1,9
+"Modovi (Regulisani i mehanički)",,,0,1,10
+"Ostala oprema i dodaci",,,0,1,11
+"Punjači za eksterne baterije",,,0,1,12
+"Rezervoari i atomizeri (RTA, RDA, RDTA)",,,0,1,13
+"Rezervna stakla za atomizere",,,0,1,14
+"Torbice, silikonske maske i vezice",,,0,1,15
+"Vatice i žice za grijače",,,0,1,16
+"Zamjenski dijelovi za grijače duhana (Čistači, poklopci)",,,0,1,17
+"Baterije za električna vozila",,,0,1,1
+"Električni bicikli (e-Bikes)",,,0,1,2
+"Električni skuteri i trotineti",,,0,1,3
+"Električni skateboardi i longboardi",,,0,1,4
+"Električni unocikli (Monowheels)",,,0,1,5
+"Gume i unutrašnje zračnice",,,0,1,6
+"Hoverboard uređaji",,,0,1,7
+"Kacige i zaštitna oprema",,,0,1,8
+"Kočioni sistemi i pločice",,,0,1,9
+"Kontroleri i matične ploče",,,0,1,10
+"Motori i pogonski točkovi",,,0,1,11
+"Ostala oprema i dodaci",,,0,1,12
+"Punjači i adapteri",,,0,1,13
+"Rasvjeta i LED signalizacija",,,0,1,14
+"Rezervni dijelovi (Blatobrani, nogare, ručke)",,,0,1,15
+"Sjedala za električne skutere",,,0,1,16
+"Torbe i nosači za skutere",,,0,1,17
+"Zaključavanje i sigurnosni sistemi",,,0,1,18
+"Adapteri i pretvarači napona",,,0,1,1
+"Alkalne baterije (Jednokratne)",,,0,1,2
+"Baterije za dječije igračke",,,0,1,3
+"Baterije za fiksne i bežične telefone",,,0,1,4
+"Baterije za laptop uređaje",,,0,1,5
+"Baterije za mjerne uređaje i multimetre",,,0,1,6
+"Baterije za slušne aparate",,,0,1,7
+"Dugmaste baterije (CR, LR, AG serije)",,,0,1,8
+"Eksterne baterije (Powerbank)",,,0,1,9
+"Industrijske baterije i ćelije",,,0,1,10
+"Li-ion punjive baterije (18650, 21700 i dr.)",,,0,1,11
+"Litijumske baterije visokog kapaciteta",,,0,1,12
+"Ni-MH i Ni-Cd punjive baterije (AA, AAA)",,,0,1,13
+"Olovni akumulatori (VRLA, AGM, Gel)",,,0,1,14
+"Ostala oprema za baterije",,,0,1,15
+"Pametni brzi punjači sa procesorom",,,0,1,16
+"Punjači za AA i AAA baterije",,,0,1,17
+"Punjači za Li-ion i Li-Po baterije",,,0,1,18
+"Solarne baterije i punjači",,,0,1,19
+"Testeri za baterije",,,0,1,20
+"Univerzalni kućni punjači",,,0,1,21
+"Antenski stubovi i nosači",,,0,1,1
+"Bežični telefoni (DECT)",,,0,1,2
+"Digitalne i analogne telefonske centrale",,,0,1,3
+"Faks mašine i potrošni materijal",,,0,1,4
+"Fiksni žični telefoni",,,0,1,5
+"GSM i LTE pojačivači signala (Repeateri)",,,0,1,6
+"GSM gateaway uređaji i terminali",,,0,1,7
+"Interfoni i interfonski sistemi",,,0,1,8
+"IP i SIP telefoni (VoIP)",,,0,1,9
+"Kablovski materijal (Telefonski i koaksijalni)",,,0,1,10
+"Konferencijski telefoni i sistemi",,,0,1,11
+"Ostala telekomunikacijska oprema",,,0,1,12
+"Radio stanice i voki-toki uređaji",,,0,1,13
+"Sistemski telefoni za centrale",,,0,1,14
+"Slušalice za operatere i call centre",,,0,1,15
+"Telefonske utičnice, razdjelnici i filteri",,,0,1,16
+"Testna oprema za telekomunikacije",,,0,1,17
+"Uređaji za satelitsku komunikaciju",,,0,1,18
+"Antene (HF, VHF, UHF, Dual-band)",,,0,1,1
+"Antenski analizatori i mjerni instrumenti",,,0,1,2
+"Antenski tjuneri (Usklađivači)",,,0,1,3
+"Baterije i eliminatori baterija",,,0,1,4
+"CB (Citizens Band) radio stanice",,,0,1,5
+"Digitalni modemski interfejsi (FT8, DMR)",,,0,1,6
+"Eksterni zvučnici i audio filteri",,,0,1,7
+"Filteri za smetnje i prenaponska zaštita",,,0,1,8
+"Kablovi (Koaksijalni) i konektori (PL-259, N, SMA)",,,0,1,9
+"Linearna pojačala snage",,,0,1,10
+"Mikrofoni i tasteri za Morzeovu abecedu (CW)",,,0,1,11
+"Mobilne radio stanice",,,0,1,12
+"Nosači antena i rotatori",,,0,1,13
+"Ostala radio amaterska oprema",,,0,1,14
+"PMR (Voki-toki) uređaji slobodnog opsega",,,0,1,15
+"Ručne radio stanice (Handheld)",,,0,1,16
+"SDR (Software Defined Radio) prijemnici",,,0,1,17
+"SWR i Watt metri",,,0,1,18
+"Stacionarne (Base) radio stanice",,,0,1,19
+"Stabilisana napajanja (Ispravljači)",,,0,1,20
+"Antene za radio uređaje",,,0,1,1
+"CD Playeri (Prenosni - Discman)",,,0,1,2
+"Digitalni radio prijemnici (DAB/DAB+)",,,0,1,3
+"Džepni radio aparati",,,0,1,4
+"Kasetofoni i diktafoni (Prenosni)",,,0,1,5
+"Kuhinjski i ugradbeni radio uređaji",,,0,1,6
+"Mp3 i Mp4 playeri",,,0,1,7
+"Napajanja i adapteri za prenosne uređaje",,,0,1,8
+"Ostala audio oprema",,,0,1,9
+"Radio budilnici i satovi sa radiom",,,0,1,10
+"Radio kasetofoni (Boombox)",,,0,1,11
+"Radio prijemnici sa Bluetooth funkcijom",,,0,1,12
+"Retro i antikvitetni radio aparati",,,0,1,13
+"Slušalice za prenosne uređaje",,,0,1,14
+"Standardni stoni radio prijemnici (AM/FM)",,,0,1,15
+"Tranzistorski radio aparati na baterije",,,0,1,16
+"Uređaji sa solarnim i mehaničkim punjenjem (Dynamo)",,,0,1,17
+"Walkman (Prenosni kasetofoni)",,,0,1,18
+"Zamjenski remenovi i gumice za walkmane",,,0,1,19
+"Akumulatori i baterije (Solar/Gel/LiFePO4)",,,0,1,1
+"Fotonaponski solarni paneli (Monokristalni)",,,0,1,2
+"Fotonaponski solarni paneli (Polikristalni)",,,0,1,3
+"Invertori (Pretvarači napona) - Off-Grid",,,0,1,4
+"Invertori (Pretvarači napona) - On-Grid/Hibridni",,,0,1,5
+"Kablovi i konektori (MC4, solarni kablovi)",,,0,1,6
+"Kolektori za toplu vodu (Termalni sistemi)",,,0,1,7
+"Kontroleri punjenja (MPPT i PWM)",,,0,1,8
+"Nosači, šine i montažna oprema",,,0,1,9
+"Ostala solarna oprema",,,0,1,10
+"Pametna brojila i monitoring sistemi",,,0,1,11
+"Prenosni solarni kompleti i koferi",,,0,1,12
+"Prenaponska zaštita i osigurači za DC sisteme",,,0,1,13
+"Savitljivi (Fleksibilni) solarni paneli",,,0,1,14
+"Solarna rasvjeta i reflektori",,,0,1,15
+"Solarni kontroleri za pumpe i navodnjavanje",,,0,1,16
+"Solarni punjači za mobilne uređaje",,,0,1,17
+"Uređaji za čišćenje i održavanje panela",,,0,1,18
+"Automatski osigurači i sklopke",,,0,1,1
+"Digitalni i analogni tajmeri",,,0,1,2
+"DIY setovi i razvojne ploče (Arduino, ESP)",,,0,1,3
+"Električni kablovi i provodnici",,,0,1,4
+"Elektronske komponente (Otpornici, kondenzatori, diode)",,,0,1,5
+"FID sklopke i zaštitni uređaji",,,0,1,6
+"Indikatori, tinjalice i signalna svjetla",,,0,1,7
+"Instalacione cijevi, kanali i bužiri",,,0,1,8
+"Integrisana kola (IC) i tranzistori",,,0,1,9
+"Ispravljači, transformatori i driveri",,,0,1,10
+"Izolacioni materijali (Trake, termoskupljajući bužiri)",,,0,1,11
+"Kleme, konektori i stopice",,,0,1,12
+"Modulni programi (Sklopke i utičnice)",,,0,1,13
+"Ostali elektromaterijal",,,0,1,14
+"Prekidači, tasteri i potenciometri",,,0,1,15
+"Razvodni ormarići i razvodne kutije",,,0,1,16
+"Relatni moduli i senzori (Pokret, sumrak)",,,0,1,17
+"Standardne utičnice i utikači",,,0,1,18
+"Tasteri za zvona i interfone",,,0,1,19
+"Ugradbena elektronika i moduli",,,0,1,20
+"Analogni mjerni instrumenti",,,0,1,1
+"Brojila električne energije (Jednofazna i trofazna)",,,0,1,2
+"Detektori gasova i curenja",,,0,1,3
+"Digitalni multimetri (Unimeri)",,,0,1,4
+"Frekvencijski regulatori i pretvarači",,,0,1,5
+"Instrumenti za mjerenje debljine laka i slojeva",,,0,1,6
+"Instrumenti za mjerenje pritiska (Manometri)",,,0,1,7
+"Laboratorijski izvori napajanja",,,0,1,8
+"Laserski mjerači i daljinomeri",,,0,1,9
+"Mjerni točkovi i mehanička mjerila",,,0,1,10
+"Naponski ispitivači i glimerice",,,0,1,11
+"Osciloskopi i logički analizatori",,,0,1,12
+"Ostali mjerni i regulacioni instrumenti",,,0,1,13
+"Ph metri i testeri kvaliteta vode",,,0,1,14
+"Pomična mjerila (Šubleri) i mikrometri",,,0,1,15
+"Strujna kliješta (Ampermetar kliješta)",,,0,1,16
+"Tahometri (Mjerači broja obrtaja)",,,0,1,17
+"Termostati i regulatori temperature",,,0,1,18
+"Testeri baterija i akumulatora",,,0,1,19
+"Testeri mrežnih kablova (LAN testeri)",,,0,1,20
+"Digitalne lupe sa LCD ekranom",,,0,1,1
+"Džepne i sklopive lupe",,,0,1,2
+"Filatelističke i numizmatičke lupe",,,0,1,3
+"Kozmetičke lupe sa postoljem i LED svjetlom",,,0,1,4
+"Lupe naočale (Hands-free)",,,0,1,5
+"Lupe sa drškom (Klasične)",,,0,1,6
+"Lupe sa ugrađenim LED osvjetljenjem",,,0,1,7
+"Lupe za čitanje (Stolne i u obliku trake)",,,0,1,8
+"Lupe za elektroniku i lemljenje (Treća ruka)",,,0,1,9
+"Mjerne lupe sa skalom",,,0,1,10
+"Ostale lupe i optički dodaci",,,0,1,11
+"Povećala za ekrane telefona i tableta",,,0,1,12
+"Specijalne lupe za slabovide osobe",,,0,1,13
+"Uređajne i urarske lupe (Okulari)",,,0,1,14
+"Adapteri za pametne telefone i kamere",,,0,1,1
+"Astrofotografska oprema i senzori",,,0,1,2
+"Barlow sočiva i reduktori fokusa",,,0,1,3
+"Binokularni teleskopi (Veliki dvogledi)",,,0,1,4
+"Dvogledi (Dalekozori) za osmatranje",,,0,1,5
+"Filteri za teleskope (Mesečevi, solarni, magličasti)",,,0,1,6
+"Katadioptrični teleskopi (Maksutov, Schmidt-Cassegrain)",,,0,1,7
+"Kolimatori i alati za podešavanje",,,0,1,8
+"Laserski pokazivači i tražioci (Finderscopes)",,,0,1,9
+"Mikroskopi (Biološki i digitalni)",,,0,1,10
+"Monokulari i durbini",,,0,1,11
+"Montaže i tronošci (AZ, EQ, GoTo sistemi)",,,0,1,12
+"Okulari različitih žižnih daljina",,,0,1,13
+"Ostala optička oprema i pribor",,,0,1,14
+"Reflektorski teleskopi (Newtonian/Dobson)",,,0,1,15
+"Refraktorski teleskopi (Sa sočivima)",,,0,1,16
+"Spektivi za osmatranje ptica i prirode",,,0,1,17
+"Torbe i zaštitni koferi za optiku",,,0,1,18
+"Adapteri i bežični moduli za VR",,,0,1,1
+"Bazne stanice i senzori pokreta",,,0,1,2
+"Higijenske maske i silikonske navlake",,,0,1,3
+"Kablovi i link kablovi za povezivanje",,,0,1,4
+"Kontroleri i VR rukavice",,,0,1,5
+"Mješovita realnost (MR) i AR naočale",,,0,1,6
+"Naočale za proširenu stvarnost (Smart Glasses)",,,0,1,7
+"Ostala VR oprema i dodaci",,,0,1,8
+"PC VR Headsetovi (Žični)",,,0,1,9
+"Pokretne trake i platforme za VR hodanje",,,0,1,10
+"Pomoćni nosači i trake za glavu (Elite Strap)",,,0,1,11
+"Punjači i dock stanice za VR",,,0,1,12
+"Samostalni VR Headsetovi (Standalone)",,,0,1,13
+"Torbice i zaštitni koferi za VR",,,0,1,14
+"VR dodaci za simulacije (Volani, kundaci, palice)",,,0,1,15
+"VR naočale za pametne telefone",,,0,1,16
+"Zaštitna stakla i dioptrijski ulošci za VR",,,0,1,17
+"Bežična zvona i video interfoni",,,0,1,1
+"Centralni hubovi i kontroleri (Gateway)",,,0,1,2
+"Glasovni asistenti i pametni zvučnici",,,0,1,3
+"Ostali IoT uređaji i senzori",,,0,1,4
+"Pametna rješenja za kućne ljubimce (Hranilice)",,,0,1,5
+"Pametne brave i sistemi za pristup",,,0,1,6
+"Pametne garnišne i motori za zavjese",,,0,1,7
+"Pametne sijalice i LED kontroleri",,,0,1,8
+"Pametne utičnice i pametni produžni kablovi",,,0,1,9
+"Pametni detektori dima, vode i gasa",,,0,1,10
+"Pametni prekidači i dimeri",,,0,1,11
+"Pametni termostati i kontrola grijanja",,,0,1,12
+"Senzori pokreta, vrata i prozora",,,0,1,13
+"Senzori temperature, vlažnosti i kvaliteta zraka",,,0,1,14
+"Smart Home kontrolni paneli (Zidni)",,,0,1,15
+"Sistemi za pametno navodnjavanje",,,0,1,16
+"Univerzalni pametni IR/RF daljinski upravljači",,,0,1,17
+"Ugradbeni pametni moduli za prekidače",,,0,1,18
+"AV Receiveri i procesori zvuka",,,0,1,1
+"Bežični audio transmiteri i adapteri",,,0,1,2
+"Bookshelf zvučnici (Regalski)",,,0,1,3
+"Centralni zvučnici (Center channel)",,,0,1,4
+"Dolby Atmos i Surround zvučnici",,,0,1,5
+"Hi-Fi pojačala i pretpojačala",,,0,1,6
+"Izolacione podloške i šiljci za zvučnike",,,0,1,7
+"Kablovi za zvučnike i interkonekti",,,0,1,8
+"Kompletni sistemi kućnog kina (All-in-one)",,,0,1,9
+"Multiroom audio sistemi",,,0,1,10
+"Ostala oprema za kućna kina",,,0,1,11
+"Podnostojeći zvučnici (Floorstanding)",,,0,1,12
+"Sistemi zvučnika 2.1, 5.1 i 7.1",,,0,1,13
+"Soundbar zvučnici i sistemi",,,0,1,14
+"Stalci i zidni nosači za zvučnike",,,0,1,15
+"Subwooferi (Aktivni i pasivni)",,,0,1,16
+"Ugradbeni zvučnici (Zidni i stropni)",,,0,1,17
+"Zvučnici za spoljašnju upotrebu",,,0,1,18
+"4K Ultra HD Blu-ray playeri",,,0,1,1
+"Bežični adapteri za smart playere",,,0,1,2
+"Blu-ray playeri (Standardni)",,,0,1,3
+"CD i SACD playeri",,,0,1,4
+"Čistači sočiva i diskova",,,0,1,5
+"DVD playeri sa USB ulazom",,,0,1,6
+"DVD snimači (Recorders)",,,0,1,7
+"HDMI i AV kablovi za povezivanje",,,0,1,8
+"Kombinovani uređaji (npr. VHS/DVD)",,,0,1,9
+"Kućišta i torbe za diskove",,,0,1,10
+"Multimedijalni playeri sa optičkim drajvom",,,0,1,11
+"Ostala oprema za video playere",,,0,1,12
+"Prazni mediji (DVD, Blu-ray diskovi)",,,0,1,13
+"Prenosni (Portable) DVD playeri",,,0,1,14
+"Regioni-free (Multizone) uređaji",,,0,1,15
+"Rezervni dijelovi (Laseri, motori)",,,0,1,16
+"Univerzalni daljinski upravljači za playere",,,0,1,17
+"Adapteri za punjenje i prenos podataka",,,0,1,1
+"Armband (Trake za ruku) za trčanje",,,0,1,2
+"Baterije za prenosne playere",,,0,1,3
+"Digitalni diktafoni i snimači glasa",,,0,1,4
+"Doking stanice sa zvučnicima",,,0,1,5
+"Hi-Res Audio playeri (Lossless)",,,0,1,6
+"iPod Classic, Nano i Shuffle uređaji",,,0,1,7
+"iPod Touch uređaji",,,0,1,8
+"Kablovi (3.5mm, Lightning, 30-pin)",,,0,1,9
+"MP3 playeri za sport i plivanje (Vodootporni)",,,0,1,10
+"MP4 i prenosni video playeri",,,0,1,11
+"Ostala oprema za audio/video playere",,,0,1,12
+"Radio transmiteri za auto",,,0,1,13
+"Slušalice za MP3 playere",,,0,1,14
+"Standardni MP3 playeri (Flash memorija)",,,0,1,15
+"Torbice i silikonske zaštitne maske",,,0,1,16
+"Ugradbeni MP3 moduli (DIY)",,,0,1,17
+"Zaštitne folije i stakla za ekrane",,,0,1,18
+"Baterije za prenosne zvučnike",,,0,1,1
+"Bluetooth audio receiveri i transmiteri",,,0,1,2
+"Bluetooth zvučnici sa FM radiom",,,0,1,3
+"Kablovi (AUX, USB-C, Micro-USB)",,,0,1,4
+"Mini Bluetooth zvučnici (Džepni)",,,0,1,5
+"Multiroom bežični zvučnici (Wi-Fi)",,,0,1,6
+"Ostala oprema za bežične zvučnike",,,0,1,7
+"Pametni zvučnici sa glasovnim asistentom",,,0,1,8
+"Party zvučnici sa LED osvjetljenjem",,,0,1,9
+"Party zvučnici sa točkićima i mikrofonom",,,0,1,10
+"Prenosni Bluetooth zvučnici (Standardni)",,,0,1,11
+"Punjači i adapteri za zvučnike",,,0,1,12
+"Retro bežični zvučnici",,,0,1,13
+"Soundbar zvučnici sa Bluetooth funkcijom",,,0,1,14
+"Stalci i zidni nosači za bežične zvučnike",,,0,1,15
+"Torbice i zaštitne futrole",,,0,1,16
+"Vodootporni Bluetooth zvučnici (IPX sertifikat)",,,0,1,17
+"Zvučnici za konferencijske pozive",,,0,1,18
+"Antene i pojačivači signala",,,0,1,1
+"Baterije (Li-Po) za dronove",,,0,1,2
+"Bespilotne letjelice (Dronovi) - Dijelovi tijela",,,0,1,3
+"Daljinski upravljači i transmiteri",,,0,1,4
+"Elis (Propeleri) i štitnici propelera",,,0,1,5
+"ESC kontroleri brzine",,,0,1,6
+"FPV naočale i monitori",,,0,1,7
+"Gimbal sistemi i stabilizatori kamere",,,0,1,8
+"GPS moduli i senzori",,,0,1,9
+"Kamere za dronove i zamjenski objektivi",,,0,1,10
+"Kontrolori leta (Flight Controllers)",,,0,1,11
+"Motori (Brushless i Coreless)",,,0,1,12
+"Noge za sletanje i stajni trap",,,0,1,13
+"Ostala oprema za dronove",,,0,1,14
+"Punjači i balanceri za Li-Po baterije",,,0,1,15
+"Ruksaci i zaštitni koferi za dronove",,,0,1,16
+"SD kartice i moduli za memoriju",,,0,1,17
+"Sistemi za izbacivanje tereta",,,0,1,18
+"Vreće za sigurno punjenje baterija (Li-Po Guard)",,,0,1,19
+"Zamjenski kablovi i konektori",,,0,1,20
+"Agrikulturni i industrijski dronovi",,,0,1,1
+"Dronovi sa 4K kamerom",,,0,1,2
+"Dronovi sa HD kamerom",,,0,1,3
+"Dječiji dronovi i mini dronovi",,,0,1,4
+"FPV (First Person View) dronovi",,,0,1,5
+"Helikopteri na daljinsko upravljanje",,,0,1,6
+"Jedrilice na daljinsko upravljanje",,,0,1,7
+"Kvadrokopteri bez kamere",,,0,1,8
+"Ostale RC letjelice",,,0,1,9
+"Poluprofesionalni dronovi sa GPS-om",,,0,1,10
+"Profesionalni dronovi za snimanje",,,0,1,11
+"RC Avioni (Akrobatski i treneri)",,,0,1,12
+"RTF (Ready-to-Fly) kompleti",,,0,1,13
+"Trkaći (Racing) dronovi",,,0,1,14
+"Akcione kamere (Sportski modeli)",,,0,1,1
+"Analogni fotoaparati (Na film)",,,0,1,2
+"Besogledalni fotoaparati (Mirrorless)",,,0,1,3
+"Digitalni kompaktni fotoaparati (Idiot)",,,0,1,4
+"DSLR fotoaparati",,,0,1,5
+"Dječiji fotoaparati i kamere",,,0,1,6
+"Fotoaparati sa trenutnim ispisom (Instant)",,,0,1,7
+"Inspekcijske kamere (Endoskopi)",,,0,1,8
+"Kamere za snimanje iz vazduha (Namjenske)",,,0,1,9
+"Lovačke kamere (Trail cameras)",,,0,1,10
+"Ostali fotoaparati i kamere",,,0,1,11
+"Panoramske i 360° kamere",,,0,1,12
+"Podvodni fotoaparati i kućišta",,,0,1,13
+"Profesionalne video kamere (Camcorders)",,,0,1,14
+"Srednjeformatni fotoaparati",,,0,1,15
+"Vlogging kamere",,,0,1,16
+"Web kamere za računare",,,0,1,17
+"4K Ultra HD televizori",,,0,1,1
+"8K Ultra HD televizori",,,0,1,2
+"Android i Smart TV box uređaji",,,0,1,3
+"Antene (Sobne i vanjske)",,,0,1,4
+"Daljinski upravljači (Namjenski i univerzalni)",,,0,1,5
+"Digitalni TV prijemnici (DVB-T2/S2)",,,0,1,6
+"HDMI kablovi, razdjelnici i switcheri",,,0,1,7
+"LED i LCD televizori (Standardni)",,,0,1,8
+"LED trake i pozadinsko osvjetljenje za TV",,,0,1,9
+"Nosači za TV (Zidni, podni i plafonski)",,,0,1,10
+"OLED i QLED televizori",,,0,1,11
+"Ostala TV oprema i pribor",,,0,1,12
+"Panel ploče i moduli za popravku",,,0,1,13
+"Podnožja i stalci za televizore",,,0,1,14
+"Prenosni (Portable) televizori",,,0,1,15
+"Satelitski kompleti (Tanjiri, LNB konvertori)",,,0,1,16
+"Sredstva za čišćenje ekrana",,,0,1,17
+"TV ispravljači i napojni kablovi",,,0,1,18
+"TV kartice i moduli za dekodiranje",,,0,1,19
+"Audio miksete i konzole",,,0,1,1
+"Bežični audio sistemi i transmiteri",,,0,1,2
+"DAC (Digitalno-analogni konvertori)",,,0,1,3
+"Diktafoni i terenski snimači zvuka",,,0,1,4
+"DJ oprema (Kontroleri i playeri)",,,0,1,5
+"Gramofoni i oprema (Igle, remenovi)",,,0,1,6
+"Hi-Fi komponente (Pojačala, tuneri)",,,0,1,7
+"Kablovi, adapteri i konektori (XLR, Jack, RCA)",,,0,1,8
+"Kasetofoni i magnetofoni",,,0,1,9
+"Mikrofoni (Bežični, vokalni, studijski)",,,0,1,10
+"MP3 i Hi-Res audio playeri",,,0,1,11
+"Ostala audio i multimedijalna oprema",,,0,1,12
+"Radio aparati i radio budilnici",,,0,1,13
+"Slušalice (Bežične, studijske, bubice)",,,0,1,14
+"Soundbarovi i zvučne baze",,,0,1,15
+"Stalci i nosači za audio opremu",,,0,1,16
+"Studijski monitori i zvučnici",,,0,1,17
+"Zvučne kartice (Eksterne i interne)",,,0,1,18
+"Zvučnici (Podnostojeći, regalski, ugradbeni)",,,0,1,19
+"Amortizeri i ležajevi za veš mašine",,,0,1,1
+"Antivibracione podloške i nogice",,,0,1,2
+"Brtve (Gume) za frižidere i zamrzivače",,,0,1,3
+"Deterdženti i tablete za testiranje uređaja",,,0,1,4
+"Dozatori i posude za prašak",,,0,1,5
+"Filteri za napu (Ugljeni i metalni)",,,0,1,6
+"Filteri za vodu za frižidere",,,0,1,7
+"Grijači za mašine i rerne",,,0,1,8
+"Inox sredstva za čišćenje i poliranje",,,0,1,9
+"Interfonski i spojni kablovi za aparate",,,0,1,10
+"Korpe za escajg i police za mašine za suđe",,,0,1,11
+"Mrežice i filteri za odvod",,,0,1,12
+"Ostali sitni dijelovi bijele tehnike",,,0,1,13
+"Ploče za slaganje (Vezni elementi za sušilice)",,,0,1,14
+"Police i ladice za frižidere",,,0,1,15
+"Pribor za montažu ugradbenih uređaja",,,0,1,16
+"Sijalice za rerne i frižidere",,,0,1,17
+"Sredstva za uklanjanje kamenca",,,0,1,18
+"Termostati i senzori temperature",,,0,1,19
+"Vrećice i filteri za usisivače",,,0,1,20
+"Alati za preciznu mehaniku i elektroniku",,,0,1,1
+"Baterije (Dugmaste, alkalne, specijalne)",,,0,1,2
+"Čistači kontakata i kompresovani zrak",,,0,1,3
+"Držači i stalci za tehničke uređaje",,,0,1,4
+"Instrumenti za mjerenje vlage i temperature",,,0,1,5
+"Kablovi i adapteri (Univerzalni)",,,0,1,6
+"Magneti i magnetne trake",,,0,1,7
+"Metal detektori (Hobi i profesionalni)",,,0,1,8
+"Multimetri i ispitivači napona",,,0,1,9
+"Ostala nepomenuta tehnička roba",,,0,1,10
+"Pametni privjesci i lokatori (Tags)",,,0,1,11
+"Punjači za baterije (Univerzalni)",,,0,1,12
+"Sredstva za čišćenje ekrana i optike",,,0,1,13
+"Sušači i sterilizatori (Tehnički)",,,0,1,14
+"Termalne paste i podloške",,,0,1,15
+"Testeri za kablove i baterije",,,0,1,16
+"Torbe i koferi za tehničku opremu",,,0,1,17
+"Ultrazvučne kade za čišćenje",,,0,1,18
+"Univerzalni ispravljači napona",,,0,1,19
+"Vremenske stanice i senzori",,,0,1,20
+"Ostale konzole",,,0,1,1
+"Browser-based MMORPG i strategije",,,0,1,1
+"Digitalne dopune i vaučeri (Gift cards)",,,0,1,2
+"Igre na društvenim mrežama i aplikacijama",,,0,1,3
+"IO igre i arkadne platforme",,,0,1,4
+"Kozmetički dodaci i skinovi",,,0,1,5
+"Ostale online i browser igre",,,0,1,6
+"Platforme za mini-igre (Hubovi)",,,0,1,7
+"Pretplate na gaming portale",,,0,1,8
+"Premium nalozi i statusi",,,0,1,9
+"Unutar-igračke valute (Virtualni krediti)",,,0,1,10
+"Virtualne platforme i metaverzum igre",,,0,1,11
+"Bokserska oprema i borilački sportovi",,,0,1,1
+"Bilijar, pikado i stoni nogomet",,,0,1,2
+"Golf oprema i dodaci",,,0,1,3
+"Konjički sport i jahanje",,,0,1,4
+"Lovačka oprema i pribor",,,0,1,5
+"Mjerne sprave (Štoperice, daljinomjeri)",,,0,1,6
+"Oprema za gimnastiku i ples",,,0,1,7
+"Oprema za klizanje i hokej na ledu",,,0,1,8
+"Oprema za streličarstvo i samostrele",,,0,1,9
+"Ostala nepomenuta sportska oprema",,,0,1,10
+"Pribor za prvu pomoć i masažu",,,0,1,11
+"Ribolovačka oprema i pribor",,,0,1,12
+"Roleri, skejtbordi i trotineti",,,0,1,13
+"Sportske torbe, ruksaci i boce",,,0,1,14
+"Sportski rekviziti za plažu i vodu",,,0,1,15
+"Stoni tenis (Reket, mrežice, loptice)",,,0,1,16
+"Torbe i futrole za specifičnu opremu",,,0,1,17
+"Vazdušno oružje i oprema za paintball",,,0,1,18
+"Zastave, pehari i sportska priznanja",,,0,1,19
+"Agregati i industrijska napajanja",,,0,1,1
+"Ambalaža za transport i skladištenje",,,0,1,2
+"Bar kod skeneri i printeri etiketa",,,0,1,3
+"Čišćenje i održavanje industrijskih pogona",,,0,1,4
+"HTZ oprema (Zaštitna odijela, maske, kacige)",,,0,1,5
+"Industrijska mjerna oprema i senzori",,,0,1,6
+"Industrijska rasvjeta i reflektori",,,0,1,7
+"Laboratorijska oprema i pribor",,,0,1,8
+"Mašine za pakovanje i vakumiranje",,,0,1,9
+"Materijali za označavanje i signalizaciju",,,0,1,10
+"Oprema za ugostiteljstvo i trgovinu",,,0,1,11
+"Ostala nepomenuta industrijska oprema",,,0,1,12
+"Pneumatski i hidraulični elementi",,,0,1,13
+"Police, regali i skladišni sistemi",,,0,1,14
+"Sirovine i poluproizvodi za proizvodnju",,,0,1,15
+"Specijalni alati i mašinski dijelovi",,,0,1,16
+"Vage (Industrijske, trgovačke, precizne)",,,0,1,17
+"Viljuškari i oprema za unutrašnji transport",,,0,1,18
+"Zaštita na radu i protivpožarna oprema",,,0,1,19
+"Akvaristika (Pumpe, grijači, dekoracija)",,,0,1,1
+"Inkubatori i oprema za peradarstvo",,,0,1,2
+"Kavezi i oprema za glodare (Hrčci, kunići)",,,0,1,3
+"Kavezi i stalci za ptice",,,0,1,4
+"Košnice i pčelarska oprema",,,0,1,5
+"Mašine za šišanje i njega životinja",,,0,1,6
+"Oprema za dresuru i trening",,,0,1,7
+"Oprema za kaveze i ograđivanje (Električni pastiri)",,,0,1,8
+"Oprema za konjički sport i jahanje",,,0,1,9
+"Oprema za teraristiku (Gmizavci i pauci)",,,0,1,10
+"Ostali dodaci za kućne ljubimce",,,0,1,11
+"Pribor za hranjenje i pojenje stoke",,,0,1,12
+"Specijalna hrana za egzotične životinje",,,0,1,13
+"Transportni transporteri i kavezi",,,0,1,14
+"Vitamini, suplementi i njega zdravlja",,,0,1,15
+"Antikviteti i vintage predmeti",,,0,1,1
+"Bizarne i unikatne stvari",,,0,1,2
+"Dijelovi i materijali za reparaciju",,,0,1,3
+"Kolekcionarstvo (Markice, kovanice, memorabilije)",,,0,1,4
+"Kreativni setovi i DIY materijali",,,0,1,5
+"Muzički instrumenti i oprema (Ostalo)",,,0,1,6
+"Oprema za magioničare i zabavu",,,0,1,7
+"Ostali nepomenuti artikli",,,0,1,8
+"Poljoprivredni proizvodi i sirovine",,,0,1,9
+"Predmeti za religiju i duhovnost",,,0,1,10
+"Rekviziti za snimanja i pozorište",,,0,1,11
+"Ručni radovi i unikatne rukotvorine",,,0,1,12
+"Sirovine i poluproizvodi (Metal, plastika, drvo)",,,0,1,13
+"Specijalni pokloni i šaljivi artikli",,,0,1,14
+"Suveniri i turistički predmeti",,,0,1,15
+"Umjetnička djela (Slike, skulpture)",,,0,1,16
+"Domaći recepti i tradicionalna kuhinja",,,0,1,1
+"Enterijer i uređenje doma",,,0,1,2
+"Internacionalna kuhinja i egzotična jela",,,0,1,3
+"Kolači, deserti i peciva",,,0,1,4
+"Kućne popravke i DIY (Uradi sam) vodiči",,,0,1,5
+"Njega biljaka i vrtlarenje (Baštovanstvo)",,,0,1,6
+"Održavanje domaćinstva i čišćenje",,,0,1,7
+"Ostale kuharice i priručnici",,,0,1,8
+"Praznične trpeze i dekoracija",,,0,1,9
+"Priručnici za vino, pivo i koktele",,,0,1,10
+"Roštilj i jela sa otvorenog plamena",,,0,1,11
+"Savjeti za štednju i kućni budžet",,,0,1,12
+"Vegetarijanska i veganska ishrana",,,0,1,13
+"Zdrava ishrana, dijete i nutricionizam",,,0,1,14
+"Zimnica i konzerviranje hrane",,,0,1,15
+"Arhitektura i urbanizam",,,0,1,1
+"Crtanje, slikanje i grafika (Priručnici)",,,0,1,2
+"Dizajn enterijera i dekoracija",,,0,1,3
+"Fotografija i video umjetnost",,,0,1,4
+"Grafički i digitalni dizajn",,,0,1,5
+"Historija umjetnosti (Opšta i regionalna)",,,0,1,6
+"Industrijski i produkt dizajn",,,0,1,7
+"Kaligrafija i tipografija",,,0,1,8
+"Katalozi izložbi i monografije umjetnika",,,0,1,9
+"Moda i kostimografija",,,0,1,10
+"Muzička teorija i historija muzike",,,0,1,11
+"Ostalo iz umjetnosti i dizajna",,,0,1,12
+"Primijenjena umjetnost (Keramika, tekstil, nakit)",,,0,1,13
+"Skulptura i vajarstvo",,,0,1,14
+"Teorija i estetika umjetnosti",,,0,1,15
+"Antikvarne knjige (Prije 1900. godine)",,,0,1,1
+"Bibliografska i luksuzna izdanja",,,0,1,2
+"Knjige sa autogramom i posvetom",,,0,1,3
+"Knjige sa specifičnim uvezom (Kožni, zlatotisak)",,,0,1,4
+"Limitirane i numerisane edicije",,,0,1,5
+"Minijaturne knjige",,,0,1,6
+"Ostale rijetke i unikatne knjige",,,0,1,7
+"Prva izdanja (First Editions)",,,0,1,8
+"Rariteti na stranim jezicima",,,0,1,9
+"Stare vjerske knjige i rukopisi",,,0,1,10
+"Stari atlasi, mape i karte",,,0,1,11
+"Zabranjene ili povučene knjige (Cenzura)",,,0,1,12
+"Zaslužne knjige (Dobitnici velikih nagrada - stara izdanja)",,,0,1,13
+"Alternativna učenja i misticizam",,,0,1,1
+"Astrološki vodiči i horoskopi",,,0,1,2
+"Enciklopedije i leksikoni (Opšta namjena)",,,0,1,3
+"Enigmatika, kvizovi i mozgalice",,,0,1,4
+"Ezoterija i okultna literatura",,,0,1,5
+"Hobi i slobodno vrijeme (Filatelija, numizmatika)",,,0,1,6
+"Knjige o sportu i rekreaciji",,,0,1,7
+"Knjige o životinjama i prirodi",,,0,1,8
+"Mitologija i narodna predanja",,,0,1,9
+"Ostatak nepomenute literature",,,0,1,10
+"Paranormalne pojave i misterije",,,0,1,11
+"Popularna nauka i tehnologija",,,0,1,12
+"Putopisi i monografije gradova",,,0,1,13
+"Samoaktualizacija i motivacioni vodiči",,,0,1,14
+"Vojna literatura i strategija",,,0,1,15
+"Zabavne činjenice i rekordi (Ginisova knjiga i slično)",,,0,1,16
+"Alat za uokviravanje (Klamerice, rezači)",,,0,1,1
+"Antikvarni i barokni ramovi",,,0,1,2
+"Digitalni ramovi za fotografije",,,0,1,3
+"Drveni ramovi (Puno drvo)",,,0,1,4
+"Galerijske šine i sistemi za kačenje",,,0,1,5
+"Gotovi ramovi za fotografije (Standardni)",,,0,1,6
+"Lajsne za ramove (Na metar)",,,0,1,7
+"Metalni i aluminijumski ramovi",,,0,1,8
+"Moderni i minimalistički ramovi",,,0,1,9
+"Ostala oprema za uokviravanje",,,0,1,10
+"Paspartu kartoni (Razne boje i teksture)",,,0,1,11
+"Plastični i PVC ramovi",,,0,1,12
+"Ramovi za diplome i certifikate",,,0,1,13
+"Ramovi za više fotografija (Kolaž ramovi)",,,0,1,14
+"Staklo i pleksiglas za uokviravanje",,,0,1,15
+"3D modeli i digitalne skulpture",,,0,1,1
+"AI generisana umjetnost",,,0,1,2
+"Animacije i Motion Graphics",,,0,1,3
+"Digitalne ilustracije i crteži",,,0,1,4
+"Digitalni kistovi (Brushes) i teksture",,,0,1,5
+"Digitalni printovi (Art Prints)",,,0,1,6
+"Fraktalna i algoritamska umjetnost",,,0,1,7
+"Grafički dizajn i vizuelni identiteti",,,0,1,8
+"NFT i kripto umjetnost",,,0,1,9
+"Oprema za digitalno crtanje (Tableti i olovke)",,,0,1,10
+"Ostalo iz digitalne umjetnosti",,,0,1,11
+"Pixel Art i Retro dizajn",,,0,1,12
+"Software licence za digitalnu umjetnost",,,0,1,13
+"Vektorska grafika i ilustracije",,,0,1,14
+"Video art i digitalne instalacije",,,0,1,15
+"Dekorativne kutije i kovčezi",,,0,1,1
+"Dekorativne tacne i zdjele",,,0,1,2
+"Dekorativni jastuci i prekrivači",,,0,1,3
+"Dekorativni kamenčići, pijesak i školjke",,,0,1,4
+"Figurice i statue (Dekorativne)",,,0,1,5
+"Kasice za novac",,,0,1,6
+"Mirisni štapići, ulja i difuzori",,,0,1,7
+"Naljepnice i dekoracije za zidove",,,0,1,8
+"Ostali dekorativni predmeti",,,0,1,9
+"Pješčani satovi i ukrasni mjerni instrumenti",,,0,1,10
+"Podmetači i staze za stolove",,,0,1,11
+"Staklene vaze i kristalni predmeti",,,0,1,12
+"Svijećnjaci i dekorativni fenjeri",,,0,1,13
+"Umjetno cvijeće i suvi aranžmani",,,0,1,14
+"Ukrasna ogledala (Zidna i stona)",,,0,1,15
+"Zidni satovi (Analogni i dekorativni)",,,0,1,16
+"Biljne kapi i tinkture",,,0,1,1
+"Biljne masti i melemi",,,0,1,2
+"Biljni ekstrakti i prahovi",,,0,1,3
+"Biljni sirupi i eliksiri",,,0,1,4
+"Čajne mješavine i monokomponentni čajevi",,,0,1,5
+"Eterična ulja i aromaterapija",,,0,1,6
+"Fitomedicina i biljni suplementi",,,0,1,7
+"Hladno cijeđena biljna ulja",,,0,1,8
+"Ljekovito bilje (Osušeno i rezano)",,,0,1,9
+"Organski biljni namazi",,,0,1,10
+"Ostali biljni proizvodi",,,0,1,11
+"Prirodna biljna kozmetika",,,0,1,12
+"Sirovine za izradu biljnih preparata",,,0,1,13
+"Sjemenke i plodovi ljekovitog bilja",,,0,1,14
+"Vegetarijanski i veganski biljni proizvodi",,,0,1,15
+"Domuća mast i životinjska masnoća",,,0,1,1
+"Inkapsulirani životinjski ekstrakti",,,0,1,2
+"Jaja (Konzumna i rasplodna)",,,0,1,3
+"Krzno i neobrađena koža",,,0,1,4
+"Lanolin i derivati vune",,,0,1,5
+"Mliječni proizvodi (Sir, kajmak, maslac)",,,0,1,6
+"Mlijeko (Svježe i dugotrajno)",,,0,1,7
+"Matična mliječ i pčelinji proizvodi",,,0,1,8
+"Ostali životinjski proizvodi",,,0,1,9
+"Pčelinji vosak i satne osnove",,,0,1,10
+"Perje i pahuljice",,,0,1,11
+"Riblja ulja i Omega-3 dodaci",,,0,1,12
+"Rogovi, kosti i prirodni ukrasi",,,0,1,13
+"Suhomesnati proizvodi i delikatesi",,,0,1,14
+"Vuna i prirodna vlakna",,,0,1,15
+"Životinjski kolagen i želatin",,,0,1,16
+"Domaći i zanatski sirevi",,,0,1,1
+"Jogurt i kiselo-mliječni napici",,,0,1,2
+"Kajmak (Mladi i zreli)",,,0,1,3
+"Kefir i probiotski mliječni proizvodi",,,0,1,4
+"Kisela pavlaka i mileram",,,0,1,5
+"Maslac i ghee (Prečišćeni maslac)",,,0,1,6
+"Mlijeko u prahu i kondenzovano mlijeko",,,0,1,7
+"Mliječni namazi i mliječni deserti",,,0,1,8
+"Mladi sir i svježi sir",,,0,1,9
+"Ostali mliječni proizvodi",,,0,1,10
+"Ovčije i kozije mlijeko i prerađevine",,,0,1,11
+"Pavlaka za kuhanje i šlag",,,0,1,12
+"Sirni namazi i topljeni sirevi",,,0,1,13
+"Surutka i mliječni proteini",,,0,1,14
+"Tvrdi i polutvrdi sirevi (Trapist, Livanjski, Edamer)",,,0,1,15
+"Bomboni i gumene bombone",,,0,1,1
+"Čokolade i čokoladne table",,,0,1,2
+"Čokoladne bananice i desertne barovi",,,0,1,3
+"Domaći džemovi, marmelade i slatka",,,0,1,4
+"Domaći kolači i sitni kolači",,,0,1,5
+"Keksi, vafli i napolitanke",,,0,1,6
+"Krofne i peciva sa punjenjem",,,0,1,7
+"Lizalice i slatkiši za djecu",,,0,1,8
+"Medenjaci i paprenjaci",,,0,1,9
+"Ostali deserti i slastice",,,0,1,10
+"Praline i bombonjere",,,0,1,11
+"Puding, kreme i instant deserti",,,0,1,12
+"Sladoledi i zamrznuti deserti",,,0,1,13
+"Torte (Cijele i na parče)",,,0,1,14
+"Tradicionalne agdinske slastice (Baklava, hurmašice)",,,0,1,15
+"Zdravi slatkiši (Bez šećera i sirovi)",,,0,1,16
+"Bezalkoholna gazirana pića",,,0,1,1
+"Biljni čajevi i mješavine",,,0,1,2
+"Craft piva i zanatske pivare",,,0,1,3
+"Domaći i industrijski sokovi (100% voće)",,,0,1,4
+"Domaće rakije i likeri",,,0,1,5
+"Energetski napici i izotonici",,,0,1,6
+"Gazirana i mineralna voda",,,0,1,7
+"Kafa (Mljevena, u zrnu i kapsule)",,,0,1,8
+"Ledeni čajevi i osvježavajući napici",,,0,1,9
+"Ostala pića i napici",,,0,1,10
+"Piva (Svijetla, tamna i bezalkoholna)",,,0,1,11
+"Pribor i sirupi za pripremu pića",,,0,1,12
+"Prirodna izvorska voda",,,0,1,13
+"Sirupi na razblaživanje",,,0,1,14
+"Vina (Crna, bijela i rose)",,,0,1,15
+"Žestoka alkoholna pića (Viski, džin, votka)",,,0,1,16
+"Ajvari i namazi od povrća",,,0,1,1
+"Gotova jela u konzervi i tegli",,,0,1,2
+"Konzervirana riba i morski plodovi",,,0,1,3
+"Konzervirano meso i mesni doručak",,,0,1,4
+"Konzervirano voće (Kompot)",,,0,1,5
+"Kuhani paradajz i sosovi",,,0,1,6
+"Masline i maslinovo ulje",,,0,1,7
+"Ostala konzervirana hrana",,,0,1,8
+"Paštete i mesni namazi",,,0,1,9
+"Pečurke i gljive u salamuri",,,0,1,10
+"Poluproizvodi za brzu pripremu",,,0,1,11
+"Povrće u tegli (Krastavci, paprike, cvekla)",,,0,1,12
+"Sirovine za konzerviranje (Konzervansi, soli)",,,0,1,13
+"Slatka zimnica (Džemovi i marmelade)",,,0,1,14
+"Turšija i fermentisano povrće",,,0,1,15
+"Biljne masti i margarini",,,0,1,1
+"Domaći i univerzalni dodaci jelima",,,0,1,2
+"Egzotični i orijentalni začini",,,0,1,3
+"Hladno cijeđena i ljekovita ulja",,,0,1,4
+"Ljekovito bilje i sušeni začini",,,0,1,5
+"Maslinovo ulje (Ekstra djevansko i rafinisano)",,,0,1,6
+"Mješavine začina za meso i roštilj",,,0,1,7
+"Mješavine začina za ribu i morske plodove",,,0,1,8
+"Octovi i kiselinski dodaci (Jabuka, kvasina, balzamični)",,,0,1,9
+"Ostala ulja i začini",,,0,1,10
+"Paprika (Slatka, ljuta, dimljena, tucana)",,,0,1,11
+"Papar i šarena zrna papra",,,0,1,12
+"Soli (Morska, himalajska, začinjena)",,,0,1,13
+"Suncokretovo i ostala jestiva ulja",,,0,1,14
+"Umacu i sosovi kao dodaci jelima (Senf, majoneza, kečap)",,,0,1,15
+"Začini za kolače i slastice (Cimet, vanilija, karanfilić)",,,0,1,16
+"Dječiji poklon paketi i igračke",,,0,1,1
+"Gastronomski (Gourmet) paketi hrane",,,0,1,2
+"Higijenski setovi i setovi za brijanje",,,0,1,3
+"Kolekcije čajeva i kafa sa šoljama",,,0,1,4
+"Korporativni i poslovni poklon setovi",,,0,1,5
+"Kozmetički setovi za njegu lica i tijela",,,0,1,6
+"Limitirane edicije i kolekcionarski setovi",,,0,1,7
+"Ostali paketi i setovi",,,0,1,8
+"Parfemski setovi (Miris + losion)",,,0,1,9
+"Poklon korpe sa voćem i delicijama",,,0,1,10
+"Poklon paketi za bebe i novorođenčad",,,0,1,11
+"Poklon setovi pića (Vino, viski, rakija)",,,0,1,12
+"Setovi za aromaterapiju i opuštanje",,,0,1,13
+"Setovi za kreativce i DIY projekte",,,0,1,14
+"Wellness i SPA poklon paketi",,,0,1,15
+"Ambalaža i vrećice za čuvanje hrane",,,0,1,1
+"Dekoracije za torte i kolače (Jestive)",,,0,1,2
+"Dijetalni i specijalizovani prehrambeni artikli",,,0,1,3
+"Dodaci za pečenje (Prašak za pecivo, kvasac)",,,0,1,4
+"Hrana za posebne medicinske potrebe",,,0,1,5
+"Instant obroci i supe u vrećici",,,0,1,6
+"Jestive boje i arome",,,0,1,7
+"Kuhinjski pribor za jednokratnu upotrebu",,,0,1,8
+"Led i rashladni ulošci za prenos hrane",,,0,1,9
+"Oprema za serviranje i dekoraciju stola",,,0,1,10
+"Ostali nepomenuti prehrambeni artikli",,,0,1,11
+"Pribor za čišćenje i održavanje kuhinje",,,0,1,12
+"Sredstva za dezinfekciju namirnica",,,0,1,13
+"Sve za roštilj (Ugalj, potpaljivači)",,,0,1,14
+"Upaljači i šibice za kuhinjsku upotrebu",,,0,1,15
+"Anticelulitni preparati i učvršćivanje kože",,,0,1,1
+"Dezodoransi i antiperspiranti",,,0,1,2
+"Gelovi za tuširanje i kupke",,,0,1,3
+"Hidratantna mlijeka, losioni i maslaci",,,0,1,4
+"Intimna njega i higijena",,,0,1,5
+"Kreme i balzami za njegu ruku",,,0,1,6
+"Njega lica (Kreme, serumi, tonici)",,,0,1,7
+"Njega stopala i pedikura",,,0,1,8
+"Ostalo iz njege kože i tijela",,,0,1,9
+"Piling za tijelo i lice",,,0,1,10
+"Prirodna i organska kozmetika",,,0,1,11
+"Sapun (Tečni i tvrdi)",,,0,1,12
+"Sredstva za depilaciju i brijanje",,,0,1,13
+"Sredstva za sunčanje i zaštitu od sunca",,,0,1,14
+"Tretmani za problematičnu kožu",,,0,1,15
+"Ulja za tijelo i masažu",,,0,1,16
+"Balzami i regeneratori za kosu",,,0,1,1
+"Boje za kosu i razvijači",,,0,1,2
+"Četke, češljevi i pribor za kosu",,,0,1,3
+"Dodaci prehrani za kosu i nokte",,,0,1,4
+"Maske i intenzivni tretmani za kosu",,,0,1,5
+"Njega brade (Ulja, balzami i vosak)",,,0,1,6
+"Njega brkova i setovi za oblikovanje",,,0,1,7
+"Ostalo iz njege kose i brade",,,0,1,8
+"Pribor za šišanje i brijanje (Makaze, britve)",,,0,1,9
+"Proizvodi protiv opadanja kose",,,0,1,10
+"Stilizovanje brade (Pjene i sapuni)",,,0,1,11
+"Stilizovanje kose (Gelovi, lakovi, vosak)",,,0,1,12
+"Suhi šamponi i puderi za volumen",,,0,1,13
+"Šamponi za kosu",,,0,1,14
+"Šamponi za pranje brade",,,0,1,15
+"Ulja i serumi za vrhove kose",,,0,1,16
+"Akril i materijal za izljevanje noktiju",,,0,1,1
+"Baze, top coat i završni slojevi",,,0,1,2
+"Električne turpije i nastavci",,,0,1,3
+"Gel lakovi (Trajni lakovi)",,,0,1,4
+"Gelovi za nadogradnju noktiju",,,0,1,5
+"Naljepnice, cirkoni i ukrasi za nokte",,,0,1,6
+"Njega zanoktica i ulja za nokte",,,0,1,7
+"Obični lakovi za nokte",,,0,1,8
+"Oprema za sterilizaciju i higijenu",,,0,1,9
+"Ostalo iz njege noktiju",,,0,1,10
+"Pribor za manikuru (Makazice, grickalice, potiskivači)",,,0,1,11
+"Skidači laka i acetoni",,,0,1,12
+"Tečnosti za odmašćivanje i fiksiranje",,,0,1,13
+"Turpije i blok turpije",,,0,1,14
+"UV i LED lampe za nokte",,,0,1,15
+"Vještački nokti i ljepila",,,0,1,16
+"Četkice za zube (Manualne)",,,0,1,1
+"Električne i sonične četkice",,,0,1,2
+"Interdentalne četkice i čačkalice",,,0,1,3
+"Konac za zube (Floss)",,,0,1,4
+"Nastavci i glave za električne četkice",,,0,1,5
+"Njega desni i antiseptički gelovi",,,0,1,6
+"Njega i čišćenje zubnih proteza",,,0,1,7
+"Oralni tuševi (Irigatori)",,,0,1,8
+"Ostalo iz oralne higijene",,,0,1,9
+"Paste za izbjeljivanje zuba",,,0,1,10
+"Paste za osjetljive zube i desni",,,0,1,11
+"Paste za zube (Standardne)",,,0,1,12
+"Sredstva za ispiranje usta (Vodice)",,,0,1,13
+"Sredstva za osvježavanje daha",,,0,1,14
+"Sredstva za profesionalno izbjeljivanje (Setovi)",,,0,1,15
+"Strugalice za jezik",,,0,1,16
+"BB, CC kreme i tonirane kreme",,,0,1,1
+"Bronzeri, rumenila i highlighteri",,,0,1,2
+"Četkice i kistovi za šminkanje",,,0,1,3
+"Fiksatori šminke (Sprejevi i puderi)",,,0,1,4
+"Korektori i kamuflaže",,,0,1,5
+"Maskare i serumi za trepavice",,,0,1,6
+"Olovke i gelovi za obrve",,,0,1,7
+"Olovke i sjenila za oči",,,0,1,8
+"Olovke, ruževi i sjajila za usne",,,0,1,9
+"Ostala dekorativna kozmetika",,,0,1,10
+"Palete sjenila i setovi šminke",,,0,1,11
+"Pribor za šminkanje (Spužvice, uvijači)",,,0,1,12
+"Primeri i baze za šminku",,,0,1,13
+"Puderi u prahu i kamenu",,,0,1,14
+"Sredstva za skidanje šminke",,,0,1,15
+"Tekući puderi i podloge",,,0,1,16
+"Umjetne trepavice i ljepila",,,0,1,17
+"Body mist i mirisne vodice",,,0,1,1
+"Dečiji parfemi i toaletne vode",,,0,1,2
+"Eau de Cologne (Kolonjske vode)",,,0,1,3
+"Eau de Parfum (Parfemske vode)",,,0,1,4
+"Eau de Toilette (Toaletne vode)",,,0,1,5
+"Mirisne svijeće i mirisi za dom",,,0,1,6
+"Mirisni setovi (Parfem + kozmetika)",,,0,1,7
+"Muški parfemi i mirisi",,,0,1,8
+"Niche parfemi i ekskluzivni mirisi",,,0,1,9
+"Ostali mirisni proizvodi",,,0,1,10
+"Parfemi u ulju i arapski mirisi",,,0,1,11
+"Parfemski testeri i mini pakovanja",,,0,1,12
+"Solid parfemi (Čvrsti parfemi)",,,0,1,13
+"Testeri i uzorci mirisa",,,0,1,14
+"Unisex parfemi",,,0,1,15
+"Ženski parfemi i mirisi",,,0,1,16
+"Dioptrijski okviri (Muški, ženski, dječiji)",,,0,1,1
+"Dodaci za naočale (Lančići, vezice, krpice)",,,0,1,2
+"Futrole i kutije za naočale",,,0,1,3
+"Kontaktne leće (Dnevne, mjesečne, u boji)",,,0,1,4
+"Lupa i povećala",,,0,1,5
+"Naočale na magnet i sklopive naočale",,,0,1,6
+"Naočale za čitanje (Gotove dioptrije)",,,0,1,7
+"Naočale za rad na računaru (Blue light)",,,0,1,8
+"Naočale za sunce (Polarizovane i modne)",,,0,1,9
+"Ostala optička oprema",,,0,1,10
+"Sredstva za čišćenje i održavanje stakala",,,0,1,11
+"Sportske naočale i maske",,,0,1,12
+"Stakla za naočale (Leće za okvire)",,,0,1,13
+"Tečnosti i kapi za kontaktne leće",,,0,1,14
+"Zaštitne naočale (Radne)",,,0,1,15
+"Aplikatori i pincete za trepavice",,,0,1,1
+"Boje za obrve i trepavice (Trajne)",,,0,1,2
+"Individualne trepavice i pramenovi",,,0,1,3
+"Kozmetička ogledala (Sa LED svjetlom)",,,0,1,4
+"Kozmetički koferi i organizatori",,,0,1,5
+"Ljepila za umjetne trepavice",,,0,1,6
+"Magnetne trepavice i eyelineri",,,0,1,7
+"Materijal za nadogradnju (Lash Lift)",,,0,1,8
+"Ostala dodatna kozmetika",,,0,1,9
+"Oštrači za kozmetičke olovke",,,0,1,10
+"Pribor za oblikovanje obrva (Britvice, makazice)",,,0,1,11
+"Sredstva za skidanje ljepila (Removers)",,,0,1,12
+"Trepavice na traci (Strip lashes)",,,0,1,13
+"Uvijači za trepavice (Mehanički i grijani)",,,0,1,14
+"Vata, tuferi i štapići za korekciju",,,0,1,15
+"Vještački mladeži i nakit za lice",,,0,1,16
+"Aromaterapija i eterična ulja",,,0,1,1
+"Čajevi za detoksikaciju i mršavljenje",,,0,1,2
+"Dijagnostički uređaji (Toplomjeri, tlakomjeri)",,,0,1,3
+"Dodaci ishrani (Vitamini i minerali)",,,0,1,4
+"Fitnes rekviziti za kućnu upotrebu",,,0,1,5
+"Masažeri i pomagala za relaksaciju",,,0,1,6
+"Medicinska obuća i ortopedski ulošci",,,0,1,7
+"Ostali wellness proizvodi",,,0,1,8
+"Pametni satovi i fitnes narukvice",,,0,1,9
+"Preparati za jačanje imuniteta",,,0,1,10
+"Probiotici i zdravlje probave",,,0,1,11
+"Proteini i sportska suplementacija",,,0,1,12
+"Sredstva za dezinfekciju i zaštitne maske",,,0,1,13
+"Superhrana (Chia, kvinoja, goji bobice)",,,0,1,14
+"Uređaji za pročišćavanje i vlaženje zraka",,,0,1,15
+"Wellness poklon setovi",,,0,1,16
+"Dječije zaštitne maske (Sa motivima)",,,0,1,1
+"Hirurške maske (Jednokratne)",,,0,1,2
+"Latex rukavice (Sa puderom i bez)",,,0,1,3
+"Naočale i viziri za zaštitu lica",,,0,1,4
+"Nesterilne medicinske rukavice",,,0,1,5
+"Nitrile rukavice (Bez lateksa)",,,0,1,6
+"Ostala zaštitna oprema",,,0,1,7
+"Pamučne perive maske",,,0,1,8
+"Platnene rukavice i rukavice za njegu",,,0,1,9
+"Respiratorne maske (FFP2 / KN95)",,,0,1,10
+"Respiratorne maske sa ventilom (FFP3)",,,0,1,11
+"Rukavice od vinila",,,0,1,12
+"Sredstva za dezinfekciju ruku (Travel pack)",,,0,1,13
+"Sterilne hirurške rukavice",,,0,1,14
+"Zaštitna odijela i mantili (Jednokratni)",,,0,1,15
+"Aksesoari za putovanja (Putne bočice)",,,0,1,1
+"Čepići za uši i maske za spavanje",,,0,1,2
+"Flasteri i zavoji (Standardni i dekorativni)",,,0,1,3
+"Kozmetičke vate, blazinice i štapići",,,0,1,4
+"Laboratorijski pribor za kućnu upotrebu",,,0,1,5
+"Magnetski i bakarni nakit za zdravlje",,,0,1,6
+"Mjerne trake i vage za mjerenje tijela",,,0,1,7
+"Neseseri i torbice za kozmetiku",,,0,1,8
+"Oprema za prvu pomoć (Setovi)",,,0,1,9
+"Ostali nepomenuti proizvodi za njegu",,,0,1,10
+"Pincete, makazice i turpije (Univerzalne)",,,0,1,11
+"Sredstva za odbijanje insekata (Repelenti)",,,0,1,12
+"Termofori i topli/hladni oblozi",,,0,1,13
+"Ulošci za cipele (Gel i mirisni)",,,0,1,14
+"Vlažne maramice (Dezinfekcione i osvježavajuće)",,,0,1,15
+"3D puzzle i makete",,,0,1,1
+"Detektivske i misteriozne igre",,,0,1,2
+"Domino, šah i klasične drvene igre",,,0,1,3
+"Društvene igre za dvoje",,,0,1,4
+"Edukativne igre i kvizovi znanja",,,0,1,5
+"Igre kartama (Standardne i kolekcionarske)",,,0,1,6
+"Igre spretnosti i akcije",,,0,1,7
+"Kreativne igre i setovi za pravljenje",,,0,1,8
+"Logičke igre i mozgalice",,,0,1,9
+"Ostale društvene igre i slagalice",,,0,1,10
+"Party igre i igre za odrasle",,,0,1,11
+"Porodične društvene igre",,,0,1,12
+"Puzzle za djecu (Laki nivo)",,,0,1,13
+"Puzzle za odrasle (Preko 1000 dijelova)",,,0,1,14
+"Strateške i RPG igre (Tabletop)",,,0,1,15
+"Tradicionalne igre na tabli (Čovječe ne ljuti se, Monopol)",,,0,1,16
+"Akcione figure iz crtanih filmova",,,0,1,1
+"Akcione figure iz filmova i serija",,,0,1,2
+"Anime i Manga figure",,,0,1,3
+"Dinosaursi i praistorijska bića",,,0,1,4
+"Dodaci i oprema za figure (Oružje, vozila)",,,0,1,5
+"Interaktivne i zvučne figure",,,0,1,6
+"Kolekcionarske figure (Statue i bista)",,,0,1,7
+"Ostale figure i likovi",,,0,1,8
+"Roboti i transformeri",,,0,1,9
+"Setovi figura sa dodacima",,,0,1,10
+"Superheroji (Marvel, DC i ostali)",,,0,1,11
+"Vojnici i vojna oprema",,,0,1,12
+"Vinilne figure (Funko Pop i slično)",,,0,1,13
+"Zmajevi i mitska bića",,,0,1,14
+"Životinjske figure (Domaće i divlje)",,,0,1,15
+"Arhitektonski setovi i makete zgrada",,,0,1,1
+"Drvene kockice za građenje",,,0,1,2
+"Elektronski i programabilni konstruktori",,,0,1,3
+"Kocke sa velikim dijelovima (za bebe i mališane)",,,0,1,4
+"Konstrukcioni setovi sa alatima (šarafi i matice)",,,0,1,5
+"Magnetne kockice i oblici",,,0,1,6
+"Mehanički i inžinjerski setovi (zupčanici i motori)",,,0,1,7
+"Metalni konstrukcioni setovi",,,0,1,8
+"Osnovni setovi kockica (klasične kocke)",,,0,1,9
+"Ostale konstrukcione igračke",,,0,1,10
+"Ploče za građenje i postolja",,,0,1,11
+"Savitljivi i cjevasti konstruktori",,,0,1,12
+"Setovi kockica po temama (Grad, Svemir, Farma)",,,0,1,13
+"Setovi za pravljenje staza i mermernih lavirinta",,,0,1,14
+"Specijalni dodaci (točkovi, prozori, vrata)",,,0,1,15
+"Vozila i letjelice od kockica",,,0,1,16
+"Automobili na daljinsko upravljanje (RC)",,,0,1,1
+"Baterije i punjači za igračke",,,0,1,2
+"Brodovi i podmornice na daljinski",,,0,1,3
+"Dječiji dronovi i kvadrokopteri",,,0,1,4
+"Dječiji fotoaparati i kamere",,,0,1,5
+"Elektronski muzički instrumenti za djecu",,,0,1,6
+"Helikopteri i avioni na daljinski",,,0,1,7
+"Interaktivni robotski ljubimci",,,0,1,8
+"Kamioni, bageri i radne mašine (RC)",,,0,1,9
+"Ostale igračke na baterije",,,0,1,10
+"Pametni roboti i programabilne igračke",,,0,1,11
+"Staze sa električnim automobilima",,,0,1,12
+"Voki-toki uređaji za djecu",,,0,1,13
+"Vozovi na baterije i šine",,,0,1,14
+"Zvučne i svjetlosne igračke za bebe",,,0,1,15
+"Abakusi i setovi za rano učenje matematike",,,0,1,1
+"Drvene daske za učenje (Activity boards)",,,0,1,2
+"Geometrijski oblici i sortiranje",,,0,1,3
+"Igračke za razvoj fine motorike i nizanje",,,0,1,4
+"Igračke za učenje boja i oblika",,,0,1,5
+"Kartice za učenje slova, brojeva i pojmova",,,0,1,6
+"Magnetne table i slova",,,0,1,7
+"Montessori tornjevi i piramide",,,0,1,8
+"Muzičke igračke za razvoj sluha",,,0,1,9
+"Ostale edukativne igračke",,,0,1,10
+"Pribor za vježbe svakodnevnog života (Zakopčavanje, vezivanje)",,,0,1,11
+"Senzorne kutije i materijali",,,0,1,12
+"Setovi za eksperimente i učenje o prirodi",,,0,1,13
+"Slagalice sa mapama i anatomijom",,,0,1,14
+"Učenje na satu i pojam vremena",,,0,1,15
+"Vage i mjerni instrumenti za djecu",,,0,1,16
+"Divlje životinje od pliša",,,0,1,1
+"Domaće životinje i ljubimci od pliša",,,0,1,2
+"Gigantski plišani medvjedi i figure",,,0,1,3
+"Interaktivni plišanci (Govor, pokret, zvuk)",,,0,1,4
+"Klasični plišani medvjedići",,,0,1,5
+"Morski svijet od pliša",,,0,1,6
+"Ostale plišane igračke",,,0,1,7
+"Plišane igračke iz crtanih filmova i bajki",,,0,1,8
+"Plišane igračke sa tješilicama za bebe",,,0,1,9
+"Plišani privjesci i mini plišanci",,,0,1,10
+"Plišani ruksaci i torbice",,,0,1,11
+"Plišani setovi sa dodacima (Kućice, kreveti)",,,0,1,12
+"Senzorni i antistres plišanci",,,0,1,13
+"Svjetleći plišanci i projektori",,,0,1,14
+"Unicorni i fantastična bića od pliša",,,0,1,15
+"Bazeni sa lopticama",,,0,1,1
+"Dječije kućice (Plastične i platnene)",,,0,1,2
+"Dječiji šatori i indijanski tipi šatori",,,0,1,3
+"Grebalice i penjalice za djecu",,,0,1,4
+"Klackalice za jedno ili više djece",,,0,1,5
+"Koševi i golovi za kućnu igru",,,0,1,6
+"Ljuljačke za kućnu i dvorišnu upotrebu",,,0,1,7
+"Modularne podne prostirke (Puzle od pjene)",,,0,1,8
+"Ogradice za igru i sigurne zone",,,0,1,9
+"Ostala oprema za igraonice",,,0,1,10
+"Pikado i dječije mete",,,0,1,11
+"Plastični i drveni tobogani",,,0,1,12
+"Sportske sprave za djecu (Ljestve, karike)",,,0,1,13
+"Trampoline (Unutrašnje i vanjske)",,,0,1,14
+"Tuneli za provlačenje",,,0,1,15
+"Bebe lutke i interaktivne lutke",,,0,1,1
+"Dvorci, palate i magična kraljevstva",,,0,1,2
+"Dodaci za lutke (Odjeća, obuća, nakit)",,,0,1,3
+"Dječija šminka i setovi za uljepšavanje",,,0,1,4
+"Dječije kuhinje i setovi za kuhanje",,,0,1,5
+"Igračke za igru doktora i veterinara",,,0,1,6
+"Kućice za lutke i namještaj",,,0,1,7
+"Kolekcionarske lutke i figure",,,0,1,8
+"Kolica i krevetići za lutke",,,0,1,9
+"Modne lutke i Barbie svijet",,,0,1,10
+"Nakit za djevojčice i setovi za izradu",,,0,1,11
+"Ostale igračke za djevojčice",,,0,1,12
+"Pribor za kosu i glave za friziranje",,,0,1,13
+"Setovi za igru trgovine i blagajne",,,0,1,14
+"Vile, sirene i mitska bića",,,0,1,15
+"Alati i radionice za djecu",,,0,1,1
+"Automobili, kamioni i motori (Bez daljinskog)",,,0,1,2
+"Avioni, helikopteri i svemirski brodovi",,,0,1,3
+"Dječiji voki-toki i špijunska oprema",,,0,1,4
+"Garaže, parkinzi i setovi sa stazama",,,0,1,5
+"Igračke na temu policije i vatrogasaca",,,0,1,6
+"Igračke za igru istraživača i avanturista",,,0,1,7
+"Metalni autići (Kolekcionarski modeli)",,,0,1,8
+"Oružja sa pjenastim mecima i strijele",,,0,1,9
+"Ostale igračke za dječake",,,0,1,10
+"Roboti i transformabilne figure",,,0,1,11
+"Setovi za igru sa farmom i životinjama",,,0,1,12
+"Svemirski setovi i istraživanje Marsa",,,0,1,13
+"Viteški setovi (Mačevi, štitovi, dvorci)",,,0,1,14
+"Vojna oprema i vojnici",,,0,1,15
+"Vozovi, šine i željezničke stanice",,,0,1,16
+"Antistres igračke (Fidget, Squishy, Pop-it)",,,0,1,1
+"Baloni i oprema za proslave",,,0,1,2
+"Dječiji nakit i modni dodaci",,,0,1,3
+"Igračke za kupanje (Gume, patkice, prskalice)",,,0,1,4
+"Igračke za pijesak i plažu",,,0,1,5
+"Igračke za putovanja (Magnetne i mini igre)",,,0,1,6
+"Kaleidoskopi i optičke varke",,,0,1,7
+"Kasice za štednju i dječiji novčanici",,,0,1,8
+"Kostimi i maske za maškare",,,0,1,9
+"Mađioničarski setovi i trikovi",,,0,1,10
+"Mjehurići od sapunice (Setovi i tečnosti)",,,0,1,11
+"Ostale nepomenute igračke",,,0,1,12
+"Privjesci za ključeve i ruksake",,,0,1,13
+"Sakupljačke karte i albumi (Sličice)",,,0,1,14
+"Svjetleći štapići i neon dodaci",,,0,1,15
+"Zmajevi za puštanje na vjetru",,,0,1,16
+"Alati za popravku mobitela",,,0,1,1
+"Baterije za mobitele",,,0,1,2
+"Bluetooth adapteri i transmiteri",,,0,1,3
+"Čitači memorijskih kartica",,,0,1,4
+"Držači i stalci za mobitele",,,0,1,5
+"Gimbali i stabilizatori za snimanje",,,0,1,6
+"Memorijske kartice (MicroSD)",,,0,1,7
+"Olovke za ekrane (Stylus pen)",,,0,1,8
+"Ostali nepomenuti dodaci",,,0,1,9
+"Polovni i oštećeni mobiteli za dijelove",,,0,1,10
+"Pomoćni objektivi za kamere mobitela",,,0,1,11
+"Rezervni dijelovi (Ekrani, flet kablovi, kućišta)",,,0,1,12
+"SIM kartice i dopune (Top-up)",,,0,1,13
+"Sredstva za čišćenje ekrana",,,0,1,14
+"VR naočale za mobitele",,,0,1,15
+"Zvučnici i eksterni mikrofon za mobitele",,,0,1,16
+"Amazon Kindle čitači",,,0,1,1
+"Boox (Onyx) Android čitači",,,0,1,2
+"Čitači sa ekranom u boji (Color E-ink)",,,0,1,3
+"Dodaci za čitače (Futrole, lampe, olovke)",,,0,1,4
+"Kobo eBook čitači",,,0,1,5
+"Large-format čitači (Ekran 10"" i veći)",,,0,1,6
+"Oprema za punjenje i kablovi",,,0,1,7
+"Ostali eBook čitači",,,0,1,8
+"PocketBook čitači",,,0,1,9
+"Polovni i reparirani eBook čitači",,,0,1,10
+"Remarkable i digitalne bilježnice",,,0,1,11
+"Vodootporni eBook čitači",,,0,1,12
+"Zaštitne folije i stakla za čitače",,,0,1,13
+"Alati za servisiranje i otvaranje",,,0,1,1
+"Baterije za PDA i Pocket PC",,,0,1,2
+"Docking stanice i baze za punjenje",,,0,1,3
+"Industrijski PDA uređaji (Barkod skeneri)",,,0,1,4
+"Memorijske kartice (CF, SD, MMC)",,,0,1,5
+"Olovke (Stylus) za ekrane",,,0,1,6
+"Ostali PDA i Pocket PC uređaji",,,0,1,7
+"Palm OS uređaji",,,0,1,8
+"Pocket PC (Windows Mobile) uređaji",,,0,1,9
+"Polovni i neispravni uređaji za dijelove",,,0,1,10
+"Punjači i kablovi za sinhronizaciju",,,0,1,11
+"Rezervni dijelovi (Ekrani, kućišta, tipke)",,,0,1,12
+"Tastature i vanjski dodaci",,,0,1,13
+"Zaštitne futrole i torbice",,,0,1,14
+"Arhiviranje i kutije za uspomene",,,0,1,1
+"Dekorativne korpe i kutije za odlaganje",,,0,1,2
+"Dizajnerski detalji i statue",,,0,1,3
+"Kante za smeće i vreće",,,0,1,4
+"Kasice za štednju i sefovi za dom",,,0,1,5
+"Mirisi za dom, svijeće i difuzori",,,0,1,6
+"Otirači za ulazna vrata",,,0,1,7
+"Ostali nepomenuti predmeti za domaćinstvo",,,0,1,8
+"Osvježivači i odvlaživači vazduha (pasivni)",,,0,1,9
+"Pepeljare i oprema za pušače",,,0,1,10
+"Pribor za šivenje i krpljenje",,,0,1,11
+"Satovi (Zidni i stoni)",,,0,1,12
+"Sredstva za održavanje i poliranje namještaja",,,0,1,13
+"Sredstva za zaštitu od insekata u domu",,,0,1,14
+"Stalci za kišobrane i novine",,,0,1,15
+"Vještačko cvijeće i ukrasne grane",,,0,1,16
+"Akustični paneli i izolacija (Apsorberi, difuzori)",,,0,1,1
+"Alati za održavanje instrumenata (Setovi za čišćenje)",,,0,1,2
+"Čepići za uši i zaštita sluha za muzičare",,,0,1,3
+"Koferi, torbe i rek (Rack) kućišta",,,0,1,4
+"Metronomi i štimeri (Tuneri)",,,0,1,5
+"Muzički stalci (Za note, mikrofone, instrumente)",,,0,1,6
+"Oprema za čišćenje gramofonskih ploča",,,0,1,7
+"Ostali nepomenuti muzički dodaci",,,0,1,8
+"Pop filteri i izolacioni štitovi za mikrofone",,,0,1,9
+"Pribor za muzičare (Trzalice, kapodasteri, remenovi)",,,0,1,10
+"Punjači, adapteri i napajanja za pedale",,,0,1,11
+"Rezervni dijelovi za instrumente (Pragovi, čivije, potenciometri)",,,0,1,12
+"Stolice i klupe za muzičare (Pianino klupe, bubnjarske stolice)",,,0,1,13
+"Svjetla za note i scenska rasvjeta (Manja)",,,0,1,14
+"Žice za sve vrste žičanih instrumenata",,,0,1,15
+"Adapteri i pretvarači (Reduciri)",,,0,1,1
+"Digitalni audio kablovi (Optički, S/PDIF, AES/EBU)",,,0,1,2
+"DMX kablovi za rasvjetu",,,0,1,3
+"Instrument kablovi (TS Jack - za gitare i klavijature)",,,0,1,4
+"Kablovi na metar i konektori u rinfuzi",,,0,1,5
+"Mrežni kablovi za audio (Ethercon, Cat6)",,,0,1,6
+"MIDI kablovi",,,0,1,7
+"Multicore kablovi (Stagebox zmije)",,,0,1,8
+"Napojni kablovi i razdjelnici za pedale (Daisy chain)",,,0,1,9
+"Ostali kablovi i pribor",,,0,1,10
+"Patch kablovi za pedale i rack sisteme",,,0,1,11
+"RCA (Chinch) kablovi",,,0,1,12
+"Speakon kablovi za pasivne zvučnike",,,0,1,13
+"Stereo i balansirani kablovi (TRS Jack)",,,0,1,14
+"USB i Thunderbolt kablovi za audio interfejse",,,0,1,15
+"XLR (Mikrofonski) kablovi",,,0,1,16
+"Alati za održavanje i čišćenje instrumenata",,,0,1,1
+"Čepići za uši i zaštita sluha za muzičare",,,0,1,2
+"Kapodasteri i trzalice",,,0,1,3
+"Metronomi i štimeri (Tuneri)",,,0,1,4
+"Muzički stalci (Za note i mikrofone)",,,0,1,5
+"Napajanja i baterije za muzičku opremu",,,0,1,6
+"Oprema za čišćenje i čuvanje ploča",,,0,1,7
+"Ostali nepomenuti muzički pribor",,,0,1,8
+"Pop filteri i izolacioni štitovi",,,0,1,9
+"Remenovi za gitare i harmonike",,,0,1,10
+"Rezervni dijelovi (Potenciometri, prekidači, pragovi)",,,0,1,11
+"Stolice i klupe za muzičare",,,0,1,12
+"Svjetla za notne stalke i miksetre",,,0,1,13
+"Vlažni regulatori za drvene instrumente (Humidifieri)",,,0,1,14
+"Žice za žičane instrumente",,,0,1,15
+"Bežične (Wireless) tattoo mašinice",,,0,1,1
+"Coil (Zavojne) mašinice za liner",,,0,1,2
+"Coil (Zavojne) mašinice za shader",,,0,1,3
+"Dijelovi za mašinice (Opruge, kondenzatori, vijci)",,,0,1,4
+"Hibridne tattoo mašinice",,,0,1,5
+"Mašinice za trajnu šminku (PMU)",,,0,1,6
+"Ostale mašinice za tetoviranje",,,0,1,7
+"Pen (Olovka) rotacione mašinice",,,0,1,8
+"Pneumatske tattoo mašinice",,,0,1,9
+"Polovne i restaurirane mašinice",,,0,1,10
+"Rotacione mašinice sa direktnim pogonom",,,0,1,11
+"Rotacione mašinice sa ekscentrom",,,0,1,12
+"Setovi za početnike (Mašinica sa priborom)",,,0,1,13
+"Flat (Ravne) igle i patroni",,,0,1,1
+"Kertridži (Patroni) - Round Liner (RL)",,,0,1,2
+"Kertridži (Patroni) - Round Shader (RS)",,,0,1,3
+"Kertridži (Patroni) - Magnum (M1/M2)",,,0,1,4
+"Kertridži (Patroni) - Soft Edge Magnum (SEM/RM)",,,0,1,5
+"Klasične igle na šipki - Round Liner (RL)",,,0,1,6
+"Klasične igle na šipki - Round Shader (RS)",,,0,1,7
+"Klasične igle na šipki - Magnum",,,0,1,8
+"Igle za trajnu šminku (PMU)",,,0,1,9
+"Igle za piercing (Kanile)",,,0,1,10
+"Mix pakovanja igala i patrona",,,0,1,11
+"Ostale igle i specijalne konfiguracije",,,0,1,12
+"Pribor za igle (Grommeti, gumice)",,,0,1,13
+"Bijele boje za highlight i miješanje",,,0,1,1
+"Boje za trajnu šminku (PMU pigmenti)",,,0,1,2
+"Crne boje za linije (Lining Black)",,,0,1,3
+"Crne boje za popunjavanje (Filling Black)",,,0,1,4
+"Čašice za boju (Ink caps) i držači",,,0,1,5
+"Diluents (Tečnosti za razrijeđivanje boje)",,,0,1,6
+"Grey Wash setovi (Sjenčenje)",,,0,1,7
+"Mix setovi boja (Primary i Secondary)",,,0,1,8
+"Ostale boje i specijalni pigmenti",,,0,1,9
+"Pigmenti za mikroblejding obrva",,,0,1,10
+"Sredstva za miješanje i miješalice (Mixers)",,,0,1,11
+"Svijetleće (UV/Neon) boje za tetoviranje",,,0,1,12
+"Tinte u boji - Pojedinačne nijanse",,,0,1,13
+"Autoklavi i ultrazvučni čistači",,,0,1,1
+"Dezinfekciona sredstva za kožu (Antiseptici)",,,0,1,2
+"Dezinfekcija radnih površina i opreme",,,0,1,3
+"Kreme i masti za njegu tetovaže (Aftercare)",,,0,1,4
+"Ostala sredstva za higijenu i njegu",,,0,1,5
+"Pjene i sapuni za čišćenje tokom tetoviranja",,,0,1,6
+"Posude za odlaganje medicinskog otpada (Sharps)",,,0,1,7
+"Sredstva za pripremu kože i brijanje",,,0,1,8
+"Sredstva za transfer (Stancil gelovi i tečnosti)",,,0,1,9
+"Sterilne gaze, tuferi i komprese",,,0,1,10
+"Vazelin i vitaminske masti (Tokom rada)",,,0,1,11
+"Zaštitne folije i flasteri za svježu tetovažu",,,0,1,12
+"Zeleni sapun (Green soap) i koncentrati",,,0,1,13
+"Hektografski papir (Za ručno crtanje)",,,0,1,1
+"Markeri i olovke za crtanje na koži (Freehand)",,,0,1,2
+"Ostali pribor za transfer",,,0,1,3
+"Sredstva za čišćenje i uklanjanje šablona",,,0,1,4
+"Stencil gelovi i tečnosti za prenošenje",,,0,1,5
+"Stencil papir u roli",,,0,1,6
+"Sprejevi za fiksiranje šablona",,,0,1,7
+"Termalni printeri za tetoviranje",,,0,1,8
+"Termalni transfer papir (Spirit/Hectograph)",,,0,1,9
+"Tracing papir (Pauziranje)",,,0,1,10
+"Alati i kliješta za pirsing (Forceps)",,,0,1,1
+"Igle za pirsing i kanile",,,0,1,2
+"Instrumenti za otvaranje i zatvaranje alkica",,,0,1,3
+"Nakit - Alke i prstenovi",,,0,1,4
+"Nakit - Industrijski i specijalni pirsing",,,0,1,5
+"Nakit - Labreti i šipke (Barbells)",,,0,1,6
+"Nakit - Mikrotermali i dermalna sidra",,,0,1,7
+"Nakit - Piercing za nos i obrvu",,,0,1,8
+"Nakit - Piercing za pupak",,,0,1,9
+"Nakit - Piercing za jezik i usne",,,0,1,10
+"Ostala oprema za pirsing",,,0,1,11
+"Pištolji za bušenje ušiju i nosa",,,0,1,12
+"Sredstva za dezinfekciju i naknadnu njegu",,,0,1,13
+"Sterilni setovi za jednokratnu upotrebu",,,0,1,14
+"Širenje (Tuneli, plugovi i taperi)",,,0,1,15
+"Bidei (Stojeći i zidni)",,,0,1,1
+"Daske za WC šolju (Klasične i Soft-close)",,,0,1,2
+"Ispirne cijevi i pribor",,,0,1,3
+"Monoblok WC setovi",,,0,1,4
+"Ostala WC oprema i dijelovi",,,0,1,5
+"Pametne (Smart) WC daske sa funkcijama",,,0,1,6
+"Pisoari i prateća oprema",,,0,1,7
+"Podgradni (Ugradbeni) vodokotlići",,,0,1,8
+"Rezervni dijelovi za vodokotliće (Ventili, plovci)",,,0,1,9
+"Tipke za aktivaciju ispiranja",,,0,1,10
+"Vanjski vodokotlići (Visokomontažni i niskomontažni)",,,0,1,11
+"WC šolje - Podne (Simplon/Baltik)",,,0,1,12
+"WC šolje - Viseće (Konzolne)",,,0,1,13
+"Držači za toaletni papir",,,0,1,1
+"Držači za peškire i kuke",,,0,1,2
+"Gume i dihtunzi za WC",,,0,1,3
+"Mirisi i osvježivači za WC šolju",,,0,1,4
+"Nosači i rukohvati za invalide",,,0,1,5
+"Ostala nepomenuta WC oprema",,,0,1,6
+"Oprema za ventilaciju toaleta",,,0,1,7
+"Podne rešetke i sifoni za toalet",,,0,1,8
+"Police i ormarići za toaletnu galanteriju",,,0,1,9
+"Sredstva za otčepljivanje i održavanje odvoda",,,0,1,10
+"Stalci i četke za WC",,,0,1,11
+"Ugradbeni setovi za montažu sanitarija",,,0,1,12
+"WC prostirke i tepisi",,,0,1,13
+"Brinox (fleksibilna) crijeva za vodokotlić",,,0,1,1
+"Dihtunzi i manžetne za WC šolju",,,0,1,2
+"Ekscentri i adapteri za odvod",,,0,1,3
+"Ispirne cijevi (Unutrašnje i vanjske)",,,0,1,4
+"Mehanizmi za dvokoličinsko ispiranje",,,0,1,5
+"Nosači i setovi za montažu konzolnih šolja",,,0,1,6
+"Ostali sitni dijelovi za toalet",,,0,1,7
+"Plovci za vodokotlić (Bočni i donji priključak)",,,0,1,8
+"Podloške i ublaživači za WC daske",,,0,1,9
+"Sifoni za pisoare i bidee",,,0,1,10
+"Šarke i pribor za fiksiranje WC daske",,,0,1,11
+"Ulazni i izlazni ventili za vodokotlić",,,0,1,12
+"Zaptivne gume za ugradbene sisteme",,,0,1,13
+"Apsorberi mirisa i vlage za uređaje",,,0,1,1
+"Čistači i sredstva za održavanje tehnike",,,0,1,2
+"Dodatni pribor za bijelu tehniku",,,0,1,3
+"Filteri za vodu (za frižidere i aparate)",,,0,1,4
+"Mini-bar frižideri i rashladne vitrine",,,0,1,5
+"Nosači i stalci za velike uređaje",,,0,1,6
+"Oprema za pametnu kuću (Smart home senzori)",,,0,1,7
+"Ostali nepomenuti uređaji bijele tehnike",,,0,1,8
+"Podloške protiv vibracija (za veš mašine)",,,0,1,9
+"Prenosivi (Portable) rashladni uređaji",,,0,1,10
+"Regulatori i stabilizatori napona",,,0,1,11
+"Rezervni dijelovi za bijelu tehniku",,,0,1,12
+"Vinske vitrine i hladnjaci za piće",,,0,1,13
+"Autobusi i minibusi",,,0,1,1
+"Kamp prikolice i kamping vozila",,,0,1,4
+"Poljoprivredna vozila i mašine",,,0,1,7
+"Prikolice i poluprikolice",,,0,1,8
+"Radne mašine",,,0,1,1
+"Vozila za snijeg",,,0,1,2
+"Alati (ručni i električni)",,,0,1,6
+"Boje, lakovi i ljepila",,,0,1,14
+"Građevinski materijali i izolacija",,,0,1,8
+"Smart Home i automatizacija",,,0,1,17
+"Solarni sistemi i energetika",,,0,1,18
+"Akumulatorski alati (setovi)",,,0,1,1
+"Bušilice i odvrtači",,,0,1,2
+"Brusilice i polirke",,,0,1,3
+"Pile i testere (stacionarne i ručne)",,,0,1,4
+"Pneumatski alati i kompresori",,,0,1,5
+"Ručni alat (ključevi, kliješta, čekić)",,,0,1,6
+"Mjerni instrumenti i laseri",,,0,1,7
+"Zavarivanje i lemljenje",,,0,1,8
+"Agregati za struju",,,0,1,9
+"Visokotlačni čistači i usisivači",,,0,1,10
+"Pribor i potrošni materijal (burgije, ploče)",,,0,1,11
+"Zaštitna oprema i HTZ",,,0,1,12
+"Kutije i torbe za alat",,,0,1,13
+"Ostali alati",,,0,1,14
+"Unutrašnje boje za zidove (Disperzije)",,,0,1,1
+"Fasadne boje i dekorativni malteri",,,0,1,2
+"Boje i lakovi za drvo",,,0,1,3
+"Boje i premazi za metal (Antikorozivni)",,,0,1,4
+"Ljepila za keramiku i kamen",,,0,1,5
+"Ljepila za drvo, papir i plastiku",,,0,1,6
+"Silikoni, akrili i pur pjene",,,0,1,7
+"Mase za fugiranje i gletovanje",,,0,1,8
+"Sredstva za impregnaciju i prajmeri",,,0,1,9
+"Razrjeđivači i hemijska sredstva",,,0,1,10
+"Pribor za krečenje i lakiranje (Valjci, četke)",,,0,1,11
+"Ostale boje i hemija",,,0,1,12
+"Cigla, blokovi i betonski elementi",,,0,1,1
+"Cement, kreč i gotovi malteri",,,0,1,2
+"Izolacioni materijali (Stiropor, vuna)",,,0,1,3
+"Krovni materijali (Crijep, lim, tegola)",,,0,1,4
+"Hidroizolacija (Bitumen, folije, premazi)",,,0,1,5
+"Gipsane ploče i suva gradnja (Rigips)",,,0,1,6
+"Armatura i metalni profili",,,0,1,7
+"Pijesak, šljunak i dekorativni kamen",,,0,1,8
+"Oplata, skele i podupirači",,,0,1,9
+"Oluci i drenažni sistemi",,,0,1,10
+"Dimnjaci i elementi za dimnjake",,,0,1,11
+"Ostali građevinski materijali",,,0,1,12
+"Pametna rasvjeta (Sijalice, trake, kontroleri)",,,0,1,1
+"Pametne utičnice i prekidači",,,0,1,2
+"Termostati i kontrola grijanja/hlađenja",,,0,1,3
+"Senzori (Pokret, curenje vode, dim, gas)",,,0,1,4
+"Pametne brave i kontrola pristupa",,,0,1,5
+"Video zvona i interfoni",,,0,1,6
+"Smart Hub-ovi i centralne jedinice",,,0,1,7
+"Motorizacija roletni i zavjesa",,,0,1,8
+"Glasovni asistenti i zvučnici (Alexa, Google Home)",,,0,1,9
+"Pametne kamere (Unutrašnje i Baby monitori)",,,0,1,10
+"Ostala smart home oprema",,,0,1,11
+"Solarni paneli (Fotonaponski)",,,0,1,1
+"Inverteri (Pretvarači napona)",,,0,1,2
+"Solarne baterije i sistemi za pohranu",,,0,1,3
+"Solarni kontroleri punjenja",,,0,1,4
+"Montažna oprema i konstrukcije",,,0,1,5
+"Solarni kolektori (Grijanje vode/Bojleri)",,,0,1,6
+"Prenosne solarne stanice i punjači",,,0,1,7
+"Vjetrogeneratori (Male vjetrenjače)",,,0,1,8
+"Solarna rasvjeta i dekoracija",,,0,1,9
+"Kablovi, konektori i zaštitna oprema",,,0,1,10
+"Ostala solarna oprema",,,0,1,11
+"ATV / UTV / Quad",,,0,1,1
+Dječaci,,,0,0,1
+Djevojčice,,,0,0,2
+Bebe,,,0,0,3
+Unisex,,,0,0,4
+Odjeća,,,0,0,1
+Obuća,,,0,0,2
+"Modni dodaci",,,0,0,3
+"Torbe i ruksaci",,,0,0,4
+"Sportska odjeća",,,0,0,5
+"Sezonska oprema",,,0,0,6
+Odjeća,,,0,0,7
+Obuća,,,0,0,8
+"Modni dodaci",,,0,0,9
+"Torbe i ruksaci",,,0,0,10
+"Sportska odjeća",,,0,0,11
+"Sezonska oprema",,,0,0,12
+Odjeća,,,0,0,13
+Obuća,,,0,0,14
+"Oprema za bebe",,,0,0,15
+"Sezonska oprema",,,0,0,16
+Odjeća,,,0,0,17
+Obuća,,,0,0,18
+"Modni dodaci",,,0,0,19
+"Torbe i ruksaci",,,0,0,20
+"Sportska odjeća",,,0,0,21
+"Sezonska oprema",,,0,0,22
+Majice,,,0,0,1
+Dukserice,,,0,0,2
+Džemperi,,,0,0,3
+"Jakne i kaputi",,,0,0,4
+Košulje,,,0,0,5
+Hlače,,,0,0,6
+Farmerke,,,0,0,7
+Šorcevi,,,0,0,8
+Trenerke,,,0,0,9
+Pidžame,,,0,0,10
+"Donje rublje",,,0,0,11
+"Kupaći kostimi",,,0,0,12
+"Svečana odjeća",,,0,0,13
+Patike,,,0,0,14
+Cipele,,,0,0,15
+Čizme,,,0,0,16
+Sandale,,,0,0,17
+Papuče,,,0,0,18
+"Sportska obuća",,,0,0,19
+Kape,,,0,0,20
+Šalovi,,,0,0,21
+Rukavice,,,0,0,22
+Naočale,,,0,0,23
+Satovi,,,0,0,24
+Kaisevi,,,0,0,25
+Ruksaci,,,0,0,26
+"Školske torbe",,,0,0,27
+"Sportske torbe",,,0,0,28
+"Sportske majice",,,0,0,29
+"Sportske trenerke",,,0,0,30
+"Sportski šorcevi",,,0,0,31
+"Sportske jakne",,,0,0,32
+"Patike za trening",,,0,0,33
+"Zimski setovi",,,0,0,34
+"Ljetni dodaci",,,0,0,35
+"Majice i topovi",,,0,0,36
+Dukserice,,,0,0,37
+"Džemperi i kardigani",,,0,0,38
+"Jakne i kaputi",,,0,0,39
+"Košulje i bluze",,,0,0,40
+Hlače,,,0,0,41
+Farmerke,,,0,0,42
+Šorcevi,,,0,0,43
+Suknje,,,0,0,44
+Haljine,,,0,0,45
+Trenerke,,,0,0,46
+Pidžame,,,0,0,47
+"Donje rublje",,,0,0,48
+"Kupaći kostimi",,,0,0,49
+"Svečana odjeća",,,0,0,50
+Patike,,,0,0,51
+Cipele,,,0,0,52
+Čizme,,,0,0,53
+Sandale,,,0,0,54
+Papuče,,,0,0,55
+Baletanke,,,0,0,56
+"Sportska obuća",,,0,0,57
+Kape,,,0,0,58
+Šalovi,,,0,0,59
+Rukavice,,,0,0,60
+Naočale,,,0,0,61
+Nakit,,,0,0,63
+Ruksaci,,,0,0,64
+"Školske torbe",,,0,0,65
+"Sportske torbe",,,0,0,66
+Torbice,,,0,0,67
+"Sportske majice",,,0,0,68
+"Sportske trenerke",,,0,0,69
+"Sportski šorcevi",,,0,0,70
+"Sportske jakne",,,0,0,71
+"Patike za trening",,,0,0,72
+"Zimski setovi",,,0,0,73
+"Ljetni dodaci",,,0,0,74
+Bodići,,,0,0,75
+Kombinezoni,,,0,0,76
+Majice,,,0,0,77
+Hlačice,,,0,0,78
+Haljine,,,0,0,79
+Jakne,,,0,0,80
+Pidžame,,,0,0,81
+Čarapice,,,0,0,82
+Kapice,,,0,0,83
+"Prve cipelice",,,0,0,84
+Papučice,,,0,0,85
+Čizmice,,,0,0,86
+Sandalice,,,0,0,87
+Kolica,,,0,0,88
+Autosjedalice,,,0,0,89
+Krevetići,,,0,0,90
+"Hranilice i stolice",,,0,0,91
+"Nosiljke i kenguri",,,0,0,92
+"Oprema za kupanje",,,0,0,93
+"Oprema za hranjenje",,,0,0,94
+"Igračke za bebe",,,0,0,95
+"Zimski setovi",,,0,0,96
+"Ljetni dodaci",,,0,0,97
+Majice,,,0,0,98
+Dukserice,,,0,0,99
+Džemperi,,,0,0,100
+"Jakne i kaputi",,,0,0,101
+Hlače,,,0,0,102
+Farmerke,,,0,0,103
+Šorcevi,,,0,0,104
+Trenerke,,,0,0,105
+Pidžame,,,0,0,106
+"Kupaći kostimi",,,0,0,107
+Patike,,,0,0,108
+Cipele,,,0,0,109
+Čizme,,,0,0,110
+Sandale,,,0,0,111
+Papuče,,,0,0,112
+"Sportska obuća",,,0,0,113
+Kape,,,0,0,114
+Šalovi,,,0,0,115
+Rukavice,,,0,0,116
+Naočale,,,0,0,117
+Satovi,,,0,0,118
+Ruksaci,,,0,0,119
+"Školske torbe",,,0,0,120
+"Sportske torbe",,,0,0,121
+"Sportske majice",,,0,0,122
+"Sportske trenerke",,,0,0,123
+"Sportski šorcevi",,,0,0,124
+"Sportske jakne",,,0,0,125
+"Patike za trening",,,0,0,126
+"Zimski setovi",,,0,0,127
+"Ljetni dodaci",,,0,0,128
+"Sistemski softver",,,0,0,
+"Aplikativni softver",,,0,0,
+"Specijalizovani i sigurnosni softver",,,0,0,
+"Kompjuterske komponente",,,0,0,3
+Monitori,,,0,0,4
+"Pohrana podataka",,,0,0,5
+"Eksterni HDD i SSD",,,0,0,
+"USB Flash memorije",,,0,0,
+"Memorijske kartice",,,0,0,
+"Procesori (CPU)",,,0,0,
+"Grafičke kartice (GPU)",,,0,0,
+"Matične ploče",,,0,0,
+"RAM memorija",,,0,0,
+"Napojne jedinice (PSU)",,,0,0,
+Kućišta,,,0,0,
+"Hlađenje i ventilatori",,,0,0,
+"Zvučne kartice",,,0,0,
+"Optički uređaji (DVD/Blu-ray)",,,0,0,
+"Serveri i serverska oprema",,,0,0,9
+"Routeri i modemi",,,0,0,
+Switch-evi,,,0,0,
+"WiFi adapteri i antene",,,0,0,
+"Access Point i Range Extenderi",,,0,0,
+"Mrežni kablovi i oprema",,,0,0,
+"Serveri (Rack i Tower)",,,0,0,
+"Serverske komponente (CPU, RAM)",,,0,0,
+"Rack ormari i oprema",,,0,0,
+"Storage sistemi",,,0,0,
+SSD,,,0,0,
+"NAS uređaji",,,0,0,

@@ -1,0 +1,133 @@
+/* Table Enhancement Styles - Just include this CSS file */
+
+/* Enhanced table styling */
+.translatable-table {
+    /* Add any custom table styles here */
+}
+
+/* Custom search wrapper */
+.table-search-wrapper {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+/* Custom toolbar styling */
+.table-toolbar {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+/* Enhanced button styling */
+.table-toolbar .btn {
+    margin-right: 5px;
+}
+
+/* Custom search input styling */
+.table-search-wrapper .input-group {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Enhanced table header */
+.translatable-table thead th {
+    background-color: #343a40 !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600;
+}
+
+/* Enhanced table rows */
+.translatable-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.translatable-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Enhanced pagination */
+.bootstrap-table .pagination {
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Enhanced search */
+.bootstrap-table .fixed-table-toolbar .search {
+    margin-bottom: 10px;
+}
+
+/* Responsive table improvements */
+@media (max-width: 768px) {
+    .table-toolbar .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .table-toolbar .btn {
+        margin-bottom: 5px;
+        margin-right: 0;
+    }
+
+    .table-search-wrapper .input-group {
+        max-width: 100% !important;
+    }
+}
+
+/* Alert enhancements */
+.alert {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-left: 4px solid #dc3545;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border-left: 4px solid #17a2b8;
+}
+
+/* Badge enhancements */
+.badge {
+    font-size: 0.75em;
+    padding: 0.5em 0.75em;
+    border-radius: 0.375rem;
+}
+
+/* Image thumbnail enhancements */
+.img-thumbnail {
+    border: 2px solid #dee2e6;
+    border-radius: 0.375rem;
+    transition: transform 0.2s ease;
+}
+
+.img-thumbnail:hover {
+    transform: scale(1.05);
+}
+
+/* Tooltip enhancements */
+.tooltip {
+    font-size: 0.875rem;
+}
+
+.tooltip-inner {
+    background-color: #343a40;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+}

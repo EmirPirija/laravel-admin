@@ -1,0 +1,26 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.eclassify.wrteam",
+            "sha256_cert_fingerprints": [
+                "B4:B3:AD:26:FA:94:07:B0:EA:CC:30:7E:65:B3:AB:14:B9:98:BB:AB:2F:2C:FF:81:73:9A:6C:22:DF:7C:8C:42"
+            ]
+        }
+    },
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.eclassify.wrteam",
+            "sha256_cert_fingerprints": [
+                "C8:7B:75:BD:A2:AF:6B:E2:93:50:AA:20:43:83:68:DE:AE:87:4B:1C:7A:B3:17:9E:CA:53:F9:BC:A7:9B:F2:39"
+            ]
+        }
+    }
+]
