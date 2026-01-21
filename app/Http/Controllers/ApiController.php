@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+
 use App\Http\Resources\ItemCollection;
 use App\Models\Area;
+use App\Models\SellerSetting;
+use App\Models\UserMembership;
 use App\Models\BlockUser;
 use App\Models\Blog;
 use App\Models\Category;
@@ -653,210 +656,294 @@ class ApiController extends Controller
 }
 
 
-    public function getItem(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'limit' => 'nullable|integer',
-            'offset' => 'nullable|integer',
-            'id' => 'nullable',
-            'custom_fields' => 'nullable',
-            'slug' => 'nullable|string',
-            'category_id' => 'nullable',
-            'user_id' => 'nullable',
-            'min_price' => 'nullable',
-            'max_price' => 'nullable',
-            'sort_by' => 'nullable|in:new-to-old,old-to-new,price-high-to-low,price-low-to-high,popular_items',
-            'posted_since' => 'nullable|in:all-time,today,within-1-week,within-2-week,within-1-month,within-3-month',
-            'current_page' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            ResponseService::validationError($validator->errors()->first());
-        }
-        try {
-            //TODO : need to simplify this whole module
-            $sql = Item::with('user:id,name,email,mobile,profile,created_at,is_verified,show_personal_details,country_code', 'category:id,name,image,is_job_category,price_optional',
-                'gallery_images:id,image,item_id', 'featured_items', 'favourites', 'item_custom_field_values.custom_field.translations', 'area:id,name', 'job_applications', 'translations')
-                ->withCount('featured_items')
-                ->withCount('job_applications')
-                ->select('items.*')
-                ->whereHas('category', function ($q) {
-                    $q->where('status', '!=', 0)
-                        ->where(function ($query) {
-                            // Either no parent or parent status != 0
-                            $query->whereDoesntHave('parent') // no parent category
-                                ->orWhereHas('parent', function ($q2) {
-                                    $q2->where('status', '!=', 0);
-                                });
-                        });
-                })
-                ->when($request->id, function ($sql) use ($request) {
-                    $sql->where('id', $request->id);
-                })->when(($request->category_id), function ($sql) use ($request) {
-                    $category = Category::where('id', $request->category_id)->with('children')->get();
-                    $categoryIDS = HelperService::findAllCategoryIds($category);
-
-                    return $sql->whereIn('category_id', $categoryIDS);
-                })->when(($request->category_slug), function ($sql) use ($request) {
-                    $category = Category::where('slug', $request->category_slug)->with('children')->get();
-                    $categoryIDS = HelperService::findAllCategoryIds($category);
-
-                    return $sql->whereIn('category_id', $categoryIDS);
-                })->when((isset($request->min_price) || isset($request->max_price)), function ($sql) use ($request) {
-                    $min_price = $request->min_price ?? 0;
-                    $max_price = $request->max_price ?? Item::max('price');
-
-                    return $sql->whereBetween('price', [$min_price, $max_price]);
-                })->when($request->posted_since, function ($sql) use ($request) {
-                    return match ($request->posted_since) {
-                        'today' => $sql->whereDate('created_at', '>=', now()),
-                        'within-1-week' => $sql->whereDate('created_at', '>=', now()->subDays(7)),
-                        'within-2-week' => $sql->whereDate('created_at', '>=', now()->subDays(14)),
-                        'within-1-month' => $sql->whereDate('created_at', '>=', now()->subMonths()),
-                        'within-3-month' => $sql->whereDate('created_at', '>=', now()->subMonths(3)),
-                        default => $sql
-                    };
-                })->when($request->area_id, function ($sql) use ($request) {
-                    return $sql->where('area_id', $request->area_id);
-                })->when($request->user_id, function ($sql) use ($request) {
-                    return $sql->where('user_id', $request->user_id);
-                })->when($request->slug, function ($sql) use ($request) {
-                    return $sql->where('slug', $request->slug);
-                });
-
-            //            // Other users should only get approved items
-            //            if (!Auth::check()) {
-            //                $sql->where('status', 'approved');
-            //            }
-
-            // Sort By
-
-            if ($request->sort_by == 'new-to-old') {
-                $sql->orderBy('id', 'DESC');
-            } elseif ($request->sort_by == 'old-to-new') {
-                $sql->orderBy('id', 'ASC');
-            } elseif ($request->sort_by == 'price-high-to-low') {
-                $sql->orderByRaw('
-                    COALESCE(price, max_salary, min_salary, 0) DESC
-                ');
-            } elseif ($request->sort_by == 'price-low-to-high') {
-                $sql->orderByRaw('
-                    COALESCE(price, min_salary, max_salary, 0) ASC
-                ');
-            } elseif ($request->sort_by == 'popular_items') {
-                $sql->orderBy('clicks', 'DESC');
-            } else {
-                $sql->orderBy('id', 'DESC');
-            }
-
-            // Status
-            if (! empty($request->status)) {
-                if (in_array($request->status, ['review', 'approved', 'rejected', 'sold out', 'soft rejected', 'permanent rejected', 'resubmitted'])) {
-                    $sql->where('status', $request->status)->getNonExpiredItems()->whereNull('deleted_at');
-                } elseif ($request->status == 'inactive') {
-                    //If status is inactive then display only trashed items
-                    $sql->onlyTrashed()->getNonExpiredItems();
-                } elseif ($request->status == 'featured') {
-                    //If status is featured then display only featured items
-                    $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems();
-                } elseif ($request->status == 'expired') {
-                    $sql->whereNotNull('expiry_date')
-                        ->where('expiry_date', '<', Carbon::now())->whereNull('deleted_at');
-                }
-            }
-
-            // Feature Section Filtration
-            // Only apply feature section filters if user hasn't provided conflicting filters
-            // User filters should override feature section defaults
-            if (! empty($request->featured_section_id) || ! empty($request->featured_section_slug)) {
-                if (! empty($request->featured_section_id)) {
-                    $featuredSection = FeatureSection::findOrFail($request->featured_section_id);
-                } else {
-                    $featuredSection = FeatureSection::where('slug', $request->featured_section_slug)->firstOrFail();
-                }
-
-                // Check if user has provided filters that should override feature section filters
-                $hasUserPriceFilter = isset($request->min_price) || isset($request->max_price);
-                $hasUserSortFilter = !empty($request->sort_by);
-                $hasUserCategoryFilter = !empty($request->category_id) || !empty($request->category_slug);
-
-                // Apply feature section filters only if user hasn't provided conflicting filters
-                $sql = match ($featuredSection->filter) {
-                    'price_criteria' => $hasUserPriceFilter
-                        ? $sql // User price filter already applied, skip feature section price filter
-                        // : $sql->whereBetween('price', [$featuredSection->min_price, $featuredSection->max_price]),
-                        : $sql->where(function ($query) use ($featuredSection) {
-                                $query->whereBetween('price', [$featuredSection->min_price, $featuredSection->max_price])
-                                    ->orWhere(function ($q) use ($featuredSection) {
-                                        $q->whereBetween('min_salary', [$featuredSection->min_price, $featuredSection->max_price])
-                                            ->whereBetween('max_salary', [$featuredSection->min_price, $featuredSection->max_price]);
-                                    });
-                            }),
-                    'most_viewed' => $hasUserSortFilter
-                        ? $sql // User sort already applied, skip feature section sort
-                        : $sql->reorder()->orderBy('clicks', 'DESC'),
-
-                    'category_criteria' => $hasUserCategoryFilter
-                        ? $sql // User category filter already applied, skip feature section category filter
-                        : (static function () use ($featuredSection, $sql) {
-                            $category = Category::whereIn('id', explode(',', $featuredSection->value))->with('children')->get();
-                            $categoryIDS = HelperService::findAllCategoryIds($category);
-                            return $sql->whereIn('category_id', $categoryIDS);
-                        })(),
-
-                    'most_liked' => $hasUserSortFilter
-                        ? $sql // User sort already applied, skip feature section sort
-                        : $sql->reorder()->withCount('favourites'),//->orderBy('favourites_count', 'DESC'),
-
-                    'featured_ads' => $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems(),
+public function getItem(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'limit' => 'nullable|integer',
+        'offset' => 'nullable|integer',
+        'id' => 'nullable',
+        'custom_fields' => 'nullable',
+        'slug' => 'nullable|string',
+        'category_id' => 'nullable',
+        'user_id' => 'nullable',
+        'min_price' => 'nullable',
+        'max_price' => 'nullable',
+        'sort_by' => 'nullable|in:new-to-old,old-to-new,price-high-to-low,price-low-to-high,popular_items',
+        'posted_since' => 'nullable|in:all-time,today,within-1-week,within-2-week,within-1-month,within-3-month',
+        'current_page' => 'nullable|string',
+    ]);
+ 
+    if ($validator->fails()) {
+        ResponseService::validationError($validator->errors()->first());
+    }
+    try {
+        //TODO : need to simplify this whole module
+        $sql = Item::with('user:id,name,email,mobile,profile,created_at,is_verified,show_personal_details,country_code', 'category:id,name,image,is_job_category,price_optional',
+            'gallery_images:id,image,item_id', 'featured_items', 'favourites', 'item_custom_field_values.custom_field.translations', 'area:id,name', 'job_applications', 'translations')
+            ->withCount('featured_items')
+            ->withCount('job_applications')
+            ->select('items.*')
+            ->whereHas('category', function ($q) {
+                $q->where('status', '!=', 0)
+                    ->where(function ($query) {
+                        // Either no parent or parent status != 0
+                        $query->whereDoesntHave('parent') // no parent category
+                            ->orWhereHas('parent', function ($q2) {
+                                $q2->where('status', '!=', 0);
+                            });
+                    });
+            })
+            ->when($request->id, function ($sql) use ($request) {
+                $sql->where('id', $request->id);
+            })->when(($request->category_id), function ($sql) use ($request) {
+                $category = Category::where('id', $request->category_id)->with('children')->get();
+                $categoryIDS = HelperService::findAllCategoryIds($category);
+ 
+                return $sql->whereIn('category_id', $categoryIDS);
+            })->when(($request->category_slug), function ($sql) use ($request) {
+                $category = Category::where('slug', $request->category_slug)->with('children')->get();
+                $categoryIDS = HelperService::findAllCategoryIds($category);
+ 
+                return $sql->whereIn('category_id', $categoryIDS);
+            })->when((isset($request->min_price) || isset($request->max_price)), function ($sql) use ($request) {
+                $min_price = $request->min_price ?? 0;
+                $max_price = $request->max_price ?? Item::max('price');
+ 
+                return $sql->whereBetween('price', [$min_price, $max_price]);
+            })->when($request->posted_since, function ($sql) use ($request) {
+                return match ($request->posted_since) {
+                    'today' => $sql->whereDate('created_at', '>=', now()),
+                    'within-1-week' => $sql->whereDate('created_at', '>=', now()->subDays(7)),
+                    'within-2-week' => $sql->whereDate('created_at', '>=', now()->subDays(14)),
+                    'within-1-month' => $sql->whereDate('created_at', '>=', now()->subMonths()),
+                    'within-3-month' => $sql->whereDate('created_at', '>=', now()->subMonths(3)),
+                    default => $sql
                 };
+            })->when($request->area_id, function ($sql) use ($request) {
+                return $sql->where('area_id', $request->area_id);
+            })->when($request->user_id, function ($sql) use ($request) {
+                return $sql->where('user_id', $request->user_id);
+            })->when($request->slug, function ($sql) use ($request) {
+                return $sql->where('slug', $request->slug);
+            });
+ 
+        //            // Other users should only get approved items
+        //            if (!Auth::check()) {
+        //                $sql->where('status', 'approved');
+        //            }
+ 
+        // Sort By
+ 
+        if ($request->sort_by == 'new-to-old') {
+            $sql->orderBy('id', 'DESC');
+        } elseif ($request->sort_by == 'old-to-new') {
+            $sql->orderBy('id', 'ASC');
+        } elseif ($request->sort_by == 'price-high-to-low') {
+            $sql->orderByRaw('
+                COALESCE(price, max_salary, min_salary, 0) DESC
+            ');
+        } elseif ($request->sort_by == 'price-low-to-high') {
+            $sql->orderByRaw('
+                COALESCE(price, min_salary, max_salary, 0) ASC
+            ');
+        } elseif ($request->sort_by == 'popular_items') {
+            $sql->orderBy('clicks', 'DESC');
+        } else {
+            $sql->orderBy('id', 'DESC');
+        }
+ 
+        // Status
+        if (! empty($request->status)) {
+            if (in_array($request->status, ['review', 'approved', 'rejected', 'sold out', 'soft rejected', 'permanent rejected', 'resubmitted'])) {
+                $sql->where('status', $request->status)->getNonExpiredItems()->whereNull('deleted_at');
+            } elseif ($request->status == 'inactive') {
+                //If status is inactive then display only trashed items
+                $sql->onlyTrashed()->getNonExpiredItems();
+            } elseif ($request->status == 'featured') {
+                //If status is featured then display only featured items
+                $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems();
+            } elseif ($request->status == 'expired') {
+                $sql->whereNotNull('expiry_date')
+                    ->where('expiry_date', '<', Carbon::now())->whereNull('deleted_at');
             }
-
-            if (! empty($request->search)) {
-                $sql->search($request->search);
+        }
+ 
+        // Feature Section Filtration
+        // Only apply feature section filters if user hasn't provided conflicting filters
+        // User filters should override feature section defaults
+        if (! empty($request->featured_section_id) || ! empty($request->featured_section_slug)) {
+            if (! empty($request->featured_section_id)) {
+                $featuredSection = FeatureSection::findOrFail($request->featured_section_id);
+            } else {
+                $featuredSection = FeatureSection::where('slug', $request->featured_section_slug)->firstOrFail();
             }
-
-            function removeBackslashesRecursive($data)
-            {
-                $cleaned = [];
-                foreach ($data as $key => $value) {
-                    $cleanKey = stripslashes($key);
-                    if (is_array($value)) {
-                        $cleaned[$cleanKey] = removeBackslashesRecursive($value);
-                    } else {
-                        $cleaned[$cleanKey] = stripslashes($value);
-                    }
+ 
+            // Check if user has provided filters that should override feature section filters
+            $hasUserPriceFilter = isset($request->min_price) || isset($request->max_price);
+            $hasUserSortFilter = !empty($request->sort_by);
+            $hasUserCategoryFilter = !empty($request->category_id) || !empty($request->category_slug);
+ 
+            // Apply feature section filters only if user hasn't provided conflicting filters
+            $sql = match ($featuredSection->filter) {
+                'price_criteria' => $hasUserPriceFilter
+                    ? $sql // User price filter already applied, skip feature section price filter
+                    // : $sql->whereBetween('price', [$featuredSection->min_price, $featuredSection->max_price]),
+                    : $sql->where(function ($query) use ($featuredSection) {
+                            $query->whereBetween('price', [$featuredSection->min_price, $featuredSection->max_price])
+                                ->orWhere(function ($q) use ($featuredSection) {
+                                    $q->whereBetween('min_salary', [$featuredSection->min_price, $featuredSection->max_price])
+                                        ->whereBetween('max_salary', [$featuredSection->min_price, $featuredSection->max_price]);
+                                });
+                        }),
+                'most_viewed' => $hasUserSortFilter
+                    ? $sql // User sort already applied, skip feature section sort
+                    : $sql->reorder()->orderBy('clicks', 'DESC'),
+ 
+                'category_criteria' => $hasUserCategoryFilter
+                    ? $sql // User category filter already applied, skip feature section category filter
+                    : (static function () use ($featuredSection, $sql) {
+                        $category = Category::whereIn('id', explode(',', $featuredSection->value))->with('children')->get();
+                        $categoryIDS = HelperService::findAllCategoryIds($category);
+                        return $sql->whereIn('category_id', $categoryIDS);
+                    })(),
+ 
+                'most_liked' => $hasUserSortFilter
+                    ? $sql // User sort already applied, skip feature section sort
+                    : $sql->reorder()->withCount('favourites'),//->orderBy('favourites_count', 'DESC'),
+ 
+                'featured_ads' => $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems(),
+            };
+        }
+ 
+        if (! empty($request->search)) {
+            $sql->search($request->search);
+        }
+ 
+        function removeBackslashesRecursive($data)
+        {
+            $cleaned = [];
+            foreach ($data as $key => $value) {
+                $cleanKey = stripslashes($key);
+                if (is_array($value)) {
+                    $cleaned[$cleanKey] = removeBackslashesRecursive($value);
+                } else {
+                    $cleaned[$cleanKey] = stripslashes($value);
                 }
-
-                return $cleaned;
             }
-            $cleanedParameters = removeBackslashesRecursive($request->all());
-            if (! empty($cleanedParameters['custom_fields'])) {
-                $customFields = $cleanedParameters['custom_fields'];
-                foreach ($customFields as $customFieldId => $value) {
-                    if (is_array($value)) {
-                        foreach ($value as $arrayValue) {
-                            $sql->join('item_custom_field_values as cf'.$customFieldId, function ($join) use ($customFieldId) {
-                                $join->on('items.id', '=', 'cf'.$customFieldId.'.item_id');
-                            })
-                                ->where('cf'.$customFieldId.'.custom_field_id', $customFieldId)
-                                ->where('cf'.$customFieldId.'.value', 'LIKE', '%'.trim($arrayValue).'%');
-                        }
-                    } else {
+ 
+            return $cleaned;
+        }
+        $cleanedParameters = removeBackslashesRecursive($request->all());
+        if (! empty($cleanedParameters['custom_fields'])) {
+            $customFields = $cleanedParameters['custom_fields'];
+            foreach ($customFields as $customFieldId => $value) {
+                if (is_array($value)) {
+                    foreach ($value as $arrayValue) {
                         $sql->join('item_custom_field_values as cf'.$customFieldId, function ($join) use ($customFieldId) {
                             $join->on('items.id', '=', 'cf'.$customFieldId.'.item_id');
                         })
                             ->where('cf'.$customFieldId.'.custom_field_id', $customFieldId)
-                            ->where('cf'.$customFieldId.'.value', 'LIKE', '%'.trim($value).'%');
+                            ->where('cf'.$customFieldId.'.value', 'LIKE', '%'.trim($arrayValue).'%');
                     }
+                } else {
+                    $sql->join('item_custom_field_values as cf'.$customFieldId, function ($join) use ($customFieldId) {
+                        $join->on('items.id', '=', 'cf'.$customFieldId.'.item_id');
+                    })
+                        ->where('cf'.$customFieldId.'.custom_field_id', $customFieldId)
+                        ->where('cf'.$customFieldId.'.value', 'LIKE', '%'.trim($value).'%');
                 }
-                $sql->whereHas('item_custom_field_values', function ($query) use ($customFields) {
-                    $query->whereIn('custom_field_id', array_keys($customFields));
-                }, '=', count($customFields));
             }
-
+            $sql->whereHas('item_custom_field_values', function ($query) use ($customFields) {
+                $query->whereIn('custom_field_id', array_keys($customFields));
+            }, '=', count($customFields));
+        }
+ 
+        if (Auth::check()) {
+            $sql->with([
+                'item_offers' => function ($q) {
+                    $q->where('buyer_id', Auth::user()->id);
+                },
+                'user_reports' => function ($q) {
+                    $q->where('user_id', Auth::user()->id);
+                },
+            ]);
+        
+            $currentURI = explode('?', $request->getRequestUri(), 2);
+        
+            if ($currentURI[0] == '/api/my-items') {
+                // Moj profil: sve moje (sa trashed)
+                $sql->where(['user_id' => Auth::user()->id])->withTrashed();
+            } else {
+                // Ako NEMA status u requestu → podrazumijevano samo approved
+                if (empty($request->status)) {
+                    $sql->where('status', 'approved');
+                }
+                // Ako IMA status (npr. sold out), NEMOJ ga pregaziti
+                $sql->has('user')
+                    ->onlyNonBlockedUsers()
+                    ->getNonExpiredItems();
+            }
+        } else {
+            // Guest korisnik
+            if (empty($request->status)) {
+                // default – samo approved
+                $sql->where('status', 'approved')
+                    ->getNonExpiredItems();
+            } else {
+                // ako traži npr. sold out, poštuj to
+                $sql->getNonExpiredItems();
+            }
+        }
+        
+        
+ 
+        // Handle location-based search with fallback logic
+        // Priority: area_id > city > state > country > latitude/longitude
+        // Only fallback to all items if current_page=home is passed
+        $isHomePage = $request->current_page === 'home';
+        // Save base query before location filters for fallback
+        $baseQueryBeforeLocation = clone $sql;
+        $locationMessage = null;
+        $hasLocationFilter = $request->latitude !== null && $request->longitude !== null;
+        $hasCityFilter = ! empty($request->city);
+        $hasStateFilter = ! empty($request->state);
+        $hasCountryFilter = ! empty($request->country);
+        $hasAreaFilter = ! empty($request->area_id);
+        $hasAreaLocationFilter = ! empty($request->area_latitude) && ! empty($request->area_longitude);
+        $cityName = $request->city ?? null;
+        $stateName = $request->state ?? null;
+        $countryName = $request->country ?? null;
+        $areaId = $request->area_id ?? null;
+        $cityItemCount = 0;
+        $stateItemCount = 0;
+        $countryItemCount = 0;
+        $areaItemCount = 0;
+ 
+        // Handle area location filter (find closest area by lat/long)
+        if ($hasAreaLocationFilter && ! $hasAreaFilter) {
+            $areaLat = $request->area_latitude;
+            $areaLng = $request->area_longitude;
+ 
+            $haversine = "(6371 * acos(cos(radians($areaLat))
+                * cos(radians(latitude))
+                * cos(radians(longitude) - radians($areaLng))
+                + sin(radians($areaLat)) * sin(radians(latitude))))";
+ 
+            $closestArea = Area::whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->selectRaw("areas.*, {$haversine} AS distance")
+                ->orderBy('distance', 'asc')
+                ->first();
+ 
+            if ($closestArea) {
+                $hasAreaFilter = true;
+                $areaId = $closestArea->id;
+            }
+        }
+ 
+        $applyAuthFilters = function ($query) use ($request) {
             if (Auth::check()) {
-                $sql->with([
+                $query->with([
                     'item_offers' => function ($q) {
                         $q->where('buyer_id', Auth::user()->id);
                     },
@@ -864,408 +951,379 @@ class ApiController extends Controller
                         $q->where('user_id', Auth::user()->id);
                     },
                 ]);
-            
+        
                 $currentURI = explode('?', $request->getRequestUri(), 2);
-            
+        
                 if ($currentURI[0] == '/api/my-items') {
-                    // Moj profil: sve moje (sa trashed)
-                    $sql->where(['user_id' => Auth::user()->id])->withTrashed();
+                    $query->where(['user_id' => Auth::user()->id])->withTrashed();
                 } else {
-                    // Ako NEMA status u requestu → podrazumijevano samo approved
                     if (empty($request->status)) {
-                        $sql->where('status', 'approved');
+                        $query->where('status', 'approved');
                     }
-                    // Ako IMA status (npr. sold out), NEMOJ ga pregaziti
-                    $sql->has('user')
-                        ->onlyNonBlockedUsers()
-                        ->getNonExpiredItems();
+                    $query->has('user')
+                          ->onlyNonBlockedUsers()
+                          ->getNonExpiredItems();
                 }
             } else {
-                // Guest korisnik
                 if (empty($request->status)) {
-                    // default – samo approved
-                    $sql->where('status', 'approved')
-                        ->getNonExpiredItems();
+                    $query->where('status', 'approved')
+                          ->getNonExpiredItems();
                 } else {
-                    // ako traži npr. sold out, poštuj to
-                    $sql->getNonExpiredItems();
+                    $query->getNonExpiredItems();
                 }
             }
-            
-            
-
-            // Handle location-based search with fallback logic
-            // Priority: area_id > city > state > country > latitude/longitude
-            // Only fallback to all items if current_page=home is passed
-            $isHomePage = $request->current_page === 'home';
-            // Save base query before location filters for fallback
-            $baseQueryBeforeLocation = clone $sql;
-            $locationMessage = null;
-            $hasLocationFilter = $request->latitude !== null && $request->longitude !== null;
-            $hasCityFilter = ! empty($request->city);
-            $hasStateFilter = ! empty($request->state);
-            $hasCountryFilter = ! empty($request->country);
-            $hasAreaFilter = ! empty($request->area_id);
-            $hasAreaLocationFilter = ! empty($request->area_latitude) && ! empty($request->area_longitude);
-            $cityName = $request->city ?? null;
-            $stateName = $request->state ?? null;
-            $countryName = $request->country ?? null;
-            $areaId = $request->area_id ?? null;
-            $cityItemCount = 0;
-            $stateItemCount = 0;
-            $countryItemCount = 0;
-            $areaItemCount = 0;
-
-            // Handle area location filter (find closest area by lat/long)
-            if ($hasAreaLocationFilter && ! $hasAreaFilter) {
-                $areaLat = $request->area_latitude;
-                $areaLng = $request->area_longitude;
-
-                $haversine = "(6371 * acos(cos(radians($areaLat))
-                    * cos(radians(latitude))
-                    * cos(radians(longitude) - radians($areaLng))
-                    + sin(radians($areaLat)) * sin(radians(latitude))))";
-
-                $closestArea = Area::whereNotNull('latitude')
-                    ->whereNotNull('longitude')
-                    ->selectRaw("areas.*, {$haversine} AS distance")
-                    ->orderBy('distance', 'asc')
-                    ->first();
-
-                if ($closestArea) {
-                    $hasAreaFilter = true;
-                    $areaId = $closestArea->id;
-                }
-            }
-
-            $applyAuthFilters = function ($query) use ($request) {
-                if (Auth::check()) {
-                    $query->with([
-                        'item_offers' => function ($q) {
-                            $q->where('buyer_id', Auth::user()->id);
-                        },
-                        'user_reports' => function ($q) {
-                            $q->where('user_id', Auth::user()->id);
-                        },
-                    ]);
-            
-                    $currentURI = explode('?', $request->getRequestUri(), 2);
-            
-                    if ($currentURI[0] == '/api/my-items') {
-                        $query->where(['user_id' => Auth::user()->id])->withTrashed();
-                    } else {
-                        if (empty($request->status)) {
-                            $query->where('status', 'approved');
-                        }
-                        $query->has('user')
-                              ->onlyNonBlockedUsers()
-                              ->getNonExpiredItems();
-                    }
+        
+            return $query;
+        };
+        
+        
+ 
+ 
+        // First, check for area filter (highest priority)
+        if ($hasAreaFilter) {
+            $areaQuery = clone $sql;
+            $areaQuery->where('area_id', $areaId);
+            $areaQuery = $applyAuthFilters($areaQuery);
+            $areaItemCount = $areaQuery->count();
+ 
+            if ($areaItemCount > 0) {
+                $sql = $areaQuery;
+            } else {
+                $area = Area::find($areaId);
+                $areaName = $area ? $area->name : __('the selected area');
+                if ($isHomePage) {
+                    $locationMessage = __('No Ads found in :area. Showing all available Ads.', ['area' => $areaName]);
                 } else {
-                    if (empty($request->status)) {
-                        $query->where('status', 'approved')
-                              ->getNonExpiredItems();
-                    } else {
-                        $query->getNonExpiredItems();
-                    }
-                }
-            
-                return $query;
-            };
-            
-            
-
-
-            // First, check for area filter (highest priority)
-            if ($hasAreaFilter) {
-                $areaQuery = clone $sql;
-                $areaQuery->where('area_id', $areaId);
-                $areaQuery = $applyAuthFilters($areaQuery);
-                $areaItemCount = $areaQuery->count();
-
-                if ($areaItemCount > 0) {
+                    // Keep the area filter applied even if no items found (don't fallback)
                     $sql = $areaQuery;
-                } else {
-                    $area = Area::find($areaId);
-                    $areaName = $area ? $area->name : __('the selected area');
-                    if ($isHomePage) {
-                        $locationMessage = __('No Ads found in :area. Showing all available Ads.', ['area' => $areaName]);
-                    } else {
-                        // Keep the area filter applied even if no items found (don't fallback)
-                        $sql = $areaQuery;
-                    }
                 }
             }
-
-            // Second, check for city filter (only if area didn't find items or wasn't applied)
-            if ($hasCityFilter && (! $hasAreaFilter || $areaItemCount == 0)) {
-                $cityQuery = clone $sql;
-                $cityQuery->where('city', $cityName);
-                $cityQuery = $applyAuthFilters($cityQuery);
-                $cityItemCount = $cityQuery->count();
-
-                if ($cityItemCount > 0) {
-                    $sql = $cityQuery;
-                    if ($hasAreaFilter && $areaItemCount == 0 && $isHomePage) {
+        }
+ 
+        // Second, check for city filter (only if area didn't find items or wasn't applied)
+        if ($hasCityFilter && (! $hasAreaFilter || $areaItemCount == 0)) {
+            $cityQuery = clone $sql;
+            $cityQuery->where('city', $cityName);
+            $cityQuery = $applyAuthFilters($cityQuery);
+            $cityItemCount = $cityQuery->count();
+ 
+            if ($cityItemCount > 0) {
+                $sql = $cityQuery;
+                if ($hasAreaFilter && $areaItemCount == 0 && $isHomePage) {
+                    $locationMessage = __('No Ads found in :city. Showing all available Ads.', ['city' => $cityName]);
+                }
+            } else {
+                if ($isHomePage) {
+                    if (! $locationMessage) {
                         $locationMessage = __('No Ads found in :city. Showing all available Ads.', ['city' => $cityName]);
+                    } else {
+                        $area = $hasAreaFilter ? Area::find($areaId) : null;
+                        $areaName = $area ? $area->name : __('the selected area');
+                        $locationMessage = __('No Ads found in :area or :city. Showing all available Ads.', ['area' => $areaName, 'city' => $cityName]);
                     }
                 } else {
-                    if ($isHomePage) {
-                        if (! $locationMessage) {
-                            $locationMessage = __('No Ads found in :city. Showing all available Ads.', ['city' => $cityName]);
-                        } else {
-                            $area = $hasAreaFilter ? Area::find($areaId) : null;
-                            $areaName = $area ? $area->name : __('the selected area');
-                            $locationMessage = __('No Ads found in :area or :city. Showing all available Ads.', ['area' => $areaName, 'city' => $cityName]);
-                        }
-                    } else {
-                        // Keep the city filter applied even if no items found (don't fallback)
-                        $sql = $cityQuery;
-                    }
+                    // Keep the city filter applied even if no items found (don't fallback)
+                    $sql = $cityQuery;
                 }
             }
-
-            // Third, check for state filter (only if area/city didn't find items or weren't applied)
-            if ($hasStateFilter && (! $hasAreaFilter || $areaItemCount == 0) && (! $hasCityFilter || $cityItemCount == 0)) {
-                $stateQuery = clone $sql;
-                $stateQuery->where('state', $stateName);
-                $stateQuery = $applyAuthFilters($stateQuery);
-                $stateItemCount = $stateQuery->count();
-
-                if ($stateItemCount > 0) {
+        }
+ 
+        // Third, check for state filter (only if area/city didn't find items or weren't applied)
+        if ($hasStateFilter && (! $hasAreaFilter || $areaItemCount == 0) && (! $hasCityFilter || $cityItemCount == 0)) {
+            $stateQuery = clone $sql;
+            $stateQuery->where('state', $stateName);
+            $stateQuery = $applyAuthFilters($stateQuery);
+            $stateItemCount = $stateQuery->count();
+ 
+            if ($stateItemCount > 0) {
+                $sql = $stateQuery;
+                if (($hasAreaFilter && $areaItemCount == 0) || ($hasCityFilter && $cityItemCount == 0)) {
+                    if ($isHomePage) {
+                        $locationMessage = __('No Ads found in :state. Showing all available Ads.', ['state' => $stateName]);
+                    }
+                }
+            } else {
+                if ($isHomePage) {
+                    if (! $locationMessage) {
+                        $locationMessage = __('No Ads found in :state. Showing all available Ads.', ['state' => $stateName]);
+                    } else {
+                        $parts = [];
+                        if ($hasAreaFilter && $areaItemCount == 0) {
+                            $area = Area::find($areaId);
+                            $parts[] = $area ? $area->name : __('the selected area');
+                        }
+                        if ($hasCityFilter && $cityItemCount == 0) {
+                            $parts[] = $cityName;
+                        }
+                        $parts[] = $stateName;
+                        $locationMessage = __('No Ads found in :locations. Showing all available Ads.', ['locations' => implode(', ', $parts)]);
+                    }
+                } else {
+                    // Keep the state filter applied even if no items found (don't fallback)
                     $sql = $stateQuery;
-                    if (($hasAreaFilter && $areaItemCount == 0) || ($hasCityFilter && $cityItemCount == 0)) {
-                        if ($isHomePage) {
-                            $locationMessage = __('No Ads found in :state. Showing all available Ads.', ['state' => $stateName]);
-                        }
-                    }
-                } else {
+                }
+            }
+        }
+ 
+        // Fourth, check for country filter (only if area/city/state didn't find items or weren't applied)
+        if ($hasCountryFilter && (! $hasAreaFilter || $areaItemCount == 0) && (! $hasCityFilter || $cityItemCount == 0) && (! $hasStateFilter || $stateItemCount == 0)) {
+            $countryQuery = clone $sql;
+            $countryQuery->where('country', $countryName);
+            $countryQuery = $applyAuthFilters($countryQuery);
+            $countryItemCount = $countryQuery->count();
+ 
+            if ($countryItemCount > 0) {
+                $sql = $countryQuery;
+                if (($hasAreaFilter && $areaItemCount == 0) || ($hasCityFilter && $cityItemCount == 0) || ($hasStateFilter && $stateItemCount == 0)) {
                     if ($isHomePage) {
-                        if (! $locationMessage) {
-                            $locationMessage = __('No Ads found in :state. Showing all available Ads.', ['state' => $stateName]);
-                        } else {
-                            $parts = [];
-                            if ($hasAreaFilter && $areaItemCount == 0) {
-                                $area = Area::find($areaId);
-                                $parts[] = $area ? $area->name : __('the selected area');
-                            }
-                            if ($hasCityFilter && $cityItemCount == 0) {
-                                $parts[] = $cityName;
-                            }
+                        $locationMessage = __('No Ads found in :country. Showing all available Ads.', ['country' => $countryName]);
+                    }
+                }
+            } else {
+                if ($isHomePage) {
+                    if (! $locationMessage) {
+                        $locationMessage = __('No Ads found in :country. Showing all available Ads.', ['country' => $countryName]);
+                    } else {
+                        $parts = [];
+                        if ($hasAreaFilter && $areaItemCount == 0) {
+                            $area = Area::find($areaId);
+                            $parts[] = $area ? $area->name : __('the selected area');
+                        }
+                        if ($hasCityFilter && $cityItemCount == 0) {
+                            $parts[] = $cityName;
+                        }
+                        if ($hasStateFilter && $stateItemCount == 0) {
                             $parts[] = $stateName;
-                            $locationMessage = __('No Ads found in :locations. Showing all available Ads.', ['locations' => implode(', ', $parts)]);
                         }
-                    } else {
-                        // Keep the state filter applied even if no items found (don't fallback)
-                        $sql = $stateQuery;
-                    }
-                }
-            }
-
-            // Fourth, check for country filter (only if area/city/state didn't find items or weren't applied)
-            if ($hasCountryFilter && (! $hasAreaFilter || $areaItemCount == 0) && (! $hasCityFilter || $cityItemCount == 0) && (! $hasStateFilter || $stateItemCount == 0)) {
-                $countryQuery = clone $sql;
-                $countryQuery->where('country', $countryName);
-                $countryQuery = $applyAuthFilters($countryQuery);
-                $countryItemCount = $countryQuery->count();
-
-                if ($countryItemCount > 0) {
-                    $sql = $countryQuery;
-                    if (($hasAreaFilter && $areaItemCount == 0) || ($hasCityFilter && $cityItemCount == 0) || ($hasStateFilter && $stateItemCount == 0)) {
-                        if ($isHomePage) {
-                            $locationMessage = __('No Ads found in :country. Showing all available Ads.', ['country' => $countryName]);
-                        }
+                        $parts[] = $countryName;
+                        $locationMessage = __('No Ads found in :locations. Showing all available Ads.', ['locations' => implode(', ', $parts)]);
                     }
                 } else {
-                    if ($isHomePage) {
-                        if (! $locationMessage) {
-                            $locationMessage = __('No Ads found in :country. Showing all available Ads.', ['country' => $countryName]);
-                        } else {
-                            $parts = [];
-                            if ($hasAreaFilter && $areaItemCount == 0) {
-                                $area = Area::find($areaId);
-                                $parts[] = $area ? $area->name : __('the selected area');
-                            }
-                            if ($hasCityFilter && $cityItemCount == 0) {
-                                $parts[] = $cityName;
-                            }
-                            if ($hasStateFilter && $stateItemCount == 0) {
-                                $parts[] = $stateName;
-                            }
-                            $parts[] = $countryName;
-                            $locationMessage = __('No Ads found in :locations. Showing all available Ads.', ['locations' => implode(', ', $parts)]);
-                        }
-                    } else {
-                        // Keep the country filter applied even if no items found (don't fallback)
-                        $sql = $countryQuery;
-                    }
+                    // Keep the country filter applied even if no items found (don't fallback)
+                    $sql = $countryQuery;
                 }
             }
-
-
-            // Fifth, handle latitude/longitude location-based search (only if higher priority filters found items or weren't applied)
-            $hasHigherPriorityFilter = ($hasAreaFilter && $areaItemCount > 0) || ($hasCityFilter && $cityItemCount > 0) || ($hasStateFilter && $stateItemCount > 0) || ($hasCountryFilter && $countryItemCount > 0);
-            if ($hasLocationFilter && ((! $hasAreaFilter && ! $hasCityFilter && ! $hasStateFilter && ! $hasCountryFilter) || $hasHigherPriorityFilter)) {
-                $latitude = $request->latitude;
-                $longitude = $request->longitude;
-                $requestedRadius = (float) ($request->radius ?? null);
-
-                // Define small radius for exact location check (1 km)
-                $exactLocationRadius = 1; // 1 kilometer
-
-                // Build haversine formula
-                $haversine = '(6371 * acos(cos(radians(?))
-                    * cos(radians(latitude))
-                    * cos(radians(longitude) - radians(?))
-                    + sin(radians(?)) * sin(radians(latitude))))';
-
-                // Clone the query for exact location check
-                $exactLocationQuery = clone $sql;
-                $exactLocationQuery->select('items.*')
+        }
+ 
+ 
+        // Fifth, handle latitude/longitude location-based search (only if higher priority filters found items or weren't applied)
+        $hasHigherPriorityFilter = ($hasAreaFilter && $areaItemCount > 0) || ($hasCityFilter && $cityItemCount > 0) || ($hasStateFilter && $stateItemCount > 0) || ($hasCountryFilter && $countryItemCount > 0);
+        if ($hasLocationFilter && ((! $hasAreaFilter && ! $hasCityFilter && ! $hasStateFilter && ! $hasCountryFilter) || $hasHigherPriorityFilter)) {
+            $latitude = $request->latitude;
+            $longitude = $request->longitude;
+            $requestedRadius = (float) ($request->radius ?? null);
+ 
+            // Define small radius for exact location check (1 km)
+            $exactLocationRadius = 1; // 1 kilometer
+ 
+            // Build haversine formula
+            $haversine = '(6371 * acos(cos(radians(?))
+                * cos(radians(latitude))
+                * cos(radians(longitude) - radians(?))
+                + sin(radians(?)) * sin(radians(latitude))))';
+ 
+            // Clone the query for exact location check
+            $exactLocationQuery = clone $sql;
+            $exactLocationQuery->select('items.*')
+                ->selectRaw("$haversine AS distance", [$latitude, $longitude, $latitude])
+                ->where('latitude', '!=', 0)
+                ->where('longitude', '!=', 0)
+                ->having('distance', '<', $exactLocationRadius)
+                ->orderBy('distance', 'asc');
+ 
+            // Apply all other filters (status, auth, etc.) to exact location query
+            if (Auth::check()) {
+                $exactLocationQuery->with(['item_offers' => function ($q) {
+                    $q->where('buyer_id', Auth::user()->id);
+                }, 'user_reports' => function ($q) {
+                    $q->where('user_id', Auth::user()->id);
+                }]);
+ 
+                $currentURI = explode('?', $request->getRequestUri(), 2);
+                if ($currentURI[0] == '/api/my-items') {
+                    $exactLocationQuery->where(['user_id' => Auth::user()->id])->withTrashed();
+                } else {
+                    $exactLocationQuery->where('status', 'approved')->has('user')->onlyNonBlockedUsers()->getNonExpiredItems();
+                }
+            } else {
+                $exactLocationQuery->where('status', 'approved')->getNonExpiredItems();
+            }
+ 
+            // Check if items exist at exact location
+            $exactLocationCount = $exactLocationQuery->count();
+ 
+            if ($exactLocationCount > 0) {
+                // Items found at exact location, use exact location query
+                $sql = $exactLocationQuery;
+                // Don't override city message if it exists
+                if (! $locationMessage) {
+                    $locationMessage = null; // No special message needed
+                }
+            } else {
+                // No items at exact location, search nearby locations
+                // Use requested radius if provided, otherwise use larger default radius (50 km)
+                $searchRadius = $requestedRadius !== null && $requestedRadius > 0
+                    ? $requestedRadius
+                    : 50; // Default 50 km radius for nearby search
+ 
+                // Clone query for nearby search
+                $nearbyQuery = clone $sql;
+                $nearbyQuery->select('items.*')
                     ->selectRaw("$haversine AS distance", [$latitude, $longitude, $latitude])
                     ->where('latitude', '!=', 0)
                     ->where('longitude', '!=', 0)
-                    ->having('distance', '<', $exactLocationRadius)
+                    ->having('distance', '<', $searchRadius)
                     ->orderBy('distance', 'asc');
-
-                // Apply all other filters (status, auth, etc.) to exact location query
-                if (Auth::check()) {
-                    $exactLocationQuery->with(['item_offers' => function ($q) {
-                        $q->where('buyer_id', Auth::user()->id);
-                    }, 'user_reports' => function ($q) {
-                        $q->where('user_id', Auth::user()->id);
-                    }]);
-
-                    $currentURI = explode('?', $request->getRequestUri(), 2);
-                    if ($currentURI[0] == '/api/my-items') {
-                        $exactLocationQuery->where(['user_id' => Auth::user()->id])->withTrashed();
-                    } else {
-                        $exactLocationQuery->where('status', 'approved')->has('user')->onlyNonBlockedUsers()->getNonExpiredItems();
-                    }
-                } else {
-                    $exactLocationQuery->where('status', 'approved')->getNonExpiredItems();
-                }
-
-                // Check if items exist at exact location
-                $exactLocationCount = $exactLocationQuery->count();
-
-                if ($exactLocationCount > 0) {
-                    // Items found at exact location, use exact location query
-                    $sql = $exactLocationQuery;
-                    // Don't override city message if it exists
+ 
+                // Apply auth filters to nearby query
+                $nearbyQuery = $applyAuthFilters($nearbyQuery);
+                $nearbyItemCount = $nearbyQuery->count();
+ 
+                if ($nearbyItemCount > 0) {
+                    // Items found nearby, use nearby query
+                    $sql = $nearbyQuery;
+                    // Set message only if no higher priority message is set
                     if (! $locationMessage) {
-                        $locationMessage = null; // No special message needed
+                        $locationMessage = __('No Ads found at your location. Showing nearby Ads.');
                     }
                 } else {
-                    // No items at exact location, search nearby locations
-                    // Use requested radius if provided, otherwise use larger default radius (50 km)
-                    $searchRadius = $requestedRadius !== null && $requestedRadius > 0
-                        ? $requestedRadius
-                        : 50; // Default 50 km radius for nearby search
-
-                    // Clone query for nearby search
-                    $nearbyQuery = clone $sql;
-                    $nearbyQuery->select('items.*')
-                        ->selectRaw("$haversine AS distance", [$latitude, $longitude, $latitude])
-                        ->where('latitude', '!=', 0)
-                        ->where('longitude', '!=', 0)
-                        ->having('distance', '<', $searchRadius)
-                        ->orderBy('distance', 'asc');
-
-                    // Apply auth filters to nearby query
-                    $nearbyQuery = $applyAuthFilters($nearbyQuery);
-                    $nearbyItemCount = $nearbyQuery->count();
-
-                    if ($nearbyItemCount > 0) {
-                        // Items found nearby, use nearby query
-                        $sql = $nearbyQuery;
-                        // Set message only if no higher priority message is set
+                    // No items found nearby
+                    if ($isHomePage) {
+                        // Fallback to base query without location filter if on home page
+                        $sql = clone $baseQueryBeforeLocation;
                         if (! $locationMessage) {
-                            $locationMessage = __('No Ads found at your location. Showing nearby Ads.');
+                            $locationMessage = __('No Ads found at your location. Showing all available Ads.');
+                        } else {
+                            $locationMessage = __('No Ads found at your location. Showing all available Ads.');
                         }
                     } else {
-                        // No items found nearby
-                        if ($isHomePage) {
-                            // Fallback to base query without location filter if on home page
-                            $sql = clone $baseQueryBeforeLocation;
-                            if (! $locationMessage) {
-                                $locationMessage = __('No Ads found at your location. Showing all available Ads.');
-                            } else {
-                                $locationMessage = __('No Ads found at your location. Showing all available Ads.');
-                            }
-                        } else {
-                            // Keep the location filter applied even if no items found (don't fallback)
-                            $sql = $nearbyQuery;
-                        }
+                        // Keep the location filter applied even if no items found (don't fallback)
+                        $sql = $nearbyQuery;
                     }
                 }
             }
-
-            // Note: Auth filters are already applied to $baseQueryBeforeLocation,
-            // so when we fallback using clone $baseQueryBeforeLocation, filters are preserved.
-            // No need to re-apply filters here.
-
-            // Execute query and get results
-            if (! empty($request->id)) {
-                /*
-                 * Collection does not support first OR find method's result as of now. It's a part of R&D
-                 * So currently using this shortcut method get() to fetch the first data
-                 */
-                $result = $sql->get();
-                if (count($result) == 0) {
-                    ResponseService::errorResponse(__('No item Found'));
-                }
+        }
+ 
+        // Note: Auth filters are already applied to $baseQueryBeforeLocation,
+        // so when we fallback using clone $baseQueryBeforeLocation, filters are preserved.
+        // No need to re-apply filters here.
+ 
+        // Execute query and get results
+        if (! empty($request->id)) {
+            /*
+             * Collection does not support first OR find method's result as of now. It's a part of R&D
+             * So currently using this shortcut method get() to fetch the first data
+             */
+            $result = $sql->get();
+            if (count($result) == 0) {
+                ResponseService::errorResponse(__('No item Found'));
+            }
+        } else {
+            if (! empty($request->limit)) {
+                $result = $sql->paginate($request->limit);
             } else {
-                if (! empty($request->limit)) {
-                    $result = $sql->paginate($request->limit);
-                } else {
-                    $result = $sql->paginate();
+                $result = $sql->paginate();
+            }
+        }
+ 
+        // =====================================================
+        // DODAJ SELLER SETTINGS, IS_PRO, IS_SHOP ZA SVAKI ITEM
+        // =====================================================
+        $items = $result instanceof \Illuminate\Pagination\LengthAwarePaginator 
+            ? $result->getCollection() 
+            : $result;
+ 
+        // Dohvati sve jedinstvene user_id-ove
+        $userIds = $items->pluck('user_id')->unique()->filter()->values()->toArray();
+ 
+        // Batch dohvati sve seller settings
+        $sellerSettingsMap = [];
+        if (!empty($userIds)) {
+            $allSellerSettings = SellerSetting::whereIn('user_id', $userIds)->get();
+            foreach ($allSellerSettings as $ss) {
+                $sellerSettingsMap[$ss->user_id] = $ss;
+            }
+        }
+ 
+        // Batch dohvati sve aktivne membership-ove
+        $membershipMap = [];
+        if (!empty($userIds)) {
+            $allMemberships = UserMembership::whereIn('user_id', $userIds)
+                ->where('status', 'active')
+                ->get();
+            foreach ($allMemberships as $m) {
+                $membershipMap[$m->user_id] = $m;
+            }
+        }
+ 
+        // Helper funkcija za određivanje Pro/Shop statusa
+        $getMembershipStatus = function ($membership) {
+            $isPro = false;
+            $isShop = false;
+ 
+            if ($membership) {
+                // Provjeri tier kao string
+                $tier = strtolower($membership->tier ?? $membership->tier_name ?? $membership->plan ?? '');
+                
+                if (strpos($tier, 'shop') !== false || strpos($tier, 'business') !== false) {
+                    $isPro = true;
+                    $isShop = true;
+                } elseif (strpos($tier, 'pro') !== false || strpos($tier, 'premium') !== false) {
+                    $isPro = true;
+                    $isShop = false;
+                }
+                
+                // Fallback na tier_id
+                if (!$isPro && !empty($membership->tier_id)) {
+                    $tierId = (int) $membership->tier_id;
+                    if ($tierId === 3) { // Shop tier
+                        $isPro = true;
+                        $isShop = true;
+                    } elseif ($tierId === 2) { // Pro tier
+                        $isPro = true;
+                        $isShop = false;
+                    }
                 }
             }
-
-            // Prepare response with location message if applicable
-            $responseData = new ItemCollection($result);
-            // Use location message if available, otherwise use default success message
-            $responseMessage = !empty($locationMessage) ? $locationMessage : __('Advertisement Fetched Successfully');
-
-            ResponseService::successResponse($responseMessage, $responseData);
-            // if (!empty($request->id)) {
-            //     /*
-            //      * Collection does not support first OR find method's result as of now. It's a part of R&D
-            //      * So currently using this shortcut method get() to fetch the first data
-            //      */
-            //     $result = $sql->get();
-            //     if (count($result) == 0) {
-            //         ResponseService::errorResponse(__('No item Found'));
-            //     }
-            // } else {
-            //     if (!empty($request->limit)) {
-            //         $result = $sql->paginate($request->limit);
-            //     } else {
-            //         $result = $sql->paginate();
-            //     }
-
-            // }
-            //                // Add three regular items
-            //                for ($i = 0; $i < 3 && $regularIndex < $regularItemCount; $i++) {
-            //                    $items->push($regularItems[$regularIndex]);
-            //                    $regularIndex++;
-            //                }
-            //
-            //                // Add one featured item if available
-            //                if ($featuredIndex < $featuredItemCount) {
-            //                    $items->push($featuredItems[$featuredIndex]);
-            //                    $featuredIndex++;
-            //                }
-            //            }
-            // Return success response with the fetched items
-
-            // ResponseService::successResponse(__('Advertisement Fetched Successfully'), new ItemCollection($result));
-        } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'API Controller -> getItem');
-            ResponseService::errorResponse();
+ 
+            return ['is_pro' => $isPro, 'is_shop' => $isShop];
+        };
+ 
+        // Dodaj seller_settings, is_pro, is_shop svakom itemu
+        foreach ($items as $item) {
+            $sellerId = $item->user_id;
+            
+            // Seller settings
+            $item->seller_settings = $sellerSettingsMap[$sellerId] ?? null;
+            
+            // Membership status
+            $membership = $membershipMap[$sellerId] ?? null;
+            $membershipStatus = $getMembershipStatus($membership);
+            
+            $item->is_pro = $membershipStatus['is_pro'];
+            $item->is_shop = $membershipStatus['is_shop'];
         }
+ 
+        // Ako je paginator, postavi nazad kolekciju
+        if ($result instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            $result->setCollection($items);
+        }
+        // =====================================================
+        // KRAJ DODAVANJA SELLER SETTINGS
+        // =====================================================
+ 
+        // Prepare response with location message if applicable
+        $responseData = new ItemCollection($result);
+        // Use location message if available, otherwise use default success message
+        $responseMessage = !empty($locationMessage) ? $locationMessage : __('Advertisement Fetched Successfully');
+ 
+        ResponseService::successResponse($responseMessage, $responseData);
+ 
+    } catch (Throwable $th) {
+        ResponseService::logErrorResponse($th, 'API Controller -> getItem');
+        ResponseService::errorResponse();
     }
+}
 
     public function updateItem(Request $request)
     {
@@ -3046,27 +3104,62 @@ public function sendMessage(Request $request)
 
         if ($isBuyerSending) {
             $sellerSettings = \App\Models\SellerSetting::where('user_id', $sellerId)->first();
-
+         
             $membership = \App\Models\UserMembership::where('user_id', $sellerId)
                 ->where('status', 'active')
                 ->first();
-
-            $isPro = $membership && in_array($membership->tier_id, [2, 3]);
-
+                
+         
+            // Provjera Pro/Shop statusa - podržava tier_id (int) i tier (string)
+            $isPro = false;
+            $isShop = false;
+            
+            if ($membership) {
+                // 1. Provjeri tier kao string
+                $tier = strtolower($membership->tier ?? $membership->tier_name ?? $membership->plan ?? '');
+                
+                if (strpos($tier, 'shop') !== false || strpos($tier, 'business') !== false) {
+                    $isPro = true;
+                    $isShop = true;
+                } elseif (strpos($tier, 'pro') !== false || strpos($tier, 'premium') !== false) {
+                    $isPro = true;
+                }
+                
+                // 2. Fallback na tier_id ako string nije dao rezultat
+                if (!$isPro && !empty($membership->tier_id)) {
+                    $tierId = (int) $membership->tier_id;
+                    if ($tierId === 3) { // Shop
+                        $isPro = true;
+                        $isShop = true;
+                    } elseif ($tierId === 2) { // Pro
+                        $isPro = true;
+                    }
+                }
+                
+                // 3. Debug log 
+                \Log::info('Auto-reply membership check', [
+                    'seller_id' => $sellerId,
+                    'tier' => $tier,
+                    'tier_id' => $membership->tier_id ?? null,
+                    'isPro' => $isPro,
+                    'isShop' => $isShop,
+                ]);
+            }
+         
             if ($isPro && $sellerSettings) {
-
-                // Vacation mode auto-reply
+         
+                // Vacation mode auto-reply (prioritet)
                 if (!empty($sellerSettings->vacation_mode) && !empty($sellerSettings->vacation_message)) {
-
+         
                     $existingVacationReply = Chat::where('item_offer_id', $request->item_offer_id)
                         ->where('sender_id', $sellerId)
                         ->where('is_auto_reply', true)
                         ->where('auto_reply_type', 'vacation')
                         ->where('created_at', '>', now()->subHours(24))
                         ->exists();
-
+         
                     if (!$existingVacationReply) {
-                        $autoReplyChat = Chat::create([
+                        Chat::create([
                             'sender_id' => $sellerId,
                             'item_offer_id' => $request->item_offer_id,
                             'message' => $sellerSettings->vacation_message,
@@ -3082,15 +3175,14 @@ public function sendMessage(Request $request)
                 }
                 // Standard auto-reply
                 elseif (!empty($sellerSettings->auto_reply_enabled) && !empty($sellerSettings->auto_reply_message)) {
-
+         
                     $recentBuyerMessages = Chat::where('item_offer_id', $request->item_offer_id)
                         ->where('sender_id', $buyerId)
                         ->where('created_at', '>', now()->subHours(24))
                         ->count();
-
-                    // "prva poruka" u zadnjih 24h (ili prva ukupno)
+         
                     if ($recentBuyerMessages <= 1) {
-                        $autoReplyChat = Chat::create([
+                        Chat::create([
                             'sender_id' => $sellerId,
                             'item_offer_id' => $request->item_offer_id,
                             'message' => $sellerSettings->auto_reply_message,
@@ -3217,6 +3309,8 @@ public function sendMessage(Request $request)
         } else {
             $responseData['auto_reply'] = null;
         }
+
+        
 
         ResponseService::successResponse(
             __('Message Fetched Successfully'),
@@ -3810,102 +3904,122 @@ public function getChatMessages(Request $request)
 
 public function getSeller(Request $request)
 {
-    $request->validate([
-        'id'   => 'required|integer',
+    $validator = Validator::make($request->all(), [
+        'id' => 'required|integer',
         'page' => 'nullable|integer',
     ]);
-
+ 
+    if ($validator->fails()) {
+        ResponseService::validationError($validator->errors()->first());
+    }
+ 
     try {
-        $seller = User::find($request->id);
-
+        $sellerId = $request->id;
+        $page = $request->page ?? 1;
+        $perPage = 10;
+ 
+        // Dohvati seller-a
+        $seller = User::find($sellerId);
+ 
         if (!$seller) {
-            return response()->json(['error' => true, 'message' => 'Seller not found'], 404);
+            ResponseService::errorResponse(__('User not found'), null, '', 103);
         }
-
-        // Aktivni/prodani oglasi
-        $liveCount = Item::where('user_id', $seller->id)
-            ->where('status', '!=', 'sold out')
+ 
+        // Dohvati broj aktivnih oglasa
+        $liveAdsCount = Item::where('user_id', $sellerId)
+            ->where('status', 'approved')
             ->whereNull('deleted_at')
+            ->where(function($q) {
+                $q->whereNull('expiry_date')
+                  ->orWhere('expiry_date', '>=', Carbon::now());
+            })
             ->count();
-
-        $soldCount = Item::where('user_id', $seller->id)
+ 
+        // Dohvati broj prodanih oglasa
+        $soldAdsCount = Item::where('user_id', $sellerId)
             ->where('status', 'sold out')
             ->whereNull('deleted_at')
             ->count();
-
-        // Ratings
-        $ratings = SellerRating::where('seller_id', $seller->id)
-            ->with(['buyer:id,name,profile'])
+ 
+        $seller->live_ads_count = $liveAdsCount;
+        $seller->sold_ads_count = $soldAdsCount;
+ 
+        // Dohvati recenzije s paginacijom - KORISTI SellerRating
+        $ratings = \App\Models\SellerRating::where('seller_id', $sellerId)
+            ->with(['buyer:id,name,profile', 'item:id,name,image,slug'])
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        $averageRating = SellerRating::where('seller_id', $seller->id)->avg('ratings');
-
-        // Seller settings
-        $sellerSettings = \App\Models\SellerSetting::where('user_id', $seller->id)->first();
-
-        // Membership (Pro/Shop)
-        $membership = \App\Models\UserMembership::where('user_id', $seller->id)
+            ->paginate($perPage, ['*'], 'page', $page);
+ 
+        // Izračunaj prosječnu ocjenu
+        $averageRating = \App\Models\SellerRating::where('seller_id', $sellerId)->avg('ratings') ?? 0;
+        $reviewsCount = \App\Models\SellerRating::where('seller_id', $sellerId)->count();
+ 
+        $seller->average_rating = round($averageRating, 1);
+        $seller->reviews_count = $reviewsCount;
+ 
+        // =====================================================
+        // SELLER SETTINGS I MEMBERSHIP
+        // =====================================================
+        $sellerSettings = null;
+        $isPro = false;
+        $isShop = false;
+        $membershipData = null;
+ 
+        // Dohvati seller settings
+        $sellerSettings = \App\Models\SellerSetting::where('user_id', $sellerId)->first();
+ 
+        // Dohvati membership
+        $membership = \App\Models\UserMembership::where('user_id', $sellerId)
             ->where('status', 'active')
             ->first();
-
-        $isPro  = $membership && in_array((int)$membership->tier_id, [2, 3]);
-        $isShop = $membership && (int)$membership->tier_id === 3;
-
-        // ✅ Avg response time (bez receiver_id)
-        $avgResponseTime = $this->calculateAverageResponseTime($seller->id);
-
-        // Seller payload
-        $sellerData = $seller->toArray();
-        $sellerData['average_rating'] = $averageRating ? round($averageRating, 2) : 0;
-        $sellerData['live_ads_count'] = $liveCount;
-        $sellerData['sold_ads_count'] = $soldCount;
-
-        $sellerSettingsData = null;
-        if ($sellerSettings) {
-            $sellerSettingsData = [
-                'show_phone' => (bool) $sellerSettings->show_phone,
-                'show_email' => (bool) $sellerSettings->show_email,
-                'show_whatsapp' => (bool) $sellerSettings->show_whatsapp,
-                'show_viber' => (bool) $sellerSettings->show_viber,
-                'whatsapp_number' => $sellerSettings->whatsapp_number,
-                'viber_number' => $sellerSettings->viber_number,
-                'preferred_contact_method' => $sellerSettings->preferred_contact_method,
-                'response_time' => $sellerSettings->response_time,
-                'response_time_auto' => $avgResponseTime,
-                'accepts_offers' => (bool) $sellerSettings->accepts_offers,
-
-                'vacation_mode' => $isPro ? (bool) $sellerSettings->vacation_mode : false,
-                'vacation_message' => $isPro ? $sellerSettings->vacation_message : null,
-                'auto_reply_enabled' => $isPro ? (bool) $sellerSettings->auto_reply_enabled : false,
-                'auto_reply_message' => $isPro ? $sellerSettings->auto_reply_message : null,
-
-                'business_hours' => $isShop ? $sellerSettings->business_hours : null,
-
-                'business_description' => $sellerSettings->business_description,
-                'return_policy' => $sellerSettings->return_policy,
-                'shipping_info' => $sellerSettings->shipping_info,
-                'social_facebook' => $sellerSettings->social_facebook,
-                'social_instagram' => $sellerSettings->social_instagram,
-                'social_tiktok' => $sellerSettings->social_tiktok,
-                'social_youtube' => $sellerSettings->social_youtube,
-                'social_website' => $sellerSettings->social_website,
+ 
+        if ($membership) {
+            // Provjeri tier kao string
+            $tier = strtolower($membership->tier ?? $membership->tier_name ?? $membership->plan ?? '');
+            
+            if (strpos($tier, 'shop') !== false || strpos($tier, 'business') !== false) {
+                $isPro = true;
+                $isShop = true;
+            } elseif (strpos($tier, 'pro') !== false || strpos($tier, 'premium') !== false) {
+                $isPro = true;
+                $isShop = false;
+            }
+            
+            // Fallback na tier_id
+            if (!$isPro && !empty($membership->tier_id)) {
+                $tierId = (int) $membership->tier_id;
+                if ($tierId === 3) {
+                    $isPro = true;
+                    $isShop = true;
+                } elseif ($tierId === 2) {
+                    $isPro = true;
+                    $isShop = false;
+                }
+            }
+ 
+            $membershipData = [
+                'tier' => $membership->tier ?? $membership->tier_name ?? null,
+                'tier_id' => $membership->tier_id ?? null,
+                'status' => $membership->status ?? null,
+                'expires_at' => $membership->expires_at ?? null,
             ];
         }
-
-        $response = [
-            'seller' => $sellerData,
+        // =====================================================
+ 
+        $responseData = [
+            'seller' => $seller,
             'ratings' => $ratings,
-            'seller_settings' => $sellerSettingsData,
-            'is_pro' => (bool) $isPro,
-            'is_shop' => (bool) $isShop,
+            'seller_settings' => $sellerSettings,
+            'is_pro' => $isPro,
+            'is_shop' => $isShop,
+            'membership' => $membershipData,
         ];
-
-        return ResponseService::successResponse(__('Seller Details Fetched Successfully'), $response);
-
-    } catch (\Throwable $th) {
+ 
+        ResponseService::successResponse(__('Data fetched successfully'), $responseData);
+ 
+    } catch (Throwable $th) {
         ResponseService::logErrorResponse($th, 'API Controller -> getSeller');
-        return ResponseService::errorResponse();
+        ResponseService::errorResponse();
     }
 }
 
@@ -4386,6 +4500,76 @@ public function getMyReview(Request $request)
             ResponseService::logErrorResponse($th, 'API Controller -> seoSettings');
             ResponseService::errorResponse();
         }
+    }
+
+    public function updateSellerSettings(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'show_phone' => 'nullable|boolean',
+        'show_email' => 'nullable|boolean',
+        'show_whatsapp' => 'nullable|boolean',
+        'show_viber' => 'nullable|boolean',
+        'whatsapp_number' => 'nullable|string|max:20',
+        'viber_number' => 'nullable|string|max:20',
+        'preferred_contact_method' => 'nullable|in:message,phone,whatsapp,viber,email',
+        'business_hours' => 'nullable',
+        'response_time' => 'nullable|in:auto,instant,few_hours,same_day,few_days',
+        'accepts_offers' => 'nullable|boolean',
+        'auto_reply_enabled' => 'nullable|boolean',
+        'auto_reply_message' => 'nullable|string|max:300',
+        'vacation_mode' => 'nullable|boolean',
+        'vacation_message' => 'nullable|string|max:200',
+        'business_description' => 'nullable|string|max:500',
+        'return_policy' => 'nullable|string|max:300',
+        'shipping_info' => 'nullable|string|max:300',
+        'social_facebook' => 'nullable|string|max:255',
+        'social_instagram' => 'nullable|string|max:255',
+        'social_tiktok' => 'nullable|string|max:255',
+        'social_youtube' => 'nullable|string|max:255',
+        'social_website' => 'nullable|string|max:255',
+    ]);
+ 
+    if ($validator->fails()) {
+        ResponseService::validationError($validator->errors()->first());
+    }
+ 
+    try {
+        $userId = Auth::id();
+ 
+        $settings = \App\Models\SellerSetting::updateOrCreate(
+            ['user_id' => $userId],
+            [
+                'show_phone' => $request->show_phone ?? true,
+                'show_email' => $request->show_email ?? true,
+                'show_whatsapp' => $request->show_whatsapp ?? false,
+                'show_viber' => $request->show_viber ?? false,
+                'whatsapp_number' => $request->whatsapp_number,
+                'viber_number' => $request->viber_number,
+                'preferred_contact_method' => $request->preferred_contact_method ?? 'message',
+                'business_hours' => $request->business_hours,
+                'response_time' => $request->response_time ?? 'auto',
+                'accepts_offers' => $request->accepts_offers ?? true,
+                'auto_reply_enabled' => $request->auto_reply_enabled ?? false,
+                'auto_reply_message' => $request->auto_reply_message,
+                'vacation_mode' => $request->vacation_mode ?? false,
+                'vacation_message' => $request->vacation_message,
+                'business_description' => $request->business_description,
+                'return_policy' => $request->return_policy,
+                'shipping_info' => $request->shipping_info,
+                'social_facebook' => $request->social_facebook,
+                'social_instagram' => $request->social_instagram,
+                'social_tiktok' => $request->social_tiktok,
+                'social_youtube' => $request->social_youtube,
+                'social_website' => $request->social_website,
+            ]
+        );
+ 
+        ResponseService::successResponse(__('Settings updated successfully'), $settings);
+ 
+    } catch (Throwable $th) {
+        ResponseService::logErrorResponse($th, 'API Controller -> updateSellerSettings');
+        ResponseService::errorResponse();
+    }
     }
 
     public function getCategories(Request $request)
