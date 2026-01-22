@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\MembershipPackageController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\CustomFieldController;

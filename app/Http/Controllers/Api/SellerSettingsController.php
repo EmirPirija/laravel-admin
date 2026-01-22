@@ -1,218 +1,189 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\SellerSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Throwable;
 
 class SellerSettingsController extends Controller
 {
-    /**
-     * Dohvati postavke prodavača (sa default vrijednostima ako ne postoje)
-     */
-    public function getSettings(Request $request)
+    // Mora matchati frontend listu (avatar_id)
+    private const AVATAR_IDS = [
+        'lmx-01','lmx-02','lmx-03','lmx-04','lmx-05','lmx-06',
+        'lmx-07','lmx-08','lmx-09','lmx-10','lmx-11','lmx-12',
+    ];
+
+    public function getSettings()
     {
-        $userId = Auth::id();
+        try {
+            $user = Auth::user();
 
-        // ✅ defaulti (isti kao u prvom controlleru)
-        $defaults = [
-            'show_phone' => true,
-            'show_email' => true,
-            'show_whatsapp' => false,
-            'show_viber' => false,
-            'response_time' => 'few_hours',
-            'accepts_offers' => true,
-            'auto_reply_enabled' => false,
-            'vacation_mode' => false,
-            'preferred_contact_method' => 'message',
-        ];
+            $settings = SellerSetting::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    // ✅ default avatar
+                    'avatar_id' => self::AVATAR_IDS[0],
 
-        // ✅ kreiraj ako nema, i popuni default values
-        $settings = SellerSetting::firstOrCreate(
-            ['user_id' => $userId],
-            $defaults
-        );
+                    'show_phone' => true,
+                    'show_email' => true,
+                    'show_whatsapp' => false,
+                    'show_viber' => false,
+                    'preferred_contact_method' => 'message',
 
-        // ✅ ako postoji ali su neka polja null (stari zapisi), dopuni ih
-        $dirty = false;
-        foreach ($defaults as $key => $val) {
-            if (is_null($settings->{$key})) {
-                $settings->{$key} = $val;
-                $dirty = true;
+                    'response_time' => 'auto',
+                    'accepts_offers' => true,
+
+                    'auto_reply_enabled' => false,
+                    'vacation_mode' => false,
+                ]
+            );
+
+            // Ako je avatar_id prazan iz nekog razloga
+            if (empty($settings->avatar_id)) {
+                $settings->avatar_id = self::AVATAR_IDS[0];
+                $settings->save();
             }
-        }
-        if ($dirty) {
-            $settings->save();
-        }
 
-        return response()->json([
-            'error' => false,
-            'message' => 'Postavke uspješno dohvaćene',
-            'data' => $settings,
-        ]);
-    }
-
-    /**
-     * Ažuriraj postavke prodavača
-     */
-    public function updateSettings(Request $request)
-    {
-        $userId = Auth::id();
-
-        $validator = Validator::make($request->all(), [
-            'show_phone' => 'nullable|boolean',
-            'show_email' => 'nullable|boolean',
-            'show_whatsapp' => 'nullable|boolean',
-            'show_viber' => 'nullable|boolean',
-            'whatsapp_number' => 'nullable|string|max:20',
-            'viber_number' => 'nullable|string|max:20',
-            'preferred_contact_method' => 'nullable|string|in:message,phone,whatsapp,viber,email',
-
-            // ✅ business_hours može doći kao string JSON ili kao array
-            'business_hours' => 'nullable',
-
-            'response_time' => 'nullable|string|in:instant,few_hours,same_day,few_days',
-            'accepts_offers' => 'nullable|boolean',
-            'auto_reply_enabled' => 'nullable|boolean',
-            'auto_reply_message' => 'nullable|string|max:500',
-            'vacation_mode' => 'nullable|boolean',
-            'vacation_message' => 'nullable|string|max:300',
-            'business_description' => 'nullable|string|max:1000',
-            'return_policy' => 'nullable|string|max:500',
-            'shipping_info' => 'nullable|string|max:500',
-            'social_facebook' => 'nullable|string|max:255',
-            'social_instagram' => 'nullable|string|max:255',
-            'social_tiktok' => 'nullable|string|max:255',
-            'social_youtube' => 'nullable|string|max:255',
-            'social_website' => 'nullable|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
+            return response()->json([
+                'error' => false,
+                'data' => $settings,
+                'message' => 'Settings fetched successfully'
+            ]);
+        } catch (Throwable $th) {
             return response()->json([
                 'error' => true,
-                'message' => $validator->errors()->first(),
-            ], 422);
+                'message' => 'Error fetching settings'
+            ], 500);
         }
+    }
 
-        // ✅ osiguraj da settings postoji + defaulti (isti kao getSettings)
-        $defaults = [
-            'show_phone' => true,
-            'show_email' => true,
-            'show_whatsapp' => false,
-            'show_viber' => false,
-            'response_time' => 'few_hours',
-            'accepts_offers' => true,
-            'auto_reply_enabled' => false,
-            'vacation_mode' => false,
-            'preferred_contact_method' => 'message',
-        ];
+    public function updateSettings(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                // ✅ avatar
+                'avatar_id' => ['nullable', 'string', 'max:50', Rule::in(self::AVATAR_IDS)],
 
-        $settings = SellerSetting::firstOrCreate(
-            ['user_id' => $userId],
-            $defaults
-        );
+                'show_phone' => 'boolean',
+                'show_email' => 'boolean',
+                'show_whatsapp' => 'boolean',
+                'show_viber' => 'boolean',
+                'whatsapp_number' => 'nullable|string|max:20',
+                'viber_number' => 'nullable|string|max:20',
+                'preferred_contact_method' => 'nullable|in:message,phone,whatsapp,viber,email',
 
-        $updateData = [];
+                'business_hours' => 'nullable', // string ili array
+                'response_time' => 'nullable|in:auto,instant,few_hours,same_day,few_days',
+                'accepts_offers' => 'boolean',
 
-        // Kontakt
-        if ($request->has('show_phone')) {
-            $updateData['show_phone'] = (bool) $request->show_phone;
-        }
-        if ($request->has('show_email')) {
-            $updateData['show_email'] = (bool) $request->show_email;
-        }
-        if ($request->has('show_whatsapp')) {
-            $updateData['show_whatsapp'] = (bool) $request->show_whatsapp;
-        }
-        if ($request->has('show_viber')) {
-            $updateData['show_viber'] = (bool) $request->show_viber;
-        }
-        if ($request->has('whatsapp_number')) {
-            $updateData['whatsapp_number'] = $request->whatsapp_number;
-        }
-        if ($request->has('viber_number')) {
-            $updateData['viber_number'] = $request->viber_number;
-        }
+                'auto_reply_enabled' => 'boolean',
+                'auto_reply_message' => 'nullable|string|max:300',
+                'vacation_mode' => 'boolean',
+                'vacation_message' => 'nullable|string|max:200',
 
-        // Preferirani kontakt
-        if ($request->has('preferred_contact_method')) {
-            $updateData['preferred_contact_method'] = $request->preferred_contact_method;
-        }
+                'business_description' => 'nullable|string|max:500',
+                'return_policy' => 'nullable|string|max:300',
+                'shipping_info' => 'nullable|string|max:300',
 
-        // Radno vrijeme (ako dođe kao array, pretvori u JSON string)
-        if ($request->has('business_hours')) {
-            $bh = $request->business_hours;
+                'social_facebook' => 'nullable|url|max:255',
+                'social_instagram' => 'nullable|url|max:255',
+                'social_tiktok' => 'nullable|url|max:255',
+                'social_youtube' => 'nullable|url|max:255',
+                'social_website' => 'nullable|url|max:255',
+            ]);
 
-            if (is_array($bh)) {
-                $updateData['business_hours'] = json_encode($bh);
-            } else {
-                // string / null
-                $updateData['business_hours'] = $bh;
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => $validator->errors()->first()
+                ], 422);
             }
-        }
 
-        // Vrijeme odgovora
-        if ($request->has('response_time')) {
-            $updateData['response_time'] = $request->response_time;
-        }
+            $user = Auth::user();
+            $settings = SellerSetting::firstOrCreate(
+                ['user_id' => $user->id],
+                ['avatar_id' => self::AVATAR_IDS[0]]
+            );
 
-        // Ponude
-        if ($request->has('accepts_offers')) {
-            $updateData['accepts_offers'] = (bool) $request->accepts_offers;
-        }
+            // Osnovna polja
+            $updateData = $request->only([
+                'avatar_id',
 
-        // Auto-reply
-        if ($request->has('auto_reply_enabled')) {
-            $updateData['auto_reply_enabled'] = (bool) $request->auto_reply_enabled;
-        }
-        if ($request->has('auto_reply_message')) {
-            $updateData['auto_reply_message'] = $request->auto_reply_message;
-        }
+                'show_phone',
+                'show_email',
+                'show_whatsapp',
+                'show_viber',
+                'whatsapp_number',
+                'viber_number',
+                'preferred_contact_method',
 
-        // Vacation
-        if ($request->has('vacation_mode')) {
-            $updateData['vacation_mode'] = (bool) $request->vacation_mode;
-        }
-        if ($request->has('vacation_message')) {
-            $updateData['vacation_message'] = $request->vacation_message;
-        }
+                'response_time',
+                'accepts_offers',
 
-        // Ostalo
-        if ($request->has('business_description')) {
-            $updateData['business_description'] = $request->business_description;
-        }
-        if ($request->has('return_policy')) {
-            $updateData['return_policy'] = $request->return_policy;
-        }
-        if ($request->has('shipping_info')) {
-            $updateData['shipping_info'] = $request->shipping_info;
-        }
+                'auto_reply_enabled',
+                'auto_reply_message',
 
-        // Društvene mreže
-        if ($request->has('social_facebook')) {
-            $updateData['social_facebook'] = $request->social_facebook;
-        }
-        if ($request->has('social_instagram')) {
-            $updateData['social_instagram'] = $request->social_instagram;
-        }
-        if ($request->has('social_tiktok')) {
-            $updateData['social_tiktok'] = $request->social_tiktok;
-        }
-        if ($request->has('social_youtube')) {
-            $updateData['social_youtube'] = $request->social_youtube;
-        }
-        if ($request->has('social_website')) {
-            $updateData['social_website'] = $request->social_website;
-        }
+                'vacation_mode',
+                'vacation_message',
 
-        $settings->update($updateData);
+                'business_description',
+                'return_policy',
+                'shipping_info',
 
-        return response()->json([
-            'error' => false,
-            'message' => 'Postavke su uspješno ažurirane',
-            'data' => $settings->fresh(),
-        ]);
+                'social_facebook',
+                'social_instagram',
+                'social_tiktok',
+                'social_youtube',
+                'social_website',
+            ]);
+
+            // ✅ business_hours (NE json_encode) -> uvijek array ili null
+            if ($request->has('business_hours')) {
+                $bh = $request->input('business_hours');
+            
+                if (is_string($bh)) {
+                    $decoded = json_decode($bh, true);
+                    $bh = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+                }
+            
+                $updateData['business_hours'] = is_array($bh) ? $bh : null;
+            }
+            
+            
+
+            // Normalizacija boolean-a
+            $boolFields = [
+                'show_phone','show_email','show_whatsapp','show_viber',
+                'accepts_offers','auto_reply_enabled','vacation_mode'
+            ];
+            foreach ($boolFields as $field) {
+                if ($request->has($field)) {
+                    $updateData[$field] = (bool) $request->input($field);
+                }
+            }
+
+            // Avatar fallback
+            if (array_key_exists('avatar_id', $updateData) && empty($updateData['avatar_id'])) {
+                $updateData['avatar_id'] = self::AVATAR_IDS[0];
+            }
+
+            $settings->update($updateData);
+
+            return response()->json([
+                'error' => false,
+                'data' => $settings->fresh(),
+                'message' => 'Settings updated successfully'
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Error updating settings'
+            ], 500);
+        }
     }
 }

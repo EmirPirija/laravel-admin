@@ -39,7 +39,9 @@ class User extends Authenticatable {
         'phone_verified_at',
         'total_sales',
         'response_time_avg',
-        'seller_level'
+        'seller_level',
+        'avatar_key',
+        'use_svg_avatar',
     ];
 
     /**
@@ -189,7 +191,8 @@ public function updateSellerLevel(): void
         'last_seen' => 'datetime',
         'phone_verified_at' => 'datetime',
         'total_sales' => 'integer',
-        'response_time_avg' => 'integer'
+        'response_time_avg' => 'integer',
+        'use_svg_avatar' => 'boolean',
     ];
 
 

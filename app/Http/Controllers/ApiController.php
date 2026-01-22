@@ -252,7 +252,12 @@ class ApiController extends Controller
                 'address'               => 'nullable',
                 'show_personal_details' => 'boolean',
                 'country_code' => 'nullable|string',
-                'region_code' =>  'nullable|string'
+                'region_code' =>  'nullable|string',
+                'use_svg_avatar' => 'nullable|boolean',
+                'avatar_key' => ['nullable','string','max:50', Rule::in([
+                'lmx-01','lmx-02','lmx-03','lmx-04','lmx-05','lmx-06',
+                'lmx-07','lmx-08','lmx-09','lmx-10','lmx-11','lmx-12',
+                ])],
             ]);
 
             if ($validator->fails()) {
@@ -265,6 +270,8 @@ class ApiController extends Controller
 
             if ($request->hasFile('profile')) {
                 $data['profile'] = FileService::compressAndReplace($request->file('profile'), 'profile', $app_user->getRawOriginal('profile'));
+                // ako user uploaduje sliku, logično je da SVG avatar nije aktivan
+                $data['use_svg_avatar'] = false;
             }
 
             if (! empty($request->fcm_id)) {
@@ -678,7 +685,7 @@ public function getItem(Request $request)
     }
     try {
         //TODO : need to simplify this whole module
-        $sql = Item::with('user:id,name,email,mobile,profile,created_at,is_verified,show_personal_details,country_code', 'category:id,name,image,is_job_category,price_optional',
+        $sql = Item::with('user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code', 'category:id,name,image,is_job_category,price_optional',
             'gallery_images:id,image,item_id', 'featured_items', 'favourites', 'item_custom_field_values.custom_field.translations', 'area:id,name', 'job_applications', 'translations')
             ->withCount('featured_items')
             ->withCount('job_applications')
@@ -2278,7 +2285,7 @@ public function getItem(Request $request)
             // Helper function to build base query
             $buildBaseQuery = function () {
                 return Item::where('status', 'approved')
-                    ->with('user:id,name,email,mobile,profile,is_verified,show_personal_details,country_code',
+                    ->with('user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code',
                            'category:id,name,image,is_job_category,price_optional',
                            'gallery_images:id,image,item_id',
                            'featured_items',

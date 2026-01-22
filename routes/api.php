@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\ItemStatisticsController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\GamificationController;
 use App\Http\Controllers\ItemQuestionController;
-use App\Http\Controllers\SellerSettingsController;
+use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\ItemConversationController;
 
 

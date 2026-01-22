@@ -36,6 +36,7 @@ class SellerSetting extends Model
         'social_tiktok',
         'social_youtube',
         'social_website',
+        'avatar_id',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class SellerSetting extends Model
         'vacation_start' => 'datetime',
         'vacation_end' => 'datetime',
         'business_hours' => 'array',
+        'avatar_id' => 'string',
     ];
 
     /**
