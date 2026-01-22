@@ -423,71 +423,75 @@ class ItemStatisticsService
     }
 
     /**
-     * Dohvati uporedbu sa kategorijom
-     */
-    public function getCategoryComparison(Item $item, int $days = 30): array
-    {
-        $startDate = Carbon::today()->subDays($days - 1);
-
-        // Moja statistika
-        $myStats = ItemStatistic::where('item_id', $item->id)
-            ->where('date', '>=', $startDate)
-            ->selectRaw('SUM(views) as views, SUM(messages_started) as messages')
-            ->first();
-
-        $myViews = (int)($myStats->views ?? 0);
-
-        // Statistika kategorije - pojednostavljena verzija
-        $categoryItemIds = Item::where('category_id', $item->category_id)
-            ->where('id', '!=', $item->id)
-            ->pluck('id');
-
-        if ($categoryItemIds->isEmpty()) {
-            return [
-                'my_views' => $myViews,
-                'category_avg_views' => 0,
-                'percent_difference' => 0,
-                'better_than_percent' => 100,
-                'items_in_category' => 0,
-                'performance_label' => 'Jedini u kategoriji',
-            ];
-        }
-
-        // Prosječni pregledi u kategoriji
-        $categoryStats = ItemStatistic::whereIn('item_id', $categoryItemIds)
-            ->where('date', '>=', $startDate)
-            ->selectRaw('item_id, SUM(views) as total_views')
-            ->groupBy('item_id')
-            ->get();
-
-        $itemCount = $categoryStats->count();
-        
-        if ($itemCount === 0) {
-            return [
-                'my_views' => $myViews,
-                'category_avg_views' => 0,
-                'percent_difference' => 0,
-                'better_than_percent' => 100,
-                'items_in_category' => 0,
-                'performance_label' => 'Nema podataka',
-            ];
-        }
-
-        $avgViews = $categoryStats->avg('total_views') ?? 0;
-        $betterThanCount = $categoryStats->where('total_views', '<', $myViews)->count();
-
-        $percentile = $itemCount > 0 ? round(($betterThanCount / $itemCount) * 100) : 100;
-        $percentDiff = $avgViews > 0 ? round((($myViews - $avgViews) / $avgViews) * 100) : 0;
-
+ * Dohvati uporedbu sa kategorijom
+ */
+public function getCategoryComparison(Item $item, int $days = 30): array
+{
+    $startDate = Carbon::today()->subDays($days - 1);
+ 
+    // Moja statistika
+    $myStats = ItemStatistic::where('item_id', $item->id)
+        ->where('date', '>=', $startDate)
+        ->selectRaw('SUM(views) as views, SUM(messages_started) as messages')
+        ->first();
+ 
+    $myViews = (int)($myStats->views ?? 0);
+ 
+    // Dohvati ID-ove oglasa u istoj kategoriji (osim mog)
+    $categoryItemIds = Item::where('category_id', $item->category_id)
+        ->where('id', '!=', $item->id)
+        ->where('status', 'approved')
+        ->pluck('id');
+ 
+    if ($categoryItemIds->isEmpty()) {
         return [
             'my_views' => $myViews,
-            'category_avg_views' => round($avgViews),
-            'percent_difference' => $percentDiff,
-            'better_than_percent' => $percentile,
-            'items_in_category' => $itemCount,
-            'performance_label' => $this->getPerformanceLabel($percentDiff),
+            'category_avg_views' => 0,
+            'percent_difference' => 0,
+            'better_than_percent' => 100,
+            'items_in_category' => 0,
+            'performance_label' => 'Jedini u kategoriji',
         ];
     }
+ 
+    // Dohvati statistiku za svaki oglas u kategoriji - BEZ JOIN-a!
+    $categoryStats = ItemStatistic::whereIn('item_id', $categoryItemIds)
+        ->where('date', '>=', $startDate)
+        ->selectRaw('item_id, SUM(views) as total_views')
+        ->groupBy('item_id')
+        ->get();
+ 
+    $itemCount = $categoryStats->count();
+ 
+    if ($itemCount === 0) {
+        return [
+            'my_views' => $myViews,
+            'category_avg_views' => 0,
+            'percent_difference' => 0,
+            'better_than_percent' => 100,
+            'items_in_category' => 0,
+            'performance_label' => 'Nema podataka',
+        ];
+    }
+ 
+    // Izračunaj na kolekciji, NE na query builder-u
+    $avgViews = $categoryStats->avg('total_views') ?? 0;
+    $betterThanCount = $categoryStats->filter(function ($stat) use ($myViews) {
+        return $stat->total_views < $myViews;
+    })->count();
+ 
+    $percentile = $itemCount > 0 ? round(($betterThanCount / $itemCount) * 100) : 100;
+    $percentDiff = $avgViews > 0 ? round((($myViews - $avgViews) / $avgViews) * 100) : 0;
+ 
+    return [
+        'my_views' => $myViews,
+        'category_avg_views' => round($avgViews),
+        'percent_difference' => $percentDiff,
+        'better_than_percent' => $percentile,
+        'items_in_category' => $itemCount,
+        'performance_label' => $this->getPerformanceLabel($percentDiff),
+    ];
+}
 
     // ═══════════════════════════════════════════
     // HELPER METODE
