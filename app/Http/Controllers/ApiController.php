@@ -1628,68 +1628,61 @@ public function getItem(Request $request)
     }
 
     public function updateItemStatus(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'item_id' => 'required|integer',
-            'status' => 'required|in:sold out,inactive,active,resubmitted',
-            // 'sold_to' => 'required_if:status,==,sold out|integer'
-            'sold_to' => 'nullable|integer',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'item_id'  => 'required|integer',
+        'status'   => 'required|in:sold out,inactive,active,resubmitted',
+        'sold_to'  => 'nullable|integer',
+    ]);
 
-        $item = Item::find($request->item_id);
-        $item->status = $request->status;
-        
-        if ($request->status === 'sold' && $request->sold_to) {
-            $item->sold_to = $request->sold_to;
-            
-            // Okidaj event
-            event(new ItemSold(
-                $item,
-                $item->user, // seller
-                User::find($request->sold_to) // buyer
-            ));
-        }
-        
-        $item->save();
-
-        if ($validator->fails()) {
-            ResponseService::validationError($validator->errors()->first());
-        }
-        try {
-            $item = Item::owner()->whereNotIn('status', ['review', 'permanent rejected'])->withTrashed()->findOrFail($request->item_id);
-            if ($item->status == 'permanent rejected' && $request->status == 'resubmitted') {
-                ResponseService::errorResponse(__('This Advertisement is permanently rejected and cannot be resubmitted'));
-            }
-            // 🎬 Video upload
-            if ($request->hasFile('video')) {
-                // Obriši stari video ako postoji
-                if ($item->video) {
-                    Storage::disk('public')->delete($item->video);
-                }
-                
-                $videoFile = $request->file('video');
-                $videoPath = $videoFile->store('item_videos', 'public');
-                $item->video = $videoPath;
-            }
-            if ($request->status == 'inactive') {
-                $item->delete();
-            } elseif ($request->status == 'active') {
-                $item->restore();
-                $item->update(['status' => 'approved']);
-            } elseif ($request->status == 'sold out') {
-                $item->update([
-                    'status' => 'sold out',
-                    'sold_to' => $request->sold_to,
-                ]);
-            } else {
-                $item->update(['status' => $request->status]);
-            }
-            ResponseService::successResponse(__('Advertisement Status Updated Successfully'));
-        } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'ItemController -> updateItemStatus');
-            ResponseService::errorResponse(__('Something Went Wrong'));
-        }
+    if ($validator->fails()) {
+        return ResponseService::validationError($validator->errors()->first());
     }
+
+    try {
+        $item = Item::owner()
+            ->whereNotIn('status', ['review', 'permanent rejected'])
+            ->withTrashed()
+            ->findOrFail($request->item_id);
+
+        if ($item->status === 'permanent rejected' && $request->status === 'resubmitted') {
+            return ResponseService::errorResponse(__('This Advertisement is permanently rejected and cannot be resubmitted'));
+        }
+
+        // Video upload (ako treba)
+        if ($request->hasFile('video')) {
+            if ($item->video) {
+                Storage::disk('public')->delete($item->video);
+            }
+            $item->video = $request->file('video')->store('item_videos', 'public');
+        }
+
+        if ($request->status === 'inactive') {
+            $item->delete();
+        } elseif ($request->status === 'active') {
+            $item->restore();
+            $item->status = 'approved';   // ili 'active' ako ti je to pravi status u bazi
+            $item->save();
+        } elseif ($request->status === 'sold out') {
+            $item->status = 'sold out';
+            $item->sold_to = $request->sold_to;
+            $item->save();
+
+            if ($request->sold_to) {
+                event(new ItemSold($item, $item->user, User::find($request->sold_to)));
+            }
+        } else {
+            $item->status = $request->status;
+            $item->save();
+        }
+
+        return ResponseService::successResponse(__('Advertisement Status Updated Successfully'));
+    } catch (Throwable $th) {
+        ResponseService::logErrorResponse($th, 'ItemController -> updateItemStatus');
+        return ResponseService::errorResponse(__('Something Went Wrong'));
+    }
+}
+
 
     public function getItemBuyerList(Request $request)
     {

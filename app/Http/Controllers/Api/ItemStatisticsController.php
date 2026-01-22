@@ -738,68 +738,80 @@ class ItemStatisticsController extends Controller
      * Dohvati konkurentsku analizu (SHOP)
      */
     private function getCompetitionStats(Item $item): array
-    {
-        $categoryId = $item->category_id;
-        
-        // Broj oglasa u kategoriji
-        $totalInCategory = Item::where('category_id', $categoryId)
-            ->where('status', 'approved')
-            ->count();
+{
+    $categoryId = $item->category_id;
+    
+    // Broj oglasa u kategoriji
+    $totalInCategory = Item::where('category_id', $categoryId)
+        ->where('status', 'approved')
+        ->count();
  
-        // Rank po pregledima (u zadnjih 30 dana)
-        $startDate = Carbon::today()->subDays(29);
-        
-        $itemViews = ItemStatistic::where('item_id', $item->id)
+    // Rank po pregledima (u zadnjih 30 dana)
+    $startDate = Carbon::today()->subDays(29);
+    
+    $itemViews = ItemStatistic::where('item_id', $item->id)
+        ->where('date', '>=', $startDate)
+        ->sum('views');
+ 
+    // FIX: Umjesto count() sa JOIN-om, dohvati podatke pa broji na kolekciji
+    $categoryItemIds = Item::where('category_id', $categoryId)
+        ->where('status', 'approved')
+        ->where('id', '!=', $item->id)
+        ->pluck('id');
+ 
+    $betterItems = 0;
+    if ($categoryItemIds->isNotEmpty()) {
+        $categoryStats = ItemStatistic::whereIn('item_id', $categoryItemIds)
             ->where('date', '>=', $startDate)
-            ->sum('views');
+            ->selectRaw('item_id, SUM(views) as total_views')
+            ->groupBy('item_id')
+            ->get();
  
-        $betterItems = DB::table('item_statistics')
-            ->join('items', 'items.id', '=', 'item_statistics.item_id')
-            ->where('items.category_id', $categoryId)
-            ->where('items.status', 'approved')
-            ->where('item_statistics.date', '>=', $startDate)
-            ->groupBy('item_statistics.item_id')
-            ->havingRaw('SUM(item_statistics.views) > ?', [$itemViews])
-            ->count();
- 
-        $rank = $betterItems + 1;
-        $percentile = $totalInCategory > 0 
-            ? round((1 - ($rank / $totalInCategory)) * 100, 1) 
-            : 0;
- 
-        return [
-            'category_total_items' => $totalInCategory,
-            'your_rank' => $rank,
-            'percentile' => $percentile,
-            'your_views_30d' => (int) $itemViews,
-            'avg_views_in_category' => $this->getAvgViewsInCategory($categoryId, $startDate),
-        ];
+        $betterItems = $categoryStats->filter(function ($stat) use ($itemViews) {
+            return $stat->total_views > $itemViews;
+        })->count();
     }
+ 
+    $rank = $betterItems + 1;
+    $percentile = $totalInCategory > 0 
+        ? round((1 - ($rank / $totalInCategory)) * 100, 1) 
+        : 0;
+ 
+    return [
+        'category_total_items' => $totalInCategory,
+        'your_rank' => $rank,
+        'percentile' => $percentile,
+        'your_views_30d' => (int) $itemViews,
+        'avg_views_in_category' => $this->getAvgViewsInCategory($categoryId, $startDate),
+    ];
+}
  
     /**
-     * Prosječni pregledi u kategoriji
-     */
-    private function getAvgViewsInCategory(int $categoryId, Carbon $startDate): int
-    {
-        $result = DB::table('item_statistics')
-            ->join('items', 'items.id', '=', 'item_statistics.item_id')
-            ->where('items.category_id', $categoryId)
-            ->where('items.status', 'approved')
-            ->where('item_statistics.date', '>=', $startDate)
-            ->selectRaw('AVG(views_sum) as avg_views')
-            ->fromSub(function ($query) use ($categoryId, $startDate) {
-                $query->from('item_statistics')
-                    ->join('items', 'items.id', '=', 'item_statistics.item_id')
-                    ->where('items.category_id', $categoryId)
-                    ->where('items.status', 'approved')
-                    ->where('item_statistics.date', '>=', $startDate)
-                    ->selectRaw('item_statistics.item_id, SUM(item_statistics.views) as views_sum')
-                    ->groupBy('item_statistics.item_id');
-            }, 'subquery')
-            ->first();
+ * Prosječni pregledi u kategoriji
+ */
+private function getAvgViewsInCategory(int $categoryId, Carbon $startDate): int
+{
+    // FIX: Bez JOIN-a - prvo dohvati item_id-ove, pa statistiku
+    $categoryItemIds = Item::where('category_id', $categoryId)
+        ->where('status', 'approved')
+        ->pluck('id');
  
-        return (int) ($result->avg_views ?? 0);
+    if ($categoryItemIds->isEmpty()) {
+        return 0;
     }
+ 
+    $stats = ItemStatistic::whereIn('item_id', $categoryItemIds)
+        ->where('date', '>=', $startDate)
+        ->selectRaw('item_id, SUM(views) as total_views')
+        ->groupBy('item_id')
+        ->get();
+ 
+    if ($stats->isEmpty()) {
+        return 0;
+    }
+ 
+    return (int) round($stats->avg('total_views'));
+}
  
     /**
      * Konverzijski funnel
