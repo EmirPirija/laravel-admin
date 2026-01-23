@@ -429,6 +429,10 @@ class ApiController extends Controller
             ResponseService::validationError($validator->errors()->first());
         }
 
+        if ($request->has('inventory_count') && $request->inventory_count !== null) {
+            $item->inventory_count = (int) $request->inventory_count;
+        }
+
         // 🔹 Validacija translations
         $translations = json_decode($request->input('translations', '{}'), true, 512, JSON_THROW_ON_ERROR);
         if (!empty($translations)) {
@@ -1394,6 +1398,12 @@ public function getItem(Request $request)
             // If slug is empty after cleaning, use existing item slug
             if (empty($slug)) {
                 $slug = $item->slug;
+            }
+
+            if ($request->has('inventory_count')) {
+                $item->inventory_count = $request->inventory_count !== null && $request->inventory_count !== '' 
+                    ? (int) $request->inventory_count 
+                    : null;
             }
 
             // Generate unique slug

@@ -51,6 +51,11 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
 
     Route::post('renew-item', [ApiController::class, 'renewItem']);
 
+    Route::post('item-sale', [SaleController::class, 'recordSale']);
+    Route::post('item-reserve', [SaleController::class, 'handleReservation']);
+    Route::get('my-purchases', [SaleController::class, 'myPurchases']);
+    Route::get('my-sales', [SaleController::class, 'mySales']);
+
         // Pitanja
         Route::post('add-question', [ItemQuestionController::class, 'addQuestion']);
         Route::post('answer-question', [ItemQuestionController::class, 'answerQuestion']);

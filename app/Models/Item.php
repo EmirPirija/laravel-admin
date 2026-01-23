@@ -49,6 +49,11 @@ class Item extends Model {
         'video',
         'video_thumbnail',
         'video_duration',
+        'inventory_count',
+'reservation_status',
+'reserved_for_user_id',
+'reserved_at',
+'reservation_note',
     ];
  
     /**
@@ -417,4 +422,21 @@ public function getVideoThumbnailAttribute($value): ?string
  
         return $this->description;
     }
+
+    public function sales()
+{
+    return $this->hasMany(Sale::class);
+}
+ 
+public function reservedFor()
+{
+    return $this->belongsTo(User::class, 'reserved_for_user_id');
+}
+ 
+
+public function getIsLowStockAttribute()
+{
+    if ($this->inventory_count === null) return false;
+    return $this->inventory_count <= 3 && $this->inventory_count > 0;
+}
 }
