@@ -340,6 +340,7 @@ class ItemController extends Controller
             'custom_field_files.*' => 'nullable|mimes:jpeg,png,jpg,pdf,doc|max:7168',
             'gallery_images' => 'nullable|array',
             'admin_edit_reason' => 'required|string|max:1000',
+            'scheduled_at' => 'nullable|date|after:now',
         ]);
 
         if ($validator->fails()) {
@@ -405,10 +406,29 @@ class ItemController extends Controller
                 return back()->withErrors($customFieldErrors)->withInput();
             }
 
+            // Determine scheduling status
+            $scheduledAt = null;
+            $newStatus = null;
+            
+            if ($request->has('enable_scheduling') && $request->enable_scheduling && $request->filled('scheduled_at')) {
+                $scheduledAt = $request->scheduled_at;
+                $newStatus = 'scheduled';
+            } else if ($request->has('enable_scheduling') && !$request->enable_scheduling && $item->status === 'scheduled') {
+                // If scheduling was disabled, publish immediately (set to approved)
+                $scheduledAt = null;
+                $newStatus = 'approved';
+            }
+
             $data = array_merge($request->all(), [
                 'is_edited_by_admin' => 1,
                 'admin_edit_reason' => $request->admin_edit_reason,
+                'scheduled_at' => $scheduledAt,
             ]);
+            
+            // Only update status if scheduling changed
+            if ($newStatus !== null) {
+                $data['status'] = $newStatus;
+            }
 
             // $data['slug'] = $uniqueSlug;
             // Address data from map selection
@@ -682,6 +702,7 @@ class ItemController extends Controller
             'gallery_images.*' => 'nullable|mimes:jpeg,png,jpg|max:7168',
             'video_link' => 'nullable|url',
             'category_id' => 'required|integer',
+            'scheduled_at' => 'nullable|date|after:now',
         ]);
 
         if ($validator->fails()) {
@@ -772,6 +793,15 @@ class ItemController extends Controller
                 return ResponseService::errorRedirectWithToast('User not found.', $request->all());
             }
 
+            // Determine status based on scheduling
+            $scheduledAt = null;
+            $status = 'approved';
+            
+            if ($request->has('enable_scheduling') && $request->enable_scheduling && $request->filled('scheduled_at')) {
+                $scheduledAt = $request->scheduled_at;
+                $status = 'scheduled';
+            }
+
             $data = [
                 'name' => $request->name,
                 'slug' => $uniqueSlug,
@@ -789,7 +819,8 @@ class ItemController extends Controller
                 'max_salary' => $request->max_salary,
                 'video_link' => $request->video_link,
                 'user_id' => $user->id,
-                'status' => 'approved',
+                'status' => $status,
+                'scheduled_at' => $scheduledAt,
                 'active' => 'active',
             ];
 

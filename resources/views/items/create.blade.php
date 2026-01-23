@@ -92,6 +92,24 @@
                                     <label>{{ __('Description') }} <span class="text-danger">*</span></label>
                                     <textarea name="description" id="description-input" class="form-control" required>{{ old('description') }}</textarea>
                                 </div>
+
+                                {{-- Scheduled Publishing --}}
+                                <div class="col-6 mb-3">
+                                    <label>{{ __('Schedule Publishing') }}</label>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="enable-scheduling" name="enable_scheduling" {{ old('enable_scheduling') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="enable-scheduling">
+                                            {{ __('Schedule this ad for later') }}
+                                        </label>
+                                    </div>
+                                    <input type="datetime-local" name="scheduled_at" id="scheduled-at-input" 
+                                        class="form-control" value="{{ old('scheduled_at') }}"
+                                        style="display: {{ old('enable_scheduling') ? 'block' : 'none' }};"
+                                        min="{{ now()->format('Y-m-d\TH:i') }}">
+                                    <small class="text-muted" id="scheduling-help" style="display: {{ old('enable_scheduling') ? 'block' : 'none' }};">
+                                        {{ __('The ad will be automatically published at the selected date and time.') }}
+                                    </small>
+                                </div>
                             </div>
 
                             <div class="mt-4 d-flex justify-content-between">
@@ -900,6 +918,25 @@
         $(document).ready(function() {
             // These handlers are now only used for populating dropdowns from map selection
             // No manual dropdowns are shown in the UI anymore
+        });
+
+        // Scheduling toggle handler
+        $(document).ready(function() {
+            $('#enable-scheduling').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#scheduled-at-input').show().attr('required', true);
+                    $('#scheduling-help').show();
+                } else {
+                    $('#scheduled-at-input').hide().removeAttr('required').val('');
+                    $('#scheduling-help').hide();
+                }
+            });
+
+            // Initialize on page load
+            if ($('#enable-scheduling').is(':checked')) {
+                $('#scheduled-at-input').show().attr('required', true);
+                $('#scheduling-help').show();
+            }
         });
 
         // Map initialization
