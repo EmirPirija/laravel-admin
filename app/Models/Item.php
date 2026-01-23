@@ -229,7 +229,22 @@ public function getVideoThumbnailAttribute($value): ?string
         if ($this->expiry_date && $this->expiry_date < Carbon::now()) {
             return "expired";
         }
-        return $value;
+        
+        // Ako scheduled_at postoji, provjeri status
+        $scheduledAt = $this->getAttributes()['scheduled_at'] ?? null;
+        if ($scheduledAt) {
+            $scheduledTime = Carbon::parse($scheduledAt);
+            // Ako je vrijeme u budućnosti, oglas je zakazan
+            if ($scheduledTime > Carbon::now()) {
+                return "scheduled";
+            }
+            // Ako je vrijeme prošlo, oglas treba biti approved
+            if ($scheduledTime <= Carbon::now() && (empty($value) || $value === 'scheduled')) {
+                return "approved";
+            }
+        }
+        
+        return $value ?: "review"; // Fallback na 'review' ako je prazan
     }
  
     public function translations()
