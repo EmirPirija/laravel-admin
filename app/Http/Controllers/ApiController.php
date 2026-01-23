@@ -515,13 +515,14 @@ class ApiController extends Controller
 
         // Podrška za zakazanu objavu
         if ($request->filled('scheduled_at')) {
-            $data['scheduled_at'] = $request->scheduled_at;
+            $data['scheduled_at'] = Carbon::parse($request->scheduled_at)->utc();
             $data['status'] = 'scheduled';
-            $data['active'] = 'deactive'; // ili kako želiš za scheduled
+            $data['active'] = 'deactive';
         } else {
             $data['scheduled_at'] = null;
-            $data['status'] = $status;    // approved/pending...
+            $data['status'] = $status;
         }
+        
         
 
         // 🔹 Akcija/Sale polja
@@ -3866,7 +3867,7 @@ public function getChatMessages(Request $request)
 
         if ($request->has('scheduled_at') && $request->scheduled_at) {
             $data['scheduled_at'] = $request->scheduled_at;
-            $data['status'] = 'scheduled';  // <-- OVO JE KLJUČNO!
+            $data['status'] = 'scheduled';
         }
  
         // Kreiraj recenziju

@@ -28,12 +28,13 @@ class Kernel extends ConsoleKernel
         // NOVO: Objavi zakazane oglase
         $schedule->call(function () {
             Item::where('status', 'scheduled')
-                ->where('scheduled_at', '<=', now())
+                ->where('scheduled_at', '<=', now('UTC'))
                 ->update([
                     'status' => 'approved',
                     'scheduled_at' => null
                 ]);
         })->everyMinute()->name('publish-scheduled-ads')->withoutOverlapping();
+        
     }
  
     /**
