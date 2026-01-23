@@ -512,6 +512,14 @@ class ApiController extends Controller
         $data['scheduled_at'] = $request->scheduled_at ?? null;
         $data['status'] = $request->scheduled_at ? 'scheduled' : $status;
 
+        // Podrška za zakazanu objavu
+        if ($request->has('scheduled_at') && $request->scheduled_at) {
+            $data['scheduled_at'] = $request->scheduled_at;
+            $data['status'] = 'scheduled';
+        } else {
+            $data['status'] = $status;
+        }
+
         // 🔹 Akcija/Sale polja
         $data['is_on_sale'] = filter_var($request->input('is_on_sale', false), FILTER_VALIDATE_BOOLEAN);
         $data['old_price']  = $data['is_on_sale'] && $request->filled('old_price')
