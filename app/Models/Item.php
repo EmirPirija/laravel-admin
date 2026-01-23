@@ -41,6 +41,7 @@ class Item extends Model {
         'is_edited_by_admin',
         'admin_edit_reason',
         'package_id',
+        'scheduled_at', 
         'region_code',
         'is_on_sale',
         'old_price',
@@ -61,6 +62,7 @@ class Item extends Model {
         'video',
         'video_thumbnail',
         'video_duration',
+        'scheduled_at' => 'datetime',
     ];
  
     protected $appends = [

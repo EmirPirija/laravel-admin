@@ -44,6 +44,7 @@ class Kernel extends HttpKernel {
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             DemoMiddleware::class,
         ],
+        
 
         'api' => [
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',

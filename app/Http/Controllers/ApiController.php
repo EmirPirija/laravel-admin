@@ -423,6 +423,8 @@ class ApiController extends Controller
             ResponseService::validationError($validator->errors()->first());
         }
 
+        
+
         // 🔹 Validacija translations
         $translations = json_decode($request->input('translations', '{}'), true, 512, JSON_THROW_ON_ERROR);
         if (!empty($translations)) {
@@ -506,6 +508,9 @@ class ApiController extends Controller
         $data['user_id']     = $user->id;
         $data['package_id']  = $user_package->package_id ?? null;
         $data['expiry_date'] = $user_package->end_date ?? null;
+
+        $data['scheduled_at'] = $request->scheduled_at ?? null;
+        $data['status'] = $request->scheduled_at ? 'scheduled' : $status;
 
         // 🔹 Akcija/Sale polja
         $data['is_on_sale'] = filter_var($request->input('is_on_sale', false), FILTER_VALIDATE_BOOLEAN);
@@ -3845,6 +3850,11 @@ public function getChatMessages(Request $request)
  
         if ($existingReview) {
             return ResponseService::errorResponse(__('You have already reviewed this item.'));
+        }
+
+        if ($request->has('scheduled_at') && $request->scheduled_at) {
+            $data['scheduled_at'] = $request->scheduled_at;
+            $data['status'] = 'scheduled';  // <-- OVO JE KLJUČNO!
         }
  
         // Kreiraj recenziju
