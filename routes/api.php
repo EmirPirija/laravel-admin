@@ -8,6 +8,7 @@ use App\Http\Controllers\GamificationController;
 use App\Http\Controllers\ItemQuestionController;
 use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\ItemConversationController;
+use App\Http\Controllers\Api\SaleController;
 
 
 /*
