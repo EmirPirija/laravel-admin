@@ -150,7 +150,7 @@ class SaleController extends Controller
             }
  
             if ($request->remove_reservation) {
-                $item->status = 'approved';
+                // $item->status = 'approved';
                 $item->reservation_status = 'none';
                 $item->reserved_for_user_id = null;
                 $item->reserved_at = null;
@@ -163,7 +163,6 @@ class SaleController extends Controller
                     'data' => $item
                 ]);
             } else {
-                $item->status = 'reserved';
                 $item->reservation_status = 'reserved';
                 $item->reserved_for_user_id = $request->reserved_for_user_id;
                 $item->reserved_at = now();

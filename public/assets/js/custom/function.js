@@ -303,20 +303,19 @@ function showDeletePopupModal(url, options = {}) {
     // console.log(windows.trans("Are you sure"));
     // To Preserve OLD
     let opt = {
-        title: window?.languageLabels["Are you sure"] || "Are you sure",
-        text: window?.languageLabels["You wont be able to revert this"] || "You wont be able to revert this",
+        title: window?.languageLabels?.["Are you sure"] ?? "Are you sure",
+        text: window?.languageLabels?.["You wont be able to revert this"] ?? "You wont be able to revert this",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
-        confirmButtonText: window?.languageLabels["Yes Delete"] || "Yes Delete",
-        cancelButtonText: window?.languageLabels["Cancel"] || "Cancel",
-        successCallBack: function () {
-        },
-        errorCallBack: function (response) {
-        },
+        confirmButtonText: window?.languageLabels?.["Yes Delete"] ?? "Yes Delete",
+        cancelButtonText: window?.languageLabels?.["Cancel"] ?? "Cancel",
+        successCallBack: function () {},
+        errorCallBack: function (response) {},
         ...options,
-    }
+      };
+      
     showSweetAlertConfirmPopup(url, 'DELETE', opt);
 }
 
