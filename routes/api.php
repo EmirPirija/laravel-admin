@@ -191,3 +191,15 @@ Route::get('get-seller-slug', [ApiController::class, 'getSellerSlug']);
 
 // Dohvati pitanja (može i bez auth)
 Route::get('item-questions', [ItemQuestionController::class, 'getQuestions']);
+
+// ============================================
+// BIH LOCATION ROUTES
+// ============================================
+Route::prefix('bih-locations')->group(function () {
+    Route::get('/entities', [App\Http\Controllers\Api\BihLocationController::class, 'getEntities']);
+    Route::get('/regions', [App\Http\Controllers\Api\BihLocationController::class, 'getRegions']);
+    Route::get('/municipalities', [App\Http\Controllers\Api\BihLocationController::class, 'getMunicipalities']);
+    Route::get('/search', [App\Http\Controllers\Api\BihLocationController::class, 'searchMunicipalities']);
+    Route::get('/popular', [App\Http\Controllers\Api\BihLocationController::class, 'getPopularCities']);
+    Route::get('/details', [App\Http\Controllers\Api\BihLocationController::class, 'getMunicipalityDetails']);
+});

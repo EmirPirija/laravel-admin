@@ -18,5 +18,7 @@ class DatabaseSeeder extends Seeder
             InstallationSeeder::class,
             SystemUpgradeSeeder::class
         ]);
+        $this->call(BihLocationsSeeder::class);
+
     }
 }
