@@ -1,0 +1,2588 @@
+id,name,parent_id,description,is_job_category,price_optional,sequence
+2,Vozila,,,0,1,1
+3,Nekretnine,,,0,1,2
+8,Mobiteli,,,0,1,3
+7,Računari,,,0,1,4
+6,Tehnika,,,0,1,5
+160,"Video igre i konzole",,,0,1,6
+223,"Moj dom",,,0,1,7
+166,"Muzika i audio oprema",,,0,1,8
+172,Literatura,,,0,1,9
+181,"Umjetnost i dekoracija",,,0,1,10
+189,Kolekcionarstvo,,,0,1,11
+209,Antikviteti,,,0,1,12
+271,"Karte i ulaznice",,,0,1,13
+243,"Hrana i piće",,,0,1,14
+122,Bebe,,,0,1,15
+149,"Igre i igračke",,,0,1,16
+9,"Moda i ljepota",,,0,1,17
+253,"Nakit i satovi",,,0,1,18
+5,"Odjeća i obuća",,,0,1,19
+11,"Sport i rekreacija",,,0,1,20
+10,"Biznis i industrija",,,0,1,21
+4,Životinje,,,0,1,22
+12,Ostalo,,,0,1,23
+3693,"ATV / UTV / Quad",2,,0,1,1
+3429,"Autobusi i minibusi",2,,0,1,1
+13,Automobili,2,,0,1,1
+3439,"Radne mašine",2,,0,1,1
+14,Motocikli,2,,0,1,2
+3440,"Vozila za snijeg",2,,0,1,2
+15,"Teretna i dostavna",2,,0,1,3
+3432,"Kamp prikolice i kamping vozila",2,,0,1,4
+16,Nautika,2,,0,1,4
+1134,Bicikli,2,,0,1,5
+17,"Dijelovi i oprema",2,,0,1,6
+3435,"Poljoprivredna vozila i mašine",2,,0,1,7
+3436,"Prikolice i poluprikolice",2,,0,1,8
+25,Garaže,3,,0,1,0
+21,Kuće,3,,0,1,0
+23,"Poslovni prostori",3,,0,1,0
+27,"Skladišta i hale",3,,0,1,0
+20,"Smeštaj na dan",3,,0,1,0
+24,Sobe,3,,0,1,0
+19,"Stanovi i Apartmani",3,,0,1,0
+22,Vikendice,3,,0,1,0
+26,Zemljišta,3,,0,1,0
+28,"Domaće životinje",4,,0,1,0
+29,"Kućni ljubimci",4,,0,1,0
+30,"Oprema za životinje",4,,0,1,0
+31,Ostalo,4,,0,1,0
+33,Muškarci,5,,0,1,0
+32,Žene,5,,0,1,0
+3764,Dječaci,5,,0,0,1
+3765,Djevojčice,5,,0,0,2
+3766,Bebe,5,,0,0,3
+3767,Unisex,5,,0,0,4
+39,"TV uređaji, oprema i dijelovi",6,,0,1,1
+37,"Bijela tehnika",6,,0,1,2
+41,"Dronovi i RC letjelice",6,,0,1,3
+40,"Kamere i fotoaparati",6,,0,1,4
+38,"Multimedija i audio oprema",6,,0,1,5
+43,"Bluetooth i bežični zvučnici",6,,0,1,6
+46,"Kućna kina i sound sistemi",6,,0,1,7
+63,"TV box i streaming uređaji",6,,0,1,8
+59,"Hoverboard i električni skuteri",6,,0,1,9
+47,"Smart sistemi i IoT uređaji",6,,0,1,10
+60,"Elektronske cigarete i grijači duhana",6,,0,1,11
+58,"Baterije i punjači",6,,0,1,12
+48,"Virtuelna realnost (VR uređaji)",6,,0,1,13
+44,"Video, iPod i MP3 playeri",6,,0,1,14
+57,"Telekomunikacije i oprema",6,,0,1,15
+54,"Solarna oprema i instalacije",6,,0,1,16
+53,"Elektromaterijal i komponente",6,,0,1,17
+61,"Medicinska i laboratorijska oprema",6,,0,1,18
+52,"Mjerni i regulacioni instrumenti",6,,0,1,19
+62,"Termometri i mjerni uređaji",6,,0,1,20
+56,"Radio amaterska oprema",6,,0,1,21
+55,"Radio uređaji i walkmani",6,,0,1,22
+49,"Teleskopi i optička oprema",6,,0,1,23
+42,"Dijelovi i oprema za dronove",6,,0,1,24
+45,"DVD / Blu-ray uređaji",6,,0,1,25
+51,"Digitroni i kalkulatori",6,,0,1,26
+50,"Lupe i povećala",6,,0,1,27
+64,Ostalo,6,,0,1,28
+66,Laptopi,7,,0,1,1
+65,"Desktop računari",7,,0,1,2
+3929,"Kompjuterske komponente",7,,0,1,3
+3930,Monitori,7,,0,1,4
+3931,"Pohrana podataka",7,,0,1,5
+67,"Periferija i dodatna oprema",7,,0,1,6
+71,"Mreže i komunikacijska oprema",7,,0,1,7
+72,"Softver i licence",7,,0,1,8
+3944,"Serveri i serverska oprema",7,,0,1,9
+76,Ostalo,7,,0,1,10
+80,"Bluetooth uređaji i dodaci",8,,0,1,0
+81,"Dijelovi i oprema za telefone i tablete",8,,0,1,0
+83,"eBook readeri (čitači elektronskih knjiga)",8,,0,1,0
+77,Mobiteli,8,,0,1,0
+84,Ostalo,8,,0,1,0
+79,"Pametni satovi (Smartwatch)",8,,0,1,0
+82,"PDA i Pocket PC uređaji",8,,0,1,0
+78,Tableti,8,,0,1,0
+101,"Naočale i optička oprema",9,,0,1,0
+96,"Njega kose i brade",9,,0,1,0
+95,"Njega kože i tijela",9,,0,1,0
+97,"Njega noktiju i manikura",9,,0,1,0
+98,"Oralna higijena",9,,0,1,0
+105,Ostalo,9,,0,1,0
+100,"Parfemi i mirisi",9,,0,1,0
+99,"Šminka i kozmetika",9,,0,1,0
+102,"Umjetne trepavice i dodatna kozmetika",9,,0,1,0
+104,"Zaštitne maske i rukavice",9,,0,1,0
+103,"Zdravlje i wellness proizvodi",9,,0,1,0
+111,"Aparati i varilice za pakovanje",10,,0,1,0
+108,"Građevinska oprema i alati",10,,0,1,0
+113,"Industrijske grijalice i toplotni topovi",10,,0,1,0
+114,"Kancelarijski materijal i namještaj",10,,0,1,0
+106,"Mašine i alati",10,,0,1,0
+115,"Materijali, dijelovi i industrijska oprema",10,,0,1,0
+116,"Oprema za pakovanje",10,,0,1,0
+121,Ostalo,10,,0,1,0
+107,"Poljoprivredna oprema i mehanizacija",10,,0,1,0
+109,"Poslovna oprema i biznis rješenja",10,,0,1,0
+112,"Rashladne i toplotne vitrine",10,,0,1,0
+118,"Selotejp i industrijske trake",10,,0,1,0
+119,"Trgovačka i prodajna oprema",10,,0,1,0
+120,"Ugostiteljska oprema",10,,0,1,0
+110,"Ulja, maziva i boje",10,,0,1,0
+117,"Zaštitna oprema i sigurnost na radu",10,,0,1,0
+85,"Borilački sportovi",11,,0,1,0
+86,"Ekstremni sportovi",11,,0,1,0
+87,"Fitness i trening",11,,0,1,0
+94,"Oprema za ostalo",11,,0,1,0
+88,"Planinarenje i alpinizam",11,,0,1,0
+89,"Tenis i raketni sportovi",11,,0,1,0
+90,"Timski sportovi",11,,0,1,0
+91,"Vanjski sportovi",11,,0,1,0
+92,"Vodeni sportovi",11,,0,1,0
+93,"Zimski sportovi",11,,0,1,0
+280,Kostimi,12,,0,1,0
+283,"Oprema za pušače",12,,0,1,0
+277,Pirotehnika,12,,0,1,0
+279,"Poklanjam / darujem",12,,0,1,0
+278,"Pokloni i dekorativni predmeti",12,,0,1,0
+281,"Sigurnosna i špijunska oprema",12,,0,1,0
+282,"Zabavna i rekreativna oprema",12,,0,1,0
+2530,"Antikviteti i vintage predmeti",12,,0,1,1
+2531,"Bizarne i unikatne stvari",12,,0,1,2
+2532,"Dijelovi i materijali za reparaciju",12,,0,1,3
+2533,"Kolekcionarstvo (Markice, kovanice, memorabilije)",12,,0,1,4
+2534,"Kreativni setovi i DIY materijali",12,,0,1,5
+2535,"Muzički instrumenti i oprema (Ostalo)",12,,0,1,6
+2536,"Oprema za magioničare i zabavu",12,,0,1,7
+2537,"Ostali nepomenuti artikli",12,,0,1,8
+2538,"Poljoprivredni proizvodi i sirovine",12,,0,1,9
+2539,"Predmeti za religiju i duhovnost",12,,0,1,10
+2540,"Rekviziti za snimanja i pozorište",12,,0,1,11
+2541,"Ručni radovi i unikatne rukotvorine",12,,0,1,12
+2542,"Sirovine i poluproizvodi (Metal, plastika, drvo)",12,,0,1,13
+2543,"Specijalni pokloni i šaljivi artikli",12,,0,1,14
+2544,"Suveniri i turistički predmeti",12,,0,1,15
+2545,"Umjetnička djela (Slike, skulpture)",12,,0,1,16
+704,"Domaće životinje za rasplod",28,,0,1,0
+697,Goveda,28,,0,1,0
+699,"Konji i magarci",28,,0,1,0
+702,Kunići,28,,0,1,0
+698,"Ovce i koze",28,,0,1,0
+703,"Pčele i pčelarska oprema",28,,0,1,0
+701,Perad,28,,0,1,0
+700,Svinje,28,,0,1,0
+711,"Adopcija i udomljavanje",29,,0,1,0
+706,Mačke,29,,0,1,0
+705,Psi,29,,0,1,0
+707,Ptice,29,,0,1,0
+710,"Reptili i egzotični ljubimci",29,,0,1,0
+708,"Ribe i akvaristika",29,,0,1,0
+715,"Akvarijumi i oprema za akvaristiku",30,,0,1,0
+712,"Hrana za životinje",30,,0,1,0
+718,"Igračke i dodatna oprema",30,,0,1,0
+709,"Male životinje (hrčci, zamorci, činčile)",30,,0,1,0
+719,"Njega i higijena životinja",30,,0,1,0
+713,"Oprema za pse i mačke",30,,0,1,0
+717,"Posude, pojilice i hranilice",30,,0,1,0
+716,"Terarijumi i oprema za reptile",30,,0,1,0
+714,"Transporteri i kavezi",30,,0,1,0
+2515,"Akvaristika (Pumpe, grijači, dekoracija)",31,,0,1,1
+2516,"Inkubatori i oprema za peradarstvo",31,,0,1,2
+2517,"Kavezi i oprema za glodare (Hrčci, kunići)",31,,0,1,3
+2518,"Kavezi i stalci za ptice",31,,0,1,4
+2519,"Košnice i pčelarska oprema",31,,0,1,5
+2520,"Mašine za šišanje i njega životinja",31,,0,1,6
+2521,"Oprema za dresuru i trening",31,,0,1,7
+2522,"Oprema za kaveze i ograđivanje (Električni pastiri)",31,,0,1,8
+2523,"Oprema za konjički sport i jahanje",31,,0,1,9
+2524,"Oprema za teraristiku (Gmizavci i pauci)",31,,0,1,10
+2525,"Ostali dodaci za kućne ljubimce",31,,0,1,11
+2526,"Pribor za hranjenje i pojenje stoke",31,,0,1,12
+2527,"Specijalna hrana za egzotične životinje",31,,0,1,13
+2528,"Transportni transporteri i kavezi",31,,0,1,14
+2529,"Vitamini, suplementi i njega zdravlja",31,,0,1,15
+969,"Modni dodaci",32,,0,1,0
+968,Obuća,32,,0,1,0
+967,Odjeća,32,,0,1,0
+973,"Sezonska oprema",32,,0,1,0
+972,"Sportska odjeća",32,,0,1,0
+970,"Torbe i ruksaci",32,,0,1,0
+978,"Donji veš i pidžame",33,,0,1,0
+976,"Modni dodaci",33,,0,1,0
+975,Obuća,33,,0,1,0
+974,Odjeća,33,,0,1,0
+979,"Sezonska oprema",33,,0,1,0
+1097,"Sportska odjeća i obuća",33,,0,1,0
+977,"Torbice i ruksaci",33,,0,1,0
+388,Kuhinja,37,,0,1,0
+390,Ostalo,37,,0,1,0
+389,"WC / Toilet",37,,0,1,0
+2376,"Audio miksete i konzole",38,,0,1,1
+2377,"Bežični audio sistemi i transmiteri",38,,0,1,2
+2378,"DAC (Digitalno-analogni konvertori)",38,,0,1,3
+2379,"Diktafoni i terenski snimači zvuka",38,,0,1,4
+2380,"DJ oprema (Kontroleri i playeri)",38,,0,1,5
+2381,"Gramofoni i oprema (Igle, remenovi)",38,,0,1,6
+2382,"Hi-Fi komponente (Pojačala, tuneri)",38,,0,1,7
+2383,"Kablovi, adapteri i konektori (XLR, Jack, RCA)",38,,0,1,8
+2384,"Kasetofoni i magnetofoni",38,,0,1,9
+2385,"Mikrofoni (Bežični, vokalni, studijski)",38,,0,1,10
+2386,"MP3 i Hi-Res audio playeri",38,,0,1,11
+2387,"Ostala audio i multimedijalna oprema",38,,0,1,12
+2388,"Radio aparati i radio budilnici",38,,0,1,13
+2389,"Slušalice (Bežične, studijske, bubice)",38,,0,1,14
+2390,"Soundbarovi i zvučne baze",38,,0,1,15
+2391,"Stalci i nosači za audio opremu",38,,0,1,16
+2392,"Studijski monitori i zvučnici",38,,0,1,17
+2393,"Zvučne kartice (Eksterne i interne)",38,,0,1,18
+2394,"Zvučnici (Podnostojeći, regalski, ugradbeni)",38,,0,1,19
+2357,"4K Ultra HD televizori",39,,0,1,1
+2358,"8K Ultra HD televizori",39,,0,1,2
+2359,"Android i Smart TV box uređaji",39,,0,1,3
+2360,"Antene (Sobne i vanjske)",39,,0,1,4
+2361,"Daljinski upravljači (Namjenski i univerzalni)",39,,0,1,5
+2362,"Digitalni TV prijemnici (DVB-T2/S2)",39,,0,1,6
+2363,"HDMI kablovi, razdjelnici i switcheri",39,,0,1,7
+2364,"LED i LCD televizori (Standardni)",39,,0,1,8
+2365,"LED trake i pozadinsko osvjetljenje za TV",39,,0,1,9
+2366,"Nosači za TV (Zidni, podni i plafonski)",39,,0,1,10
+2367,"OLED i QLED televizori",39,,0,1,11
+2368,"Ostala TV oprema i pribor",39,,0,1,12
+2369,"Panel ploče i moduli za popravku",39,,0,1,13
+2370,"Podnožja i stalci za televizore",39,,0,1,14
+2371,"Prenosni (Portable) televizori",39,,0,1,15
+2372,"Satelitski kompleti (Tanjiri, LNB konvertori)",39,,0,1,16
+2373,"Sredstva za čišćenje ekrana",39,,0,1,17
+2374,"TV ispravljači i napojni kablovi",39,,0,1,18
+2375,"TV kartice i moduli za dekodiranje",39,,0,1,19
+2340,"Akcione kamere (Sportski modeli)",40,,0,1,1
+2341,"Analogni fotoaparati (Na film)",40,,0,1,2
+2342,"Besogledalni fotoaparati (Mirrorless)",40,,0,1,3
+2343,"Digitalni kompaktni fotoaparati (Idiot)",40,,0,1,4
+2344,"DSLR fotoaparati",40,,0,1,5
+2345,"Dječiji fotoaparati i kamere",40,,0,1,6
+2346,"Fotoaparati sa trenutnim ispisom (Instant)",40,,0,1,7
+2347,"Inspekcijske kamere (Endoskopi)",40,,0,1,8
+2348,"Kamere za snimanje iz vazduha (Namjenske)",40,,0,1,9
+2349,"Lovačke kamere (Trail cameras)",40,,0,1,10
+2350,"Ostali fotoaparati i kamere",40,,0,1,11
+2351,"Panoramske i 360° kamere",40,,0,1,12
+2352,"Podvodni fotoaparati i kućišta",40,,0,1,13
+2353,"Profesionalne video kamere (Camcorders)",40,,0,1,14
+2354,"Srednjeformatni fotoaparati",40,,0,1,15
+2355,"Vlogging kamere",40,,0,1,16
+2356,"Web kamere za računare",40,,0,1,17
+2326,"Agrikulturni i industrijski dronovi",41,,0,1,1
+2327,"Dronovi sa 4K kamerom",41,,0,1,2
+2328,"Dronovi sa HD kamerom",41,,0,1,3
+2329,"Dječiji dronovi i mini dronovi",41,,0,1,4
+2330,"FPV (First Person View) dronovi",41,,0,1,5
+2331,"Helikopteri na daljinsko upravljanje",41,,0,1,6
+2332,"Jedrilice na daljinsko upravljanje",41,,0,1,7
+2333,"Kvadrokopteri bez kamere",41,,0,1,8
+2334,"Ostale RC letjelice",41,,0,1,9
+2335,"Poluprofesionalni dronovi sa GPS-om",41,,0,1,10
+2336,"Profesionalni dronovi za snimanje",41,,0,1,11
+2337,"RC Avioni (Akrobatski i treneri)",41,,0,1,12
+2338,"RTF (Ready-to-Fly) kompleti",41,,0,1,13
+2339,"Trkaći (Racing) dronovi",41,,0,1,14
+2306,"Antene i pojačivači signala",42,,0,1,1
+2307,"Baterije (Li-Po) za dronove",42,,0,1,2
+2308,"Bespilotne letjelice (Dronovi) - Dijelovi tijela",42,,0,1,3
+2309,"Daljinski upravljači i transmiteri",42,,0,1,4
+2310,"Elis (Propeleri) i štitnici propelera",42,,0,1,5
+2311,"ESC kontroleri brzine",42,,0,1,6
+2312,"FPV naočale i monitori",42,,0,1,7
+2313,"Gimbal sistemi i stabilizatori kamere",42,,0,1,8
+2314,"GPS moduli i senzori",42,,0,1,9
+2315,"Kamere za dronove i zamjenski objektivi",42,,0,1,10
+2316,"Kontrolori leta (Flight Controllers)",42,,0,1,11
+2317,"Motori (Brushless i Coreless)",42,,0,1,12
+2318,"Noge za sletanje i stajni trap",42,,0,1,13
+2319,"Ostala oprema za dronove",42,,0,1,14
+2320,"Punjači i balanceri za Li-Po baterije",42,,0,1,15
+2321,"Ruksaci i zaštitni koferi za dronove",42,,0,1,16
+2322,"SD kartice i moduli za memoriju",42,,0,1,17
+2323,"Sistemi za izbacivanje tereta",42,,0,1,18
+2324,"Vreće za sigurno punjenje baterija (Li-Po Guard)",42,,0,1,19
+2325,"Zamjenski kablovi i konektori",42,,0,1,20
+2288,"Baterije za prenosne zvučnike",43,,0,1,1
+2289,"Bluetooth audio receiveri i transmiteri",43,,0,1,2
+2290,"Bluetooth zvučnici sa FM radiom",43,,0,1,3
+2291,"Kablovi (AUX, USB-C, Micro-USB)",43,,0,1,4
+2292,"Mini Bluetooth zvučnici (Džepni)",43,,0,1,5
+2293,"Multiroom bežični zvučnici (Wi-Fi)",43,,0,1,6
+2294,"Ostala oprema za bežične zvučnike",43,,0,1,7
+2295,"Pametni zvučnici sa glasovnim asistentom",43,,0,1,8
+2296,"Party zvučnici sa LED osvjetljenjem",43,,0,1,9
+2297,"Party zvučnici sa točkićima i mikrofonom",43,,0,1,10
+2298,"Prenosni Bluetooth zvučnici (Standardni)",43,,0,1,11
+2299,"Punjači i adapteri za zvučnike",43,,0,1,12
+2300,"Retro bežični zvučnici",43,,0,1,13
+2301,"Soundbar zvučnici sa Bluetooth funkcijom",43,,0,1,14
+2302,"Stalci i zidni nosači za bežične zvučnike",43,,0,1,15
+2303,"Torbice i zaštitne futrole",43,,0,1,16
+2304,"Vodootporni Bluetooth zvučnici (IPX sertifikat)",43,,0,1,17
+2305,"Zvučnici za konferencijske pozive",43,,0,1,18
+2270,"Adapteri za punjenje i prenos podataka",44,,0,1,1
+2271,"Armband (Trake za ruku) za trčanje",44,,0,1,2
+2272,"Baterije za prenosne playere",44,,0,1,3
+2273,"Digitalni diktafoni i snimači glasa",44,,0,1,4
+2274,"Doking stanice sa zvučnicima",44,,0,1,5
+2275,"Hi-Res Audio playeri (Lossless)",44,,0,1,6
+2276,"iPod Classic, Nano i Shuffle uređaji",44,,0,1,7
+2277,"iPod Touch uređaji",44,,0,1,8
+2278,"Kablovi (3.5mm, Lightning, 30-pin)",44,,0,1,9
+2279,"MP3 playeri za sport i plivanje (Vodootporni)",44,,0,1,10
+2280,"MP4 i prenosni video playeri",44,,0,1,11
+2281,"Ostala oprema za audio/video playere",44,,0,1,12
+2282,"Radio transmiteri za auto",44,,0,1,13
+2283,"Slušalice za MP3 playere",44,,0,1,14
+2284,"Standardni MP3 playeri (Flash memorija)",44,,0,1,15
+2285,"Torbice i silikonske zaštitne maske",44,,0,1,16
+2286,"Ugradbeni MP3 moduli (DIY)",44,,0,1,17
+2287,"Zaštitne folije i stakla za ekrane",44,,0,1,18
+2253,"4K Ultra HD Blu-ray playeri",45,,0,1,1
+2254,"Bežični adapteri za smart playere",45,,0,1,2
+2255,"Blu-ray playeri (Standardni)",45,,0,1,3
+2256,"CD i SACD playeri",45,,0,1,4
+2257,"Čistači sočiva i diskova",45,,0,1,5
+2258,"DVD playeri sa USB ulazom",45,,0,1,6
+2259,"DVD snimači (Recorders)",45,,0,1,7
+2260,"HDMI i AV kablovi za povezivanje",45,,0,1,8
+2261,"Kombinovani uređaji (npr. VHS/DVD)",45,,0,1,9
+2262,"Kućišta i torbe za diskove",45,,0,1,10
+2263,"Multimedijalni playeri sa optičkim drajvom",45,,0,1,11
+2264,"Ostala oprema za video playere",45,,0,1,12
+2265,"Prazni mediji (DVD, Blu-ray diskovi)",45,,0,1,13
+2266,"Prenosni (Portable) DVD playeri",45,,0,1,14
+2267,"Regioni-free (Multizone) uređaji",45,,0,1,15
+2268,"Rezervni dijelovi (Laseri, motori)",45,,0,1,16
+2269,"Univerzalni daljinski upravljači za playere",45,,0,1,17
+2235,"AV Receiveri i procesori zvuka",46,,0,1,1
+2236,"Bežični audio transmiteri i adapteri",46,,0,1,2
+2237,"Bookshelf zvučnici (Regalski)",46,,0,1,3
+2238,"Centralni zvučnici (Center channel)",46,,0,1,4
+2239,"Dolby Atmos i Surround zvučnici",46,,0,1,5
+2240,"Hi-Fi pojačala i pretpojačala",46,,0,1,6
+2241,"Izolacione podloške i šiljci za zvučnike",46,,0,1,7
+2242,"Kablovi za zvučnike i interkonekti",46,,0,1,8
+2243,"Kompletni sistemi kućnog kina (All-in-one)",46,,0,1,9
+2244,"Multiroom audio sistemi",46,,0,1,10
+2245,"Ostala oprema za kućna kina",46,,0,1,11
+2246,"Podnostojeći zvučnici (Floorstanding)",46,,0,1,12
+2247,"Sistemi zvučnika 2.1, 5.1 i 7.1",46,,0,1,13
+2248,"Soundbar zvučnici i sistemi",46,,0,1,14
+2249,"Stalci i zidni nosači za zvučnike",46,,0,1,15
+2250,"Subwooferi (Aktivni i pasivni)",46,,0,1,16
+2251,"Ugradbeni zvučnici (Zidni i stropni)",46,,0,1,17
+2252,"Zvučnici za spoljašnju upotrebu",46,,0,1,18
+2217,"Bežična zvona i video interfoni",47,,0,1,1
+2218,"Centralni hubovi i kontroleri (Gateway)",47,,0,1,2
+2219,"Glasovni asistenti i pametni zvučnici",47,,0,1,3
+2220,"Ostali IoT uređaji i senzori",47,,0,1,4
+2221,"Pametna rješenja za kućne ljubimce (Hranilice)",47,,0,1,5
+2222,"Pametne brave i sistemi za pristup",47,,0,1,6
+2223,"Pametne garnišne i motori za zavjese",47,,0,1,7
+2224,"Pametne sijalice i LED kontroleri",47,,0,1,8
+2225,"Pametne utičnice i pametni produžni kablovi",47,,0,1,9
+2226,"Pametni detektori dima, vode i gasa",47,,0,1,10
+2227,"Pametni prekidači i dimeri",47,,0,1,11
+2228,"Pametni termostati i kontrola grijanja",47,,0,1,12
+2229,"Senzori pokreta, vrata i prozora",47,,0,1,13
+2230,"Senzori temperature, vlažnosti i kvaliteta zraka",47,,0,1,14
+2231,"Smart Home kontrolni paneli (Zidni)",47,,0,1,15
+2232,"Sistemi za pametno navodnjavanje",47,,0,1,16
+2233,"Univerzalni pametni IR/RF daljinski upravljači",47,,0,1,17
+2234,"Ugradbeni pametni moduli za prekidače",47,,0,1,18
+2200,"Adapteri i bežični moduli za VR",48,,0,1,1
+2201,"Bazne stanice i senzori pokreta",48,,0,1,2
+2202,"Higijenske maske i silikonske navlake",48,,0,1,3
+2203,"Kablovi i link kablovi za povezivanje",48,,0,1,4
+2204,"Kontroleri i VR rukavice",48,,0,1,5
+2205,"Mješovita realnost (MR) i AR naočale",48,,0,1,6
+2206,"Naočale za proširenu stvarnost (Smart Glasses)",48,,0,1,7
+2207,"Ostala VR oprema i dodaci",48,,0,1,8
+2208,"PC VR Headsetovi (Žični)",48,,0,1,9
+2209,"Pokretne trake i platforme za VR hodanje",48,,0,1,10
+2210,"Pomoćni nosači i trake za glavu (Elite Strap)",48,,0,1,11
+2211,"Punjači i dock stanice za VR",48,,0,1,12
+2212,"Samostalni VR Headsetovi (Standalone)",48,,0,1,13
+2213,"Torbice i zaštitni koferi za VR",48,,0,1,14
+2214,"VR dodaci za simulacije (Volani, kundaci, palice)",48,,0,1,15
+2215,"VR naočale za pametne telefone",48,,0,1,16
+2216,"Zaštitna stakla i dioptrijski ulošci za VR",48,,0,1,17
+2182,"Adapteri za pametne telefone i kamere",49,,0,1,1
+2183,"Astrofotografska oprema i senzori",49,,0,1,2
+2184,"Barlow sočiva i reduktori fokusa",49,,0,1,3
+2185,"Binokularni teleskopi (Veliki dvogledi)",49,,0,1,4
+2186,"Dvogledi (Dalekozori) za osmatranje",49,,0,1,5
+2187,"Filteri za teleskope (Mesečevi, solarni, magličasti)",49,,0,1,6
+2188,"Katadioptrični teleskopi (Maksutov, Schmidt-Cassegrain)",49,,0,1,7
+2189,"Kolimatori i alati za podešavanje",49,,0,1,8
+2190,"Laserski pokazivači i tražioci (Finderscopes)",49,,0,1,9
+2191,"Mikroskopi (Biološki i digitalni)",49,,0,1,10
+2192,"Monokulari i durbini",49,,0,1,11
+2193,"Montaže i tronošci (AZ, EQ, GoTo sistemi)",49,,0,1,12
+2194,"Okulari različitih žižnih daljina",49,,0,1,13
+2195,"Ostala optička oprema i pribor",49,,0,1,14
+2196,"Reflektorski teleskopi (Newtonian/Dobson)",49,,0,1,15
+2197,"Refraktorski teleskopi (Sa sočivima)",49,,0,1,16
+2198,"Spektivi za osmatranje ptica i prirode",49,,0,1,17
+2199,"Torbe i zaštitni koferi za optiku",49,,0,1,18
+2168,"Digitalne lupe sa LCD ekranom",50,,0,1,1
+2169,"Džepne i sklopive lupe",50,,0,1,2
+2170,"Filatelističke i numizmatičke lupe",50,,0,1,3
+2171,"Kozmetičke lupe sa postoljem i LED svjetlom",50,,0,1,4
+2172,"Lupe naočale (Hands-free)",50,,0,1,5
+2173,"Lupe sa drškom (Klasične)",50,,0,1,6
+2174,"Lupe sa ugrađenim LED osvjetljenjem",50,,0,1,7
+2175,"Lupe za čitanje (Stolne i u obliku trake)",50,,0,1,8
+2176,"Lupe za elektroniku i lemljenje (Treća ruka)",50,,0,1,9
+2177,"Mjerne lupe sa skalom",50,,0,1,10
+2178,"Ostale lupe i optički dodaci",50,,0,1,11
+2179,"Povećala za ekrane telefona i tableta",50,,0,1,12
+2180,"Specijalne lupe za slabovide osobe",50,,0,1,13
+2181,"Uređajne i urarske lupe (Okulari)",50,,0,1,14
+1927,"Adapteri i baterije za kalkulatore",51,,0,1,1
+1928,"Finansijski i poslovni kalkulatori",51,,0,1,2
+1929,"Grafički kalkulatori sa ekranom",51,,0,1,3
+1930,"Inženjerski i naučni (Scientific) kalkulatori",51,,0,1,4
+1931,"Kalkulatori sa trakom (Stoni printeri)",51,,0,1,5
+1932,"Kolekcionarski i retro kalkulatori",51,,0,1,6
+1933,"Kombinovani digitroni (Satovi, lenjiri i sl.)",51,,0,1,7
+1934,"Obični džepni kalkulatori",51,,0,1,8
+1935,"Ostala oprema za kalkulatore",51,,0,1,9
+1936,"Programabilni kalkulatori",51,,0,1,10
+1937,"Solarni i ekološki kalkulatori",51,,0,1,11
+1938,"Standardni stoni kalkulatori (Veliki tasteri)",51,,0,1,12
+1939,"Zaštitne futrole i poklopci",51,,0,1,13
+2148,"Analogni mjerni instrumenti",52,,0,1,1
+2149,"Brojila električne energije (Jednofazna i trofazna)",52,,0,1,2
+2150,"Detektori gasova i curenja",52,,0,1,3
+2151,"Digitalni multimetri (Unimeri)",52,,0,1,4
+2152,"Frekvencijski regulatori i pretvarači",52,,0,1,5
+2153,"Instrumenti za mjerenje debljine laka i slojeva",52,,0,1,6
+2154,"Instrumenti za mjerenje pritiska (Manometri)",52,,0,1,7
+2155,"Laboratorijski izvori napajanja",52,,0,1,8
+2156,"Laserski mjerači i daljinomeri",52,,0,1,9
+2157,"Mjerni točkovi i mehanička mjerila",52,,0,1,10
+2158,"Naponski ispitivači i glimerice",52,,0,1,11
+2159,"Osciloskopi i logički analizatori",52,,0,1,12
+2160,"Ostali mjerni i regulacioni instrumenti",52,,0,1,13
+2161,"Ph metri i testeri kvaliteta vode",52,,0,1,14
+2162,"Pomična mjerila (Šubleri) i mikrometri",52,,0,1,15
+2163,"Strujna kliješta (Ampermetar kliješta)",52,,0,1,16
+2164,"Tahometri (Mjerači broja obrtaja)",52,,0,1,17
+2165,"Termostati i regulatori temperature",52,,0,1,18
+2166,"Testeri baterija i akumulatora",52,,0,1,19
+2167,"Testeri mrežnih kablova (LAN testeri)",52,,0,1,20
+2128,"Automatski osigurači i sklopke",53,,0,1,1
+2129,"Digitalni i analogni tajmeri",53,,0,1,2
+2130,"DIY setovi i razvojne ploče (Arduino, ESP)",53,,0,1,3
+2131,"Električni kablovi i provodnici",53,,0,1,4
+2132,"Elektronske komponente (Otpornici, kondenzatori, diode)",53,,0,1,5
+2133,"FID sklopke i zaštitni uređaji",53,,0,1,6
+2134,"Indikatori, tinjalice i signalna svjetla",53,,0,1,7
+2135,"Instalacione cijevi, kanali i bužiri",53,,0,1,8
+2136,"Integrisana kola (IC) i tranzistori",53,,0,1,9
+2137,"Ispravljači, transformatori i driveri",53,,0,1,10
+2138,"Izolacioni materijali (Trake, termoskupljajući bužiri)",53,,0,1,11
+2139,"Kleme, konektori i stopice",53,,0,1,12
+2140,"Modulni programi (Sklopke i utičnice)",53,,0,1,13
+2141,"Ostali elektromaterijal",53,,0,1,14
+2142,"Prekidači, tasteri i potenciometri",53,,0,1,15
+2143,"Razvodni ormarići i razvodne kutije",53,,0,1,16
+2144,"Relatni moduli i senzori (Pokret, sumrak)",53,,0,1,17
+2145,"Standardne utičnice i utikači",53,,0,1,18
+2146,"Tasteri za zvona i interfone",53,,0,1,19
+2147,"Ugradbena elektronika i moduli",53,,0,1,20
+2110,"Akumulatori i baterije (Solar/Gel/LiFePO4)",54,,0,1,1
+2111,"Fotonaponski solarni paneli (Monokristalni)",54,,0,1,2
+2112,"Fotonaponski solarni paneli (Polikristalni)",54,,0,1,3
+2113,"Invertori (Pretvarači napona) - Off-Grid",54,,0,1,4
+2114,"Invertori (Pretvarači napona) - On-Grid/Hibridni",54,,0,1,5
+2115,"Kablovi i konektori (MC4, solarni kablovi)",54,,0,1,6
+2116,"Kolektori za toplu vodu (Termalni sistemi)",54,,0,1,7
+2117,"Kontroleri punjenja (MPPT i PWM)",54,,0,1,8
+2118,"Nosači, šine i montažna oprema",54,,0,1,9
+2119,"Ostala solarna oprema",54,,0,1,10
+2120,"Pametna brojila i monitoring sistemi",54,,0,1,11
+2121,"Prenosni solarni kompleti i koferi",54,,0,1,12
+2122,"Prenaponska zaštita i osigurači za DC sisteme",54,,0,1,13
+2123,"Savitljivi (Fleksibilni) solarni paneli",54,,0,1,14
+2124,"Solarna rasvjeta i reflektori",54,,0,1,15
+2125,"Solarni kontroleri za pumpe i navodnjavanje",54,,0,1,16
+2126,"Solarni punjači za mobilne uređaje",54,,0,1,17
+2127,"Uređaji za čišćenje i održavanje panela",54,,0,1,18
+2091,"Antene za radio uređaje",55,,0,1,1
+2092,"CD Playeri (Prenosni - Discman)",55,,0,1,2
+2093,"Digitalni radio prijemnici (DAB/DAB+)",55,,0,1,3
+2094,"Džepni radio aparati",55,,0,1,4
+2095,"Kasetofoni i diktafoni (Prenosni)",55,,0,1,5
+2096,"Kuhinjski i ugradbeni radio uređaji",55,,0,1,6
+2097,"Mp3 i Mp4 playeri",55,,0,1,7
+2098,"Napajanja i adapteri za prenosne uređaje",55,,0,1,8
+2099,"Ostala audio oprema",55,,0,1,9
+2100,"Radio budilnici i satovi sa radiom",55,,0,1,10
+2101,"Radio kasetofoni (Boombox)",55,,0,1,11
+2102,"Radio prijemnici sa Bluetooth funkcijom",55,,0,1,12
+2103,"Retro i antikvitetni radio aparati",55,,0,1,13
+2104,"Slušalice za prenosne uređaje",55,,0,1,14
+2105,"Standardni stoni radio prijemnici (AM/FM)",55,,0,1,15
+2106,"Tranzistorski radio aparati na baterije",55,,0,1,16
+2107,"Uređaji sa solarnim i mehaničkim punjenjem (Dynamo)",55,,0,1,17
+2108,"Walkman (Prenosni kasetofoni)",55,,0,1,18
+2109,"Zamjenski remenovi i gumice za walkmane",55,,0,1,19
+2071,"Antene (HF, VHF, UHF, Dual-band)",56,,0,1,1
+2072,"Antenski analizatori i mjerni instrumenti",56,,0,1,2
+2073,"Antenski tjuneri (Usklađivači)",56,,0,1,3
+2074,"Baterije i eliminatori baterija",56,,0,1,4
+2075,"CB (Citizens Band) radio stanice",56,,0,1,5
+2076,"Digitalni modemski interfejsi (FT8, DMR)",56,,0,1,6
+2077,"Eksterni zvučnici i audio filteri",56,,0,1,7
+2078,"Filteri za smetnje i prenaponska zaštita",56,,0,1,8
+2079,"Kablovi (Koaksijalni) i konektori (PL-259, N, SMA)",56,,0,1,9
+2080,"Linearna pojačala snage",56,,0,1,10
+2081,"Mikrofoni i tasteri za Morzeovu abecedu (CW)",56,,0,1,11
+2082,"Mobilne radio stanice",56,,0,1,12
+2083,"Nosači antena i rotatori",56,,0,1,13
+2084,"Ostala radio amaterska oprema",56,,0,1,14
+2085,"PMR (Voki-toki) uređaji slobodnog opsega",56,,0,1,15
+2086,"Ručne radio stanice (Handheld)",56,,0,1,16
+2087,"SDR (Software Defined Radio) prijemnici",56,,0,1,17
+2088,"SWR i Watt metri",56,,0,1,18
+2089,"Stacionarne (Base) radio stanice",56,,0,1,19
+2090,"Stabilisana napajanja (Ispravljači)",56,,0,1,20
+2053,"Antenski stubovi i nosači",57,,0,1,1
+2054,"Bežični telefoni (DECT)",57,,0,1,2
+2055,"Digitalne i analogne telefonske centrale",57,,0,1,3
+2056,"Faks mašine i potrošni materijal",57,,0,1,4
+2057,"Fiksni žični telefoni",57,,0,1,5
+2058,"GSM i LTE pojačivači signala (Repeateri)",57,,0,1,6
+2059,"GSM gateaway uređaji i terminali",57,,0,1,7
+2060,"Interfoni i interfonski sistemi",57,,0,1,8
+2061,"IP i SIP telefoni (VoIP)",57,,0,1,9
+2062,"Kablovski materijal (Telefonski i koaksijalni)",57,,0,1,10
+2063,"Konferencijski telefoni i sistemi",57,,0,1,11
+2064,"Ostala telekomunikacijska oprema",57,,0,1,12
+2065,"Radio stanice i voki-toki uređaji",57,,0,1,13
+2066,"Sistemski telefoni za centrale",57,,0,1,14
+2067,"Slušalice za operatere i call centre",57,,0,1,15
+2068,"Telefonske utičnice, razdjelnici i filteri",57,,0,1,16
+2069,"Testna oprema za telekomunikacije",57,,0,1,17
+2070,"Uređaji za satelitsku komunikaciju",57,,0,1,18
+2032,"Adapteri i pretvarači napona",58,,0,1,1
+2033,"Alkalne baterije (Jednokratne)",58,,0,1,2
+2034,"Baterije za dječije igračke",58,,0,1,3
+2035,"Baterije za fiksne i bežične telefone",58,,0,1,4
+2036,"Baterije za laptop uređaje",58,,0,1,5
+2037,"Baterije za mjerne uređaje i multimetre",58,,0,1,6
+2038,"Baterije za slušne aparate",58,,0,1,7
+2039,"Dugmaste baterije (CR, LR, AG serije)",58,,0,1,8
+2040,"Eksterne baterije (Powerbank)",58,,0,1,9
+2041,"Industrijske baterije i ćelije",58,,0,1,10
+2042,"Li-ion punjive baterije (18650, 21700 i dr.)",58,,0,1,11
+2043,"Litijumske baterije visokog kapaciteta",58,,0,1,12
+2044,"Ni-MH i Ni-Cd punjive baterije (AA, AAA)",58,,0,1,13
+2045,"Olovni akumulatori (VRLA, AGM, Gel)",58,,0,1,14
+2046,"Ostala oprema za baterije",58,,0,1,15
+2047,"Pametni brzi punjači sa procesorom",58,,0,1,16
+2048,"Punjači za AA i AAA baterije",58,,0,1,17
+2049,"Punjači za Li-ion i Li-Po baterije",58,,0,1,18
+2050,"Solarne baterije i punjači",58,,0,1,19
+2051,"Testeri za baterije",58,,0,1,20
+2052,"Univerzalni kućni punjači",58,,0,1,21
+2014,"Baterije za električna vozila",59,,0,1,1
+2015,"Električni bicikli (e-Bikes)",59,,0,1,2
+2016,"Električni skuteri i trotineti",59,,0,1,3
+2017,"Električni skateboardi i longboardi",59,,0,1,4
+2018,"Električni unocikli (Monowheels)",59,,0,1,5
+2019,"Gume i unutrašnje zračnice",59,,0,1,6
+2020,"Hoverboard uređaji",59,,0,1,7
+2021,"Kacige i zaštitna oprema",59,,0,1,8
+2022,"Kočioni sistemi i pločice",59,,0,1,9
+2023,"Kontroleri i matične ploče",59,,0,1,10
+2024,"Motori i pogonski točkovi",59,,0,1,11
+2025,"Ostala oprema i dodaci",59,,0,1,12
+2026,"Punjači i adapteri",59,,0,1,13
+2027,"Rasvjeta i LED signalizacija",59,,0,1,14
+2028,"Rezervni dijelovi (Blatobrani, nogare, ručke)",59,,0,1,15
+2029,"Sjedala za električne skutere",59,,0,1,16
+2030,"Torbe i nosači za skutere",59,,0,1,17
+2031,"Zaključavanje i sigurnosni sistemi",59,,0,1,18
+1997,"Alati za reparaciju (Pincete, motalice, makaze)",60,,0,1,1
+1998,"Baterije za modove (18650, 21700 i dr.)",60,,0,1,2
+1999,"DIY oprema (Baze, arome i bočice)",60,,0,1,3
+2000,"Drip tips (Nastavci za usta)",60,,0,1,4
+2001,"Elektronske cigarete (Pod sistemi)",60,,0,1,5
+2002,"Elektronske nargile (Vape)",60,,0,1,6
+2003,"Grijači za elektronske cigarete (Coils)",60,,0,1,7
+2004,"Grijači duhana (HNB - Heat Not Burn uređaji)",60,,0,1,8
+2005,"Jednokratne elektronske cigarete (Disposable)",60,,0,1,9
+2006,"Modovi (Regulisani i mehanički)",60,,0,1,10
+2007,"Ostala oprema i dodaci",60,,0,1,11
+2008,"Punjači za eksterne baterije",60,,0,1,12
+2009,"Rezervoari i atomizeri (RTA, RDA, RDTA)",60,,0,1,13
+2010,"Rezervna stakla za atomizere",60,,0,1,14
+2011,"Torbice, silikonske maske i vezice",60,,0,1,15
+2012,"Vatice i žice za grijače",60,,0,1,16
+2013,"Zamjenski dijelovi za grijače duhana (Čistači, poklopci)",60,,0,1,17
+1973,"Analitički instrumenti i analizatori",61,,0,1,1
+1974,"Centrifuge i mješalice",61,,0,1,2
+1975,"Diagnostički uređaji (EKG, EEG, Ultrazvuk)",61,,0,1,3
+1976,"Inhalatori i aspiratori",61,,0,1,4
+1977,"Inkubatori i sterilizatori (Autoklavi)",61,,0,1,5
+1978,"Invalidska kolica i pomagala za kretanje",61,,0,1,6
+1979,"Laboratorijsko posuđe (Staklo i plastika)",61,,0,1,7
+1980,"Laboratorijski mikroskopi i oprema",61,,0,1,8
+1981,"Medicinski kreveti i namještaj",61,,0,1,9
+1982,"Mjerači krvnog pritiska (Tlakomjeri)",61,,0,1,10
+1983,"Mjerači šećera u krvi (Glukometri)",61,,0,1,11
+1984,"Odjeća i zaštitna oprema (Uniforme, maske)",61,,0,1,12
+1985,"Oprema za prvu pomoć i reanimaciju",61,,0,1,13
+1986,"Oprema za stomatološke ordinacije",61,,0,1,14
+1987,"Ortopedska pomagala i proteze",61,,0,1,15
+1988,"Ostala medicinska i laboratorijska oprema",61,,0,1,16
+1989,"Oksimetri (Mjerači zasićenosti kisikom)",61,,0,1,17
+1990,"Pipete i dozatori",61,,0,1,18
+1991,"Potrošni medicinski materijal (Igle, šprice)",61,,0,1,19
+1992,"Reagensi i hemikalije",61,,0,1,20
+1993,"Slušni aparati i pribor",61,,0,1,21
+1994,"Stetoskopi i osnovni pregledni setovi",61,,0,1,22
+1995,"Terapijska oprema (Fizikalna i masaža)",61,,0,1,23
+1996,"Vage (Medicinske i laboratorijske precizne)",61,,0,1,24
+1954,"Anemometri (Mjerači brzine vjetra)",62,,0,1,1
+1955,"Barometri i hidrometri (Vlažnost i pritisak)",62,,0,1,2
+1956,"Beskontaktni infracrveni termometri",62,,0,1,3
+1957,"Daljinomeri (Laserski mjerači razdaljine)",62,,0,1,4
+1958,"Detektori metala, instalacija i struje",62,,0,1,5
+1959,"Digitalni i analogni kuhinjski termometri",62,,0,1,6
+1960,"Higrometri (Mjerači vlažnosti vazduha)",62,,0,1,7
+1961,"Infracrvene termovizijske kamere",62,,0,1,8
+1962,"Laboratorijski i precizni termometri",62,,0,1,9
+1963,"Laserske nivele i vaservage",62,,0,1,10
+1964,"Luxmetri (Mjerači intenziteta svjetlosti)",62,,0,1,11
+1965,"Medicinski termometri (Toplomjeri)",62,,0,1,12
+1966,"Mjerači kvalitete zraka (CO2, PM čestice)",62,,0,1,13
+1967,"Multimetri i ispitivači napona",62,,0,1,14
+1968,"Ostali mjerni uređaji i senzori",62,,0,1,15
+1969,"Ph metri i testeri za vodu",62,,0,1,16
+1970,"Pribor i oprema (Baterije, sonde, stalci)",62,,0,1,17
+1971,"Ubodni termometri za hranu i tečnosti",62,,0,1,18
+1972,"Vremenske stanice za kuću",62,,0,1,19
+1940,"4K i 8K Ultra HD Streaming uređaji",63,,0,1,1
+1941,"AirMouse i tastature za TV boxove",63,,0,1,2
+1942,"Android TV Box uređaji",63,,0,1,3
+1943,"Antene i prijemnici za streaming",63,,0,1,4
+1944,"Dizajnirani stalci i nosači za boxove",63,,0,1,5
+1945,"HDMI Dongle i Stick uređaji",63,,0,1,6
+1946,"Igraće konzole sa streaming funkcijama",63,,0,1,7
+1947,"IPTV prijemnici i set-top boxovi",63,,0,1,8
+1948,"Kablovi i adapteri (HDMI, napajanje)",63,,0,1,9
+1949,"Linux i Open-Source TV boxovi",63,,0,1,10
+1950,"Mini PC uređaji za TV",63,,0,1,11
+1951,"Ostala oprema za streaming",63,,0,1,12
+1952,"Pametni daljinski upravljači i kontroleri",63,,0,1,13
+1953,"Sistemi za bežični prenos slike (Casting)",63,,0,1,14
+2415,"Alati za preciznu mehaniku i elektroniku",64,,0,1,1
+2395,"Amortizeri i ležajevi za veš mašine",64,,0,1,1
+2396,"Antivibracione podloške i nogice",64,,0,1,2
+2416,"Baterije (Dugmaste, alkalne, specijalne)",64,,0,1,2
+2397,"Brtve (Gume) za frižidere i zamrzivače",64,,0,1,3
+2417,"Čistači kontakata i kompresovani zrak",64,,0,1,3
+2398,"Deterdženti i tablete za testiranje uređaja",64,,0,1,4
+2418,"Držači i stalci za tehničke uređaje",64,,0,1,4
+2399,"Dozatori i posude za prašak",64,,0,1,5
+2419,"Instrumenti za mjerenje vlage i temperature",64,,0,1,5
+2400,"Filteri za napu (Ugljeni i metalni)",64,,0,1,6
+2420,"Kablovi i adapteri (Univerzalni)",64,,0,1,6
+2401,"Filteri za vodu za frižidere",64,,0,1,7
+2421,"Magneti i magnetne trake",64,,0,1,7
+2402,"Grijači za mašine i rerne",64,,0,1,8
+2422,"Metal detektori (Hobi i profesionalni)",64,,0,1,8
+2403,"Inox sredstva za čišćenje i poliranje",64,,0,1,9
+2423,"Multimetri i ispitivači napona",64,,0,1,9
+2404,"Interfonski i spojni kablovi za aparate",64,,0,1,10
+2424,"Ostala nepomenuta tehnička roba",64,,0,1,10
+2405,"Korpe za escajg i police za mašine za suđe",64,,0,1,11
+2425,"Pametni privjesci i lokatori (Tags)",64,,0,1,11
+2406,"Mrežice i filteri za odvod",64,,0,1,12
+2426,"Punjači za baterije (Univerzalni)",64,,0,1,12
+2407,"Ostali sitni dijelovi bijele tehnike",64,,0,1,13
+2427,"Sredstva za čišćenje ekrana i optike",64,,0,1,13
+2408,"Ploče za slaganje (Vezni elementi za sušilice)",64,,0,1,14
+2428,"Sušači i sterilizatori (Tehnički)",64,,0,1,14
+2409,"Police i ladice za frižidere",64,,0,1,15
+2429,"Termalne paste i podloške",64,,0,1,15
+2410,"Pribor za montažu ugradbenih uređaja",64,,0,1,16
+2430,"Testeri za kablove i baterije",64,,0,1,16
+2411,"Sijalice za rerne i frižidere",64,,0,1,17
+2431,"Torbe i koferi za tehničku opremu",64,,0,1,17
+2412,"Sredstva za uklanjanje kamenca",64,,0,1,18
+2432,"Ultrazvučne kade za čišćenje",64,,0,1,18
+2413,"Termostati i senzori temperature",64,,0,1,19
+2433,"Univerzalni ispravljači napona",64,,0,1,19
+2414,"Vrećice i filteri za usisivače",64,,0,1,20
+2434,"Vremenske stanice i senzori",64,,0,1,20
+1751,"Adapteri i konverteri",67,,0,1,0
+1752,"Bluetooth i Wi-Fi adapteri",67,,0,1,0
+1754,"Čišćenje i održavanje (Sprejevi, krpe)",67,,0,1,0
+1753,"Čitači kartica (Card readers)",67,,0,1,0
+1755,"Džojstici i kontroleri (Gaming)",67,,0,1,0
+1756,"Eksterni optički uređaji (DVD/Blu-ray)",67,,0,1,0
+1759,"Grafičke table za crtanje",67,,0,1,0
+1760,"Kablovi (HDMI, DisplayPort, USB, LAN)",67,,0,1,0
+1761,"Kompjuterski zvučnici",67,,0,1,0
+1762,Mikrofoni,67,,0,1,0
+1763,Miševi,67,,0,1,0
+1764,"Monitor nosači i stalci",67,,0,1,0
+1765,"Ostala oprema i periferija",67,,0,1,0
+1766,"Podloge za miševe",67,,0,1,0
+1767,"Slušalice (Headsets)",67,,0,1,0
+1768,Tastature,67,,0,1,0
+1769,"Tastature i miševi (Setovi)",67,,0,1,0
+1770,"Torbe i ruksaci za laptop",67,,0,1,0
+1771,"UPS uređaji i prenaponska zaštita",67,,0,1,0
+1772,"USB Flash memorije",67,,0,1,0
+1773,"USB hubovi i razdjelnici",67,,0,1,0
+1774,"Web kamere",67,,0,1,0
+3948,"Access Point i Range Extenderi",71,,0,0,0
+3949,"Mrežni kablovi i oprema",71,,0,0,0
+3945,"Routeri i modemi",71,,0,0,0
+3946,Switch-evi,71,,0,0,0
+3947,"WiFi adapteri i antene",71,,0,0,0
+3922,"Aplikativni softver",72,,0,0,0
+3921,"Sistemski softver",72,,0,0,0
+3923,"Specijalizovani i sigurnosni softver",72,,0,0,0
+1727,"Bluetooth adapteri i predajnici",80,,0,1,0
+1728,"Bluetooth audio prijemnici",80,,0,1,0
+1729,"Bluetooth slušalice (Bubice)",80,,0,1,0
+1730,"Bluetooth slušalice (Naglavne)",80,,0,1,0
+1731,"Bluetooth tastature i miševi",80,,0,1,0
+1732,"Bluetooth zvučnici",80,,0,1,0
+1733,"Handsfree uređaji za automobile",80,,0,1,0
+1734,"Ostali bluetooth dodaci",80,,0,1,0
+1735,"Pametni privjesci za praćenje",80,,0,1,0
+1736,"Pametni satovi i narukvice",80,,0,1,0
+1737,"Sportske bluetooth slušalice",80,,0,1,0
+1738,"Alati za popravku telefona",81,,0,1,0
+1739,"Baterije za telefone i tablete",81,,0,1,0
+1740,"Držači i stalci (Car & Desk)",81,,0,1,0
+1741,"Ekran i staklo (LCD, Touchscreen)",81,,0,1,0
+1742,"Futrole, maske i torbice",81,,0,1,0
+1743,"Kablovi, adapteri i konektori",81,,0,1,0
+1744,"Memorijske kartice",81,,0,1,0
+1745,"Olovke za tablete (Stylus)",81,,0,1,0
+1746,"Ostali rezervni dijelovi",81,,0,1,0
+1747,"Punjači (Kućni i auto)",81,,0,1,0
+1748,"Slušalice i handsfree oprema",81,,0,1,0
+1749,"Stakla i folije za zaštitu ekrana",81,,0,1,0
+1750,"Vanjske baterije (Power bank)",81,,0,1,0
+3224,"Alati za servisiranje i otvaranje",82,,0,1,1
+3225,"Baterije za PDA i Pocket PC",82,,0,1,2
+3226,"Docking stanice i baze za punjenje",82,,0,1,3
+3227,"Industrijski PDA uređaji (Barkod skeneri)",82,,0,1,4
+3228,"Memorijske kartice (CF, SD, MMC)",82,,0,1,5
+3229,"Olovke (Stylus) za ekrane",82,,0,1,6
+3230,"Ostali PDA i Pocket PC uređaji",82,,0,1,7
+3231,"Palm OS uređaji",82,,0,1,8
+3232,"Pocket PC (Windows Mobile) uređaji",82,,0,1,9
+3233,"Polovni i neispravni uređaji za dijelove",82,,0,1,10
+3234,"Punjači i kablovi za sinhronizaciju",82,,0,1,11
+3235,"Rezervni dijelovi (Ekrani, kućišta, tipke)",82,,0,1,12
+3236,"Tastature i vanjski dodaci",82,,0,1,13
+3237,"Zaštitne futrole i torbice",82,,0,1,14
+3211,"Amazon Kindle čitači",83,,0,1,1
+3212,"Boox (Onyx) Android čitači",83,,0,1,2
+3213,"Čitači sa ekranom u boji (Color E-ink)",83,,0,1,3
+3214,"Dodaci za čitače (Futrole, lampe, olovke)",83,,0,1,4
+3215,"Kobo eBook čitači",83,,0,1,5
+3216,"Large-format čitači (Ekran 10"" i veći)",83,,0,1,6
+3217,"Oprema za punjenje i kablovi",83,,0,1,7
+3218,"Ostali eBook čitači",83,,0,1,8
+3219,"PocketBook čitači",83,,0,1,9
+3220,"Polovni i reparirani eBook čitači",83,,0,1,10
+3221,"Remarkable i digitalne bilježnice",83,,0,1,11
+3222,"Vodootporni eBook čitači",83,,0,1,12
+3223,"Zaštitne folije i stakla za čitače",83,,0,1,13
+3195,"Alati za popravku mobitela",84,,0,1,1
+3196,"Baterije za mobitele",84,,0,1,2
+3197,"Bluetooth adapteri i transmiteri",84,,0,1,3
+3198,"Čitači memorijskih kartica",84,,0,1,4
+3199,"Držači i stalci za mobitele",84,,0,1,5
+3200,"Gimbali i stabilizatori za snimanje",84,,0,1,6
+3201,"Memorijske kartice (MicroSD)",84,,0,1,7
+3202,"Olovke za ekrane (Stylus pen)",84,,0,1,8
+3203,"Ostali nepomenuti dodaci",84,,0,1,9
+3204,"Polovni i oštećeni mobiteli za dijelove",84,,0,1,10
+3205,"Pomoćni objektivi za kamere mobitela",84,,0,1,11
+3206,"Rezervni dijelovi (Ekrani, flet kablovi, kućišta)",84,,0,1,12
+3207,"SIM kartice i dopune (Top-up)",84,,0,1,13
+3208,"Sredstva za čišćenje ekrana",84,,0,1,14
+3209,"VR naočale za mobitele",84,,0,1,15
+3210,"Zvučnici i eksterni mikrofon za mobitele",84,,0,1,16
+905,"Džakovi za udaranje i oprema za vježbanje",85,,0,1,0
+904,"Kimona i odjeća za borilačke sportove",85,,0,1,0
+908,Ostalo,85,,0,1,0
+907,"Rekviziti za trening",85,,0,1,0
+902,"Rukavice i bandaže",85,,0,1,0
+903,"Štitnici i zaštitna oprema",85,,0,1,0
+906,"Tatami i podloge",85,,0,1,0
+910,"BMX i freestyle bicikli",86,,0,1,0
+913,"Oprema za padobranstvo i paragajding",86,,0,1,0
+912,"Oprema za penjanje",86,,0,1,0
+959,Ostalo,86,,0,1,0
+911,"Role i zaštitna oprema",86,,0,1,0
+909,"Skateboard i oprema",86,,0,1,0
+915,"Grije (kettlebell) oprema",87,,0,1,0
+917,"Kardio oprema",87,,0,1,0
+920,"Nutricijski dodaci",87,,0,1,0
+921,Ostalo,87,,0,1,0
+918,"Prostirke i podloge",87,,0,1,0
+919,"Sportska odjeća i rukavice",87,,0,1,0
+914,"Tegovi i bučice",87,,0,1,0
+916,"Trake za vježbanje",87,,0,1,0
+928,"Navigacija i sigurnosna oprema",88,,0,1,0
+924,"Odjeća za planinarenje",88,,0,1,0
+929,Ostalo,88,,0,1,0
+927,"Penjačka oprema",88,,0,1,0
+923,"Planinarska obuća",88,,0,1,0
+922,"Ruksaci i planinarska oprema",88,,0,1,0
+926,"Šatori i kamp oprema",88,,0,1,0
+925,"Štapovi za hodanje",88,,0,1,0
+932,"Badminton oprema",89,,0,1,0
+931,"Lopte i mreže",89,,0,1,0
+936,Ostalo,89,,0,1,0
+933,"Stoni tenis",89,,0,1,0
+934,"Tašne i futrole za rekete",89,,0,1,0
+935,"Teniska odjeća i dodatna oprema",89,,0,1,0
+930,"Teniski reketaši",89,,0,1,0
+942,"Dresovi i sportska odjeća",90,,0,1,0
+937,Fudbal,90,,0,1,0
+938,Košarka,90,,0,1,0
+940,Odbojka,90,,0,1,0
+944,Ostalo,90,,0,1,0
+941,"Ragbi oprema",90,,0,1,0
+939,Rukomet,90,,0,1,0
+943,"Treninzi i rekviziti",90,,0,1,0
+947,"Biciklistička oprema",91,,0,1,0
+945,"Kamp oprema",91,,0,1,0
+950,"Oprema za boravak u prirodi",91,,0,1,0
+946,"Oprema za trčanje",91,,0,1,0
+949,"Piknik i rekreativna oprema",91,,0,1,0
+951,"Rekreativni rekviziti",91,,0,1,0
+948,"Rolanje i oprema",91,,0,1,0
+956,"Daske za talase",92,,0,1,0
+954,"Daske za veslanje",92,,0,1,0
+955,"Kajaci i oprema",92,,0,1,0
+952,"Oprema za plivanje",92,,0,1,0
+958,Ostalo,92,,0,1,0
+957,"Plivački rekviziti",92,,0,1,0
+953,"Ronilačka i podvodna oprema",92,,0,1,0
+962,Klizaljke,93,,0,1,0
+964,"Odjeća za zimske sportove",93,,0,1,0
+966,Ostalo,93,,0,1,0
+965,"Razni zimski rekviziti",93,,0,1,0
+960,"Skije i oprema",93,,0,1,0
+961,"Snowboard oprema",93,,0,1,0
+963,"Zimske kacige i naočale",93,,0,1,0
+2477,"Bokserska oprema i borilački sportovi",94,,0,1,1
+2478,"Bilijar, pikado i stoni nogomet",94,,0,1,2
+2479,"Golf oprema i dodaci",94,,0,1,3
+2480,"Konjički sport i jahanje",94,,0,1,4
+2481,"Lovačka oprema i pribor",94,,0,1,5
+2482,"Mjerne sprave (Štoperice, daljinomjeri)",94,,0,1,6
+2483,"Oprema za gimnastiku i ples",94,,0,1,7
+2484,"Oprema za klizanje i hokej na ledu",94,,0,1,8
+2485,"Oprema za streličarstvo i samostrele",94,,0,1,9
+2486,"Ostala nepomenuta sportska oprema",94,,0,1,10
+2487,"Pribor za prvu pomoć i masažu",94,,0,1,11
+2488,"Ribolovačka oprema i pribor",94,,0,1,12
+2489,"Roleri, skejtbordi i trotineti",94,,0,1,13
+2490,"Sportske torbe, ruksaci i boce",94,,0,1,14
+2491,"Sportski rekviziti za plažu i vodu",94,,0,1,15
+2492,"Stoni tenis (Reket, mrežice, loptice)",94,,0,1,16
+2493,"Torbe i futrole za specifičnu opremu",94,,0,1,17
+2494,"Vazdušno oružje i oprema za paintball",94,,0,1,18
+2495,"Zastave, pehari i sportska priznanja",94,,0,1,19
+2790,"Anticelulitni preparati i učvršćivanje kože",95,,0,1,1
+2791,"Dezodoransi i antiperspiranti",95,,0,1,2
+2792,"Gelovi za tuširanje i kupke",95,,0,1,3
+2793,"Hidratantna mlijeka, losioni i maslaci",95,,0,1,4
+2794,"Intimna njega i higijena",95,,0,1,5
+2795,"Kreme i balzami za njegu ruku",95,,0,1,6
+2796,"Njega lica (Kreme, serumi, tonici)",95,,0,1,7
+2797,"Njega stopala i pedikura",95,,0,1,8
+2798,"Ostalo iz njege kože i tijela",95,,0,1,9
+2799,"Piling za tijelo i lice",95,,0,1,10
+2800,"Prirodna i organska kozmetika",95,,0,1,11
+2801,"Sapun (Tečni i tvrdi)",95,,0,1,12
+2802,"Sredstva za depilaciju i brijanje",95,,0,1,13
+2803,"Sredstva za sunčanje i zaštitu od sunca",95,,0,1,14
+2804,"Tretmani za problematičnu kožu",95,,0,1,15
+2805,"Ulja za tijelo i masažu",95,,0,1,16
+2806,"Balzami i regeneratori za kosu",96,,0,1,1
+2807,"Boje za kosu i razvijači",96,,0,1,2
+2808,"Četke, češljevi i pribor za kosu",96,,0,1,3
+2809,"Dodaci prehrani za kosu i nokte",96,,0,1,4
+2810,"Maske i intenzivni tretmani za kosu",96,,0,1,5
+2811,"Njega brade (Ulja, balzami i vosak)",96,,0,1,6
+2812,"Njega brkova i setovi za oblikovanje",96,,0,1,7
+2813,"Ostalo iz njege kose i brade",96,,0,1,8
+2814,"Pribor za šišanje i brijanje (Makaze, britve)",96,,0,1,9
+2815,"Proizvodi protiv opadanja kose",96,,0,1,10
+2816,"Stilizovanje brade (Pjene i sapuni)",96,,0,1,11
+2817,"Stilizovanje kose (Gelovi, lakovi, vosak)",96,,0,1,12
+2818,"Suhi šamponi i puderi za volumen",96,,0,1,13
+2819,"Šamponi za kosu",96,,0,1,14
+2820,"Šamponi za pranje brade",96,,0,1,15
+2821,"Ulja i serumi za vrhove kose",96,,0,1,16
+2822,"Akril i materijal za izljevanje noktiju",97,,0,1,1
+2823,"Baze, top coat i završni slojevi",97,,0,1,2
+2824,"Električne turpije i nastavci",97,,0,1,3
+2825,"Gel lakovi (Trajni lakovi)",97,,0,1,4
+2826,"Gelovi za nadogradnju noktiju",97,,0,1,5
+2827,"Naljepnice, cirkoni i ukrasi za nokte",97,,0,1,6
+2828,"Njega zanoktica i ulja za nokte",97,,0,1,7
+2829,"Obični lakovi za nokte",97,,0,1,8
+2830,"Oprema za sterilizaciju i higijenu",97,,0,1,9
+2831,"Ostalo iz njege noktiju",97,,0,1,10
+2832,"Pribor za manikuru (Makazice, grickalice, potiskivači)",97,,0,1,11
+2833,"Skidači laka i acetoni",97,,0,1,12
+2834,"Tečnosti za odmašćivanje i fiksiranje",97,,0,1,13
+2835,"Turpije i blok turpije",97,,0,1,14
+2836,"UV i LED lampe za nokte",97,,0,1,15
+2837,"Vještački nokti i ljepila",97,,0,1,16
+2838,"Četkice za zube (Manualne)",98,,0,1,1
+2839,"Električne i sonične četkice",98,,0,1,2
+2840,"Interdentalne četkice i čačkalice",98,,0,1,3
+2841,"Konac za zube (Floss)",98,,0,1,4
+2842,"Nastavci i glave za električne četkice",98,,0,1,5
+2843,"Njega desni i antiseptički gelovi",98,,0,1,6
+2844,"Njega i čišćenje zubnih proteza",98,,0,1,7
+2845,"Oralni tuševi (Irigatori)",98,,0,1,8
+2846,"Ostalo iz oralne higijene",98,,0,1,9
+2847,"Paste za izbjeljivanje zuba",98,,0,1,10
+2848,"Paste za osjetljive zube i desni",98,,0,1,11
+2849,"Paste za zube (Standardne)",98,,0,1,12
+2850,"Sredstva za ispiranje usta (Vodice)",98,,0,1,13
+2851,"Sredstva za osvježavanje daha",98,,0,1,14
+2852,"Sredstva za profesionalno izbjeljivanje (Setovi)",98,,0,1,15
+2853,"Strugalice za jezik",98,,0,1,16
+2854,"BB, CC kreme i tonirane kreme",99,,0,1,1
+2855,"Bronzeri, rumenila i highlighteri",99,,0,1,2
+2856,"Četkice i kistovi za šminkanje",99,,0,1,3
+2857,"Fiksatori šminke (Sprejevi i puderi)",99,,0,1,4
+2858,"Korektori i kamuflaže",99,,0,1,5
+2859,"Maskare i serumi za trepavice",99,,0,1,6
+2860,"Olovke i gelovi za obrve",99,,0,1,7
+2861,"Olovke i sjenila za oči",99,,0,1,8
+2862,"Olovke, ruževi i sjajila za usne",99,,0,1,9
+2863,"Ostala dekorativna kozmetika",99,,0,1,10
+2864,"Palete sjenila i setovi šminke",99,,0,1,11
+2865,"Pribor za šminkanje (Spužvice, uvijači)",99,,0,1,12
+2866,"Primeri i baze za šminku",99,,0,1,13
+2867,"Puderi u prahu i kamenu",99,,0,1,14
+2868,"Sredstva za skidanje šminke",99,,0,1,15
+2869,"Tekući puderi i podloge",99,,0,1,16
+2870,"Umjetne trepavice i ljepila",99,,0,1,17
+2871,"Body mist i mirisne vodice",100,,0,1,1
+2872,"Dečiji parfemi i toaletne vode",100,,0,1,2
+2873,"Eau de Cologne (Kolonjske vode)",100,,0,1,3
+2874,"Eau de Parfum (Parfemske vode)",100,,0,1,4
+2875,"Eau de Toilette (Toaletne vode)",100,,0,1,5
+2876,"Mirisne svijeće i mirisi za dom",100,,0,1,6
+2877,"Mirisni setovi (Parfem + kozmetika)",100,,0,1,7
+2878,"Muški parfemi i mirisi",100,,0,1,8
+2879,"Niche parfemi i ekskluzivni mirisi",100,,0,1,9
+2880,"Ostali mirisni proizvodi",100,,0,1,10
+2881,"Parfemi u ulju i arapski mirisi",100,,0,1,11
+2882,"Parfemski testeri i mini pakovanja",100,,0,1,12
+2883,"Solid parfemi (Čvrsti parfemi)",100,,0,1,13
+2884,"Testeri i uzorci mirisa",100,,0,1,14
+2885,"Unisex parfemi",100,,0,1,15
+2886,"Ženski parfemi i mirisi",100,,0,1,16
+2887,"Dioptrijski okviri (Muški, ženski, dječiji)",101,,0,1,1
+2888,"Dodaci za naočale (Lančići, vezice, krpice)",101,,0,1,2
+2889,"Futrole i kutije za naočale",101,,0,1,3
+2890,"Kontaktne leće (Dnevne, mjesečne, u boji)",101,,0,1,4
+2891,"Lupa i povećala",101,,0,1,5
+2892,"Naočale na magnet i sklopive naočale",101,,0,1,6
+2893,"Naočale za čitanje (Gotove dioptrije)",101,,0,1,7
+2894,"Naočale za rad na računaru (Blue light)",101,,0,1,8
+2895,"Naočale za sunce (Polarizovane i modne)",101,,0,1,9
+2896,"Ostala optička oprema",101,,0,1,10
+2897,"Sredstva za čišćenje i održavanje stakala",101,,0,1,11
+2898,"Sportske naočale i maske",101,,0,1,12
+2899,"Stakla za naočale (Leće za okvire)",101,,0,1,13
+2900,"Tečnosti i kapi za kontaktne leće",101,,0,1,14
+2901,"Zaštitne naočale (Radne)",101,,0,1,15
+2902,"Aplikatori i pincete za trepavice",102,,0,1,1
+2903,"Boje za obrve i trepavice (Trajne)",102,,0,1,2
+2904,"Individualne trepavice i pramenovi",102,,0,1,3
+2905,"Kozmetička ogledala (Sa LED svjetlom)",102,,0,1,4
+2906,"Kozmetički koferi i organizatori",102,,0,1,5
+2907,"Ljepila za umjetne trepavice",102,,0,1,6
+2908,"Magnetne trepavice i eyelineri",102,,0,1,7
+2909,"Materijal za nadogradnju (Lash Lift)",102,,0,1,8
+2910,"Ostala dodatna kozmetika",102,,0,1,9
+2911,"Oštrači za kozmetičke olovke",102,,0,1,10
+2912,"Pribor za oblikovanje obrva (Britvice, makazice)",102,,0,1,11
+2913,"Sredstva za skidanje ljepila (Removers)",102,,0,1,12
+2914,"Trepavice na traci (Strip lashes)",102,,0,1,13
+2915,"Uvijači za trepavice (Mehanički i grijani)",102,,0,1,14
+2916,"Vata, tuferi i štapići za korekciju",102,,0,1,15
+2917,"Vještački mladeži i nakit za lice",102,,0,1,16
+2918,"Aromaterapija i eterična ulja",103,,0,1,1
+2919,"Čajevi za detoksikaciju i mršavljenje",103,,0,1,2
+2920,"Dijagnostički uređaji (Toplomjeri, tlakomjeri)",103,,0,1,3
+2921,"Dodaci ishrani (Vitamini i minerali)",103,,0,1,4
+2922,"Fitnes rekviziti za kućnu upotrebu",103,,0,1,5
+2923,"Masažeri i pomagala za relaksaciju",103,,0,1,6
+2924,"Medicinska obuća i ortopedski ulošci",103,,0,1,7
+2925,"Ostali wellness proizvodi",103,,0,1,8
+2926,"Pametni satovi i fitnes narukvice",103,,0,1,9
+2927,"Preparati za jačanje imuniteta",103,,0,1,10
+2928,"Probiotici i zdravlje probave",103,,0,1,11
+2929,"Proteini i sportska suplementacija",103,,0,1,12
+2930,"Sredstva za dezinfekciju i zaštitne maske",103,,0,1,13
+2931,"Superhrana (Chia, kvinoja, goji bobice)",103,,0,1,14
+2932,"Uređaji za pročišćavanje i vlaženje zraka",103,,0,1,15
+2933,"Wellness poklon setovi",103,,0,1,16
+2934,"Dječije zaštitne maske (Sa motivima)",104,,0,1,1
+2935,"Hirurške maske (Jednokratne)",104,,0,1,2
+2936,"Latex rukavice (Sa puderom i bez)",104,,0,1,3
+2937,"Naočale i viziri za zaštitu lica",104,,0,1,4
+2938,"Nesterilne medicinske rukavice",104,,0,1,5
+2939,"Nitrile rukavice (Bez lateksa)",104,,0,1,6
+2940,"Ostala zaštitna oprema",104,,0,1,7
+2941,"Pamučne perive maske",104,,0,1,8
+2942,"Platnene rukavice i rukavice za njegu",104,,0,1,9
+2943,"Respiratorne maske (FFP2 / KN95)",104,,0,1,10
+2944,"Respiratorne maske sa ventilom (FFP3)",104,,0,1,11
+2945,"Rukavice od vinila",104,,0,1,12
+2946,"Sredstva za dezinfekciju ruku (Travel pack)",104,,0,1,13
+2947,"Sterilne hirurške rukavice",104,,0,1,14
+2948,"Zaštitna odijela i mantili (Jednokratni)",104,,0,1,15
+2949,"Aksesoari za putovanja (Putne bočice)",105,,0,1,1
+2950,"Čepići za uši i maske za spavanje",105,,0,1,2
+2951,"Flasteri i zavoji (Standardni i dekorativni)",105,,0,1,3
+2952,"Kozmetičke vate, blazinice i štapići",105,,0,1,4
+2953,"Laboratorijski pribor za kućnu upotrebu",105,,0,1,5
+2954,"Magnetski i bakarni nakit za zdravlje",105,,0,1,6
+2955,"Mjerne trake i vage za mjerenje tijela",105,,0,1,7
+2956,"Neseseri i torbice za kozmetiku",105,,0,1,8
+2957,"Oprema za prvu pomoć (Setovi)",105,,0,1,9
+2958,"Ostali nepomenuti proizvodi za njegu",105,,0,1,10
+2959,"Pincete, makazice i turpije (Univerzalne)",105,,0,1,11
+2960,"Sredstva za odbijanje insekata (Repelenti)",105,,0,1,12
+2961,"Termofori i topli/hladni oblozi",105,,0,1,13
+2962,"Ulošci za cipele (Gel i mirisni)",105,,0,1,14
+2963,"Vlažne maramice (Dezinfekcione i osvježavajuće)",105,,0,1,15
+795,"Električni alati",106,,0,1,0
+801,"Generatori struje",106,,0,1,0
+800,"Kompresori i oprema",106,,0,1,0
+797,"Mašine za radionicu",106,,0,1,0
+799,"Mjerne alatke",106,,0,1,0
+802,"Ostalo iz mašine i alati",106,,0,1,0
+796,"Pneumatski alati",106,,0,1,0
+798,"Rezni i brusni alati",106,,0,1,0
+794,"Ručni alati",106,,0,1,0
+805,"Motokultivatori i freze",107,,0,1,0
+807,"Oprema za stočarstvo",107,,0,1,0
+811,"Ostalo iz poljoprivredna oprema i mehanizacija",107,,0,1,0
+808,"Pčelarska oprema",107,,0,1,0
+806,"Poljoprivredne mašine",107,,0,1,0
+810,"Poljoprivredne prikolice",107,,0,1,0
+804,"Priključci za traktore",107,,0,1,0
+809,"Sistemi za navodnjavanje",107,,0,1,0
+803,Traktori,107,,0,1,0
+818,"Alati za zidare i keramičare",108,,0,1,0
+815,"Bušilice, brusilice, čekić-bušilice",108,,0,1,0
+812,"Građevinske mašine",108,,0,1,0
+816,"Mješalice za beton",108,,0,1,0
+820,"Ostalo iz građevinska oprema i alati",108,,0,1,0
+817,"Pumpe za vodu",108,,0,1,0
+819,"Rezači betona, cigle i pločica",108,,0,1,0
+814,"Skela i oplate",108,,0,1,0
+813,"Vibracijske ploče i nabijači",108,,0,1,0
+821,"Fiskalne kase i POS sistemi",109,,0,1,0
+826,"Maloprodajni sistemi i oprema",109,,0,1,0
+823,"Mašine za obradu dokumenata",109,,0,1,0
+825,"Oprema za radionice i servise",109,,0,1,0
+827,"Ostalo iz poslovna oprema i biznis rješenja",109,,0,1,0
+824,"Reklamni i promotivni materijali",109,,0,1,0
+822,"Uredska oprema",109,,0,1,0
+832,"Auto-boje i materijali",110,,0,1,0
+829,"Industrijska ulja i maziva",110,,0,1,0
+831,"Lakovi i boje",110,,0,1,0
+830,"Masti i tehnička sredstva",110,,0,1,0
+828,"Motorna ulja",110,,0,1,0
+833,"Oprema za farbanje",110,,0,1,0
+834,"Ostala ulja, maziva i boje",110,,0,1,0
+839,"Industrijski pakirni aparati",111,,0,1,0
+838,"Mašine za foliranje",111,,0,1,0
+835,"Mašine za vakumiranje",111,,0,1,0
+836,"Mašine za zatvaranje i zavarivanje vrećica",111,,0,1,0
+840,"Ostalo iz aparati i varilice za pakovanje",111,,0,1,0
+837,"Termo zavarivači",111,,0,1,0
+843,"Kombinovane vitrine",112,,0,1,0
+844,"Mini vitrine",112,,0,1,0
+846,"Ostalo iz rashladne i toplotne vitrine",112,,0,1,0
+845,"Profesionalne ugostiteljske vitrine",112,,0,1,0
+841,"Rashladne vitrine",112,,0,1,0
+842,"Toplotne vitrine",112,,0,1,0
+847,"Dizel grijalice",113,,0,1,0
+849,"Električne grijalice",113,,0,1,0
+851,"Industrijski grijači prostora",113,,0,1,0
+852,"Ostalo iz industrijske grijalice i toplotni topovi",113,,0,1,0
+848,"Plinske grijalice",113,,0,1,0
+850,"Toplotni topovi",113,,0,1,0
+857,"Oprema za prezentacije",114,,0,1,0
+854,"Ormari i arhivske police",114,,0,1,0
+859,"Ostalo iz kancelarijski materijal i namještaj",114,,0,1,0
+856,"Registratori, mape i fascikle",114,,0,1,0
+858,"Tabla i planeri",114,,0,1,0
+855,"Uredski potrošni materijal",114,,0,1,0
+853,"Uredski stolovi i stolice",114,,0,1,0
+861,Elektromaterijal,115,,0,1,0
+862,Elektromaterijal,115,,0,1,0
+864,"Industrijske cijevi i spojevi",115,,0,1,0
+865,"Industrijske mašine i komponente",115,,0,1,0
+860,"Industrijski rezervni dijelovi",115,,0,1,0
+867,Ostalo,115,,0,1,0
+866,"Pogonska oprema",115,,0,1,0
+863,"Ventili, pumpe i armature",115,,0,1,0
+868,Ambalaža,116,,0,1,0
+872,"Etikete i oprema za etiketiranje",116,,0,1,0
+869,"Folije raznih vrsta",116,,0,1,0
+870,"Kartonska ambalaža",116,,0,1,0
+874,"Ostala oprema za pakovanje",116,,0,1,0
+871,"Plastična ambalaža",116,,0,1,0
+873,"Punilice i mjerne posude",116,,0,1,0
+878,"Oprema za visinske radove",117,,0,1,0
+881,"Ostala zaštitna oprema",117,,0,1,0
+880,"Protivpožarna oprema",117,,0,1,0
+876,"Rukavice i radna odjeća",117,,0,1,0
+879,"Sigurnosne naočale i štitnici",117,,0,1,0
+877,"Zaštitna obuća",117,,0,1,0
+875,"Zaštitne kacige i maske",117,,0,1,0
+883,"Industrijske trake",118,,0,1,0
+885,"Izolacione trake",118,,0,1,0
+882,"Ljepljive trake za pakovanje",118,,0,1,0
+884,"Obostrane trake",118,,0,1,0
+887,"Ostale trake",118,,0,1,0
+886,"Specijalne tehničke trake",118,,0,1,0
+889,"Kasirne kase i uređaji",119,,0,1,0
+894,Ostalo,119,,0,1,0
+888,"Police i regali",119,,0,1,0
+893,"Potrošni materijal za trgovine",119,,0,1,0
+891,"Prodajni pultovi",119,,0,1,0
+892,"Reklamni stalci",119,,0,1,0
+890,"Vage i mjerne jedinice",119,,0,1,0
+896,"Aparati za pića i napitke",120,,0,1,0
+899,"Grilovi i roštilji",120,,0,1,0
+895,"Oprema za kuhinje",120,,0,1,0
+901,Ostalo,120,,0,1,0
+897,"Posuđe i pribor za ugostiteljstvo",120,,0,1,0
+900,"Profesionalni kuhinjski elementi",120,,0,1,0
+898,"Rashladni uređaji",120,,0,1,0
+2496,"Agregati i industrijska napajanja",121,,0,1,1
+2497,"Ambalaža za transport i skladištenje",121,,0,1,2
+2498,"Bar kod skeneri i printeri etiketa",121,,0,1,3
+2499,"Čišćenje i održavanje industrijskih pogona",121,,0,1,4
+2500,"HTZ oprema (Zaštitna odijela, maske, kacige)",121,,0,1,5
+2501,"Industrijska mjerna oprema i senzori",121,,0,1,6
+2502,"Industrijska rasvjeta i reflektori",121,,0,1,7
+2503,"Laboratorijska oprema i pribor",121,,0,1,8
+2504,"Mašine za pakovanje i vakumiranje",121,,0,1,9
+2505,"Materijali za označavanje i signalizaciju",121,,0,1,10
+2506,"Oprema za ugostiteljstvo i trgovinu",121,,0,1,11
+2507,"Ostala nepomenuta industrijska oprema",121,,0,1,12
+2508,"Pneumatski i hidraulični elementi",121,,0,1,13
+2509,"Police, regali i skladišni sistemi",121,,0,1,14
+2510,"Sirovine i poluproizvodi za proizvodnju",121,,0,1,15
+2511,"Specijalni alati i mašinski dijelovi",121,,0,1,16
+2512,"Vage (Industrijske, trgovačke, precizne)",121,,0,1,17
+2513,"Viljuškari i oprema za unutrašnji transport",121,,0,1,18
+2514,"Zaštita na radu i protivpožarna oprema",121,,0,1,19
+134,"Kolica za bebe",122,,0,1,1
+124,"Autosjedalice za bebe",122,,0,1,2
+135,"Krevetići i ogradice za bebe",122,,0,1,4
+128,"Hranilice i pribor za hranjenje",122,,0,1,5
+125,"Flašice i cucle",122,,0,1,6
+142,"Pelene i potrošni materijal",122,,0,1,7
+129,"Igračke za bebe",122,,0,1,8
+141,"Njega i higijena za bebe",122,,0,1,9
+131,"Izdajalice i oprema za dojenje",122,,0,1,10
+139,"Nosiljke i marame za nošenje",122,,0,1,11
+138,"Monitori i baby kamere",122,,0,1,12
+136,"Ležaljke i sjedalice za bebe",122,,0,1,13
+137,"Ljulje i viseće kolijevke",122,,0,1,14
+130,"Igraonice i podloge za igru",122,,0,1,15
+127,"Hodalice i guralice za bebe",122,,0,1,16
+133,"Kadice i kupaonska oprema",122,,0,1,17
+144,"Posteljina i ogradice za krevet",122,,0,1,18
+132,"Dekice i pokrivači za bebe",122,,0,1,19
+126,"Gnijezda i jastučići za bebe",122,,0,1,20
+143,"Podloge i prostirke za presvlačenje",122,,0,1,21
+146,"Torbe za mame i bebe",122,,0,1,22
+147,"Uređaji i pribor za bebe",122,,0,1,23
+140,"Noše i potty oprema",122,,0,1,24
+145,"Siperci i podbradnici",122,,0,1,25
+148,Ostalo,122,,0,1,26
+151,"Akcione figure i likovi",149,,0,1,0
+150,"Društvene igre i slagalice",149,,0,1,0
+153,"Igračke na baterije i daljinsko upravljanje",149,,0,1,0
+158,"Igračke za dječake",149,,0,1,0
+157,"Igračke za djevojčice",149,,0,1,0
+152,"Kockice i konstrukcione igračke",149,,0,1,0
+154,"Montessori i edukativne igračke",149,,0,1,0
+159,Ostale,149,,0,1,0
+155,"Plišane igračke",149,,0,1,0
+156,"Tobogani, klackalice i kućne igraonice",149,,0,1,0
+2964,"3D puzzle i makete",150,,0,1,1
+2965,"Detektivske i misteriozne igre",150,,0,1,2
+2966,"Domino, šah i klasične drvene igre",150,,0,1,3
+2967,"Društvene igre za dvoje",150,,0,1,4
+2968,"Edukativne igre i kvizovi znanja",150,,0,1,5
+2969,"Igre kartama (Standardne i kolekcionarske)",150,,0,1,6
+2970,"Igre spretnosti i akcije",150,,0,1,7
+2971,"Kreativne igre i setovi za pravljenje",150,,0,1,8
+2972,"Logičke igre i mozgalice",150,,0,1,9
+2973,"Ostale društvene igre i slagalice",150,,0,1,10
+2974,"Party igre i igre za odrasle",150,,0,1,11
+2975,"Porodične društvene igre",150,,0,1,12
+2976,"Puzzle za djecu (Laki nivo)",150,,0,1,13
+2977,"Puzzle za odrasle (Preko 1000 dijelova)",150,,0,1,14
+2978,"Strateške i RPG igre (Tabletop)",150,,0,1,15
+2979,"Tradicionalne igre na tabli (Čovječe ne ljuti se, Monopol)",150,,0,1,16
+2980,"Akcione figure iz crtanih filmova",151,,0,1,1
+2981,"Akcione figure iz filmova i serija",151,,0,1,2
+2982,"Anime i Manga figure",151,,0,1,3
+2983,"Dinosaursi i praistorijska bića",151,,0,1,4
+2984,"Dodaci i oprema za figure (Oružje, vozila)",151,,0,1,5
+2985,"Interaktivne i zvučne figure",151,,0,1,6
+2986,"Kolekcionarske figure (Statue i bista)",151,,0,1,7
+2987,"Ostale figure i likovi",151,,0,1,8
+2988,"Roboti i transformeri",151,,0,1,9
+2989,"Setovi figura sa dodacima",151,,0,1,10
+2990,"Superheroji (Marvel, DC i ostali)",151,,0,1,11
+2991,"Vojnici i vojna oprema",151,,0,1,12
+2992,"Vinilne figure (Funko Pop i slično)",151,,0,1,13
+2993,"Zmajevi i mitska bića",151,,0,1,14
+2994,"Životinjske figure (Domaće i divlje)",151,,0,1,15
+2995,"Arhitektonski setovi i makete zgrada",152,,0,1,1
+2996,"Drvene kockice za građenje",152,,0,1,2
+2997,"Elektronski i programabilni konstruktori",152,,0,1,3
+2998,"Kocke sa velikim dijelovima (za bebe i mališane)",152,,0,1,4
+2999,"Konstrukcioni setovi sa alatima (šarafi i matice)",152,,0,1,5
+3000,"Magnetne kockice i oblici",152,,0,1,6
+3001,"Mehanički i inžinjerski setovi (zupčanici i motori)",152,,0,1,7
+3002,"Metalni konstrukcioni setovi",152,,0,1,8
+3003,"Osnovni setovi kockica (klasične kocke)",152,,0,1,9
+3004,"Ostale konstrukcione igračke",152,,0,1,10
+3005,"Ploče za građenje i postolja",152,,0,1,11
+3006,"Savitljivi i cjevasti konstruktori",152,,0,1,12
+3007,"Setovi kockica po temama (Grad, Svemir, Farma)",152,,0,1,13
+3008,"Setovi za pravljenje staza i mermernih lavirinta",152,,0,1,14
+3009,"Specijalni dodaci (točkovi, prozori, vrata)",152,,0,1,15
+3010,"Vozila i letjelice od kockica",152,,0,1,16
+3011,"Automobili na daljinsko upravljanje (RC)",153,,0,1,1
+3012,"Baterije i punjači za igračke",153,,0,1,2
+3013,"Brodovi i podmornice na daljinski",153,,0,1,3
+3014,"Dječiji dronovi i kvadrokopteri",153,,0,1,4
+3015,"Dječiji fotoaparati i kamere",153,,0,1,5
+3016,"Elektronski muzički instrumenti za djecu",153,,0,1,6
+3017,"Helikopteri i avioni na daljinski",153,,0,1,7
+3018,"Interaktivni robotski ljubimci",153,,0,1,8
+3019,"Kamioni, bageri i radne mašine (RC)",153,,0,1,9
+3020,"Ostale igračke na baterije",153,,0,1,10
+3021,"Pametni roboti i programabilne igračke",153,,0,1,11
+3022,"Staze sa električnim automobilima",153,,0,1,12
+3023,"Voki-toki uređaji za djecu",153,,0,1,13
+3024,"Vozovi na baterije i šine",153,,0,1,14
+3025,"Zvučne i svjetlosne igračke za bebe",153,,0,1,15
+3026,"Abakusi i setovi za rano učenje matematike",154,,0,1,1
+3027,"Drvene daske za učenje (Activity boards)",154,,0,1,2
+3028,"Geometrijski oblici i sortiranje",154,,0,1,3
+3029,"Igračke za razvoj fine motorike i nizanje",154,,0,1,4
+3030,"Igračke za učenje boja i oblika",154,,0,1,5
+3031,"Kartice za učenje slova, brojeva i pojmova",154,,0,1,6
+3032,"Magnetne table i slova",154,,0,1,7
+3033,"Montessori tornjevi i piramide",154,,0,1,8
+3034,"Muzičke igračke za razvoj sluha",154,,0,1,9
+3035,"Ostale edukativne igračke",154,,0,1,10
+3036,"Pribor za vježbe svakodnevnog života (Zakopčavanje, vezivanje)",154,,0,1,11
+3037,"Senzorne kutije i materijali",154,,0,1,12
+3038,"Setovi za eksperimente i učenje o prirodi",154,,0,1,13
+3039,"Slagalice sa mapama i anatomijom",154,,0,1,14
+3040,"Učenje na satu i pojam vremena",154,,0,1,15
+3041,"Vage i mjerni instrumenti za djecu",154,,0,1,16
+3042,"Divlje životinje od pliša",155,,0,1,1
+3043,"Domaće životinje i ljubimci od pliša",155,,0,1,2
+3044,"Gigantski plišani medvjedi i figure",155,,0,1,3
+3045,"Interaktivni plišanci (Govor, pokret, zvuk)",155,,0,1,4
+3046,"Klasični plišani medvjedići",155,,0,1,5
+3047,"Morski svijet od pliša",155,,0,1,6
+3048,"Ostale plišane igračke",155,,0,1,7
+3049,"Plišane igračke iz crtanih filmova i bajki",155,,0,1,8
+3050,"Plišane igračke sa tješilicama za bebe",155,,0,1,9
+3051,"Plišani privjesci i mini plišanci",155,,0,1,10
+3052,"Plišani ruksaci i torbice",155,,0,1,11
+3053,"Plišani setovi sa dodacima (Kućice, kreveti)",155,,0,1,12
+3054,"Senzorni i antistres plišanci",155,,0,1,13
+3055,"Svjetleći plišanci i projektori",155,,0,1,14
+3056,"Unicorni i fantastična bića od pliša",155,,0,1,15
+3057,"Bazeni sa lopticama",156,,0,1,1
+3058,"Dječije kućice (Plastične i platnene)",156,,0,1,2
+3059,"Dječiji šatori i indijanski tipi šatori",156,,0,1,3
+3060,"Grebalice i penjalice za djecu",156,,0,1,4
+3061,"Klackalice za jedno ili više djece",156,,0,1,5
+3062,"Koševi i golovi za kućnu igru",156,,0,1,6
+3063,"Ljuljačke za kućnu i dvorišnu upotrebu",156,,0,1,7
+3064,"Modularne podne prostirke (Puzle od pjene)",156,,0,1,8
+3065,"Ogradice za igru i sigurne zone",156,,0,1,9
+3066,"Ostala oprema za igraonice",156,,0,1,10
+3067,"Pikado i dječije mete",156,,0,1,11
+3068,"Plastični i drveni tobogani",156,,0,1,12
+3069,"Sportske sprave za djecu (Ljestve, karike)",156,,0,1,13
+3070,"Trampoline (Unutrašnje i vanjske)",156,,0,1,14
+3071,"Tuneli za provlačenje",156,,0,1,15
+3072,"Bebe lutke i interaktivne lutke",157,,0,1,1
+3073,"Dvorci, palate i magična kraljevstva",157,,0,1,2
+3074,"Dodaci za lutke (Odjeća, obuća, nakit)",157,,0,1,3
+3075,"Dječija šminka i setovi za uljepšavanje",157,,0,1,4
+3076,"Dječije kuhinje i setovi za kuhanje",157,,0,1,5
+3077,"Igračke za igru doktora i veterinara",157,,0,1,6
+3078,"Kućice za lutke i namještaj",157,,0,1,7
+3079,"Kolekcionarske lutke i figure",157,,0,1,8
+3080,"Kolica i krevetići za lutke",157,,0,1,9
+3081,"Modne lutke i Barbie svijet",157,,0,1,10
+3082,"Nakit za djevojčice i setovi za izradu",157,,0,1,11
+3083,"Ostale igračke za djevojčice",157,,0,1,12
+3084,"Pribor za kosu i glave za friziranje",157,,0,1,13
+3085,"Setovi za igru trgovine i blagajne",157,,0,1,14
+3086,"Vile, sirene i mitska bića",157,,0,1,15
+3087,"Alati i radionice za djecu",158,,0,1,1
+3088,"Automobili, kamioni i motori (Bez daljinskog)",158,,0,1,2
+3089,"Avioni, helikopteri i svemirski brodovi",158,,0,1,3
+3090,"Dječiji voki-toki i špijunska oprema",158,,0,1,4
+3091,"Garaže, parkinzi i setovi sa stazama",158,,0,1,5
+3092,"Igračke na temu policije i vatrogasaca",158,,0,1,6
+3093,"Igračke za igru istraživača i avanturista",158,,0,1,7
+3094,"Metalni autići (Kolekcionarski modeli)",158,,0,1,8
+3095,"Oružja sa pjenastim mecima i strijele",158,,0,1,9
+3096,"Ostale igračke za dječake",158,,0,1,10
+3097,"Roboti i transformabilne figure",158,,0,1,11
+3098,"Setovi za igru sa farmom i životinjama",158,,0,1,12
+3099,"Svemirski setovi i istraživanje Marsa",158,,0,1,13
+3100,"Viteški setovi (Mačevi, štitovi, dvorci)",158,,0,1,14
+3101,"Vojna oprema i vojnici",158,,0,1,15
+3102,"Vozovi, šine i željezničke stanice",158,,0,1,16
+3103,"Antistres igračke (Fidget, Squishy, Pop-it)",159,,0,1,1
+3104,"Baloni i oprema za proslave",159,,0,1,2
+3105,"Dječiji nakit i modni dodaci",159,,0,1,3
+3106,"Igračke za kupanje (Gume, patkice, prskalice)",159,,0,1,4
+3107,"Igračke za pijesak i plažu",159,,0,1,5
+3108,"Igračke za putovanja (Magnetne i mini igre)",159,,0,1,6
+3109,"Kaleidoskopi i optičke varke",159,,0,1,7
+3110,"Kasice za štednju i dječiji novčanici",159,,0,1,8
+3111,"Kostimi i maske za maškare",159,,0,1,9
+3112,"Mađioničarski setovi i trikovi",159,,0,1,10
+3113,"Mjehurići od sapunice (Setovi i tečnosti)",159,,0,1,11
+3114,"Ostale nepomenute igračke",159,,0,1,12
+3115,"Privjesci za ključeve i ruksake",159,,0,1,13
+3116,"Sakupljačke karte i albumi (Sličice)",159,,0,1,14
+3117,"Svjetleći štapići i neon dodaci",159,,0,1,15
+3118,"Zmajevi za puštanje na vjetru",159,,0,1,16
+163,"Dijelovi i oprema za konzole",160,,0,1,1
+162,"Igre za PC i konzole",160,,0,1,2
+164,"Internet i browser igre",160,,0,1,3
+161,"Konzole za video igre",160,,0,1,4
+165,Ostalo,160,,0,1,5
+414,"Modovane / posebna izdanja",161,,0,1,0
+411,Nintendo,161,,0,1,0
+409,PlayStation,161,,0,1,0
+412,Retro,161,,0,1,0
+413,Ručne,161,,0,1,0
+410,Xbox,161,,0,1,0
+2435,"Ostale konzole",161,,0,1,1
+419,"Digitalni ključevi / kodovi",162,,0,1,0
+418,Nintendo,162,,0,1,0
+415,PC,162,,0,1,0
+416,PlayStation,162,,0,1,0
+420,Retro,162,,0,1,0
+421,VR,162,,0,1,0
+417,Xbox,162,,0,1,0
+426,"Dock stanice / stalci",163,,0,1,0
+425,Headsetovi,163,,0,1,0
+422,"Kontroleri / Joysticki",163,,0,1,0
+424,"Memorijske kartice i SSD-ovi",163,,0,1,0
+428,"Ostali dijelovi",163,,0,1,0
+423,"Punjači i kablovi",163,,0,1,0
+427,"Zaštitne futrole i torbe",163,,0,1,0
+2436,"Browser-based MMORPG i strategije",164,,0,1,1
+2437,"Digitalne dopune i vaučeri (Gift cards)",164,,0,1,2
+2438,"Igre na društvenim mrežama i aplikacijama",164,,0,1,3
+2439,"IO igre i arkadne platforme",164,,0,1,4
+2440,"Kozmetički dodaci i skinovi",164,,0,1,5
+2441,"Ostale online i browser igre",164,,0,1,6
+2442,"Platforme za mini-igre (Hubovi)",164,,0,1,7
+2443,"Pretplate na gaming portale",164,,0,1,8
+2444,"Premium nalozi i statusi",164,,0,1,9
+2445,"Unutar-igračke valute (Virtualni krediti)",164,,0,1,10
+2446,"Virtualne platforme i metaverzum igre",164,,0,1,11
+169,"Hi-Fi komponente i audio sistemi",166,,0,1,0
+168,"Muzička oprema i pribor",166,,0,1,0
+170,"Muzičke linije i stereo sistemi",166,,0,1,0
+167,"Muzički instrumenti",166,,0,1,0
+171,Ostalo,166,,0,1,0
+523,"Bubnjevi i udaraljke",167,,0,1,0
+524,"Duvački instrumenti",167,,0,1,0
+521,Gitare,167,,0,1,0
+522,"Klavijature i klaviri",167,,0,1,0
+526,"Ostali instrumenti",167,,0,1,0
+525,"Žičani instrumenti",167,,0,1,0
+530,"DJ oprema",168,,0,1,0
+529,"Efekti i pedale",168,,0,1,0
+532,"Kabli i adapteri",168,,0,1,0
+527,"Mikrofon i pribor",168,,0,1,0
+533,"Ostala muzička oprema",168,,0,1,0
+528,"Pojačala i zvučnici",168,,0,1,0
+531,"Studio oprema",168,,0,1,0
+534,"Kućni audio sistemi",169,,0,1,0
+536,"Pojačala i DAC",169,,0,1,0
+537,"Pribor i kablovi",169,,0,1,0
+535,"Zvučnici i soundbarovi",169,,0,1,0
+541,"DJ i party linije",170,,0,1,0
+538,"Kompleti za kućnu upotrebu",170,,0,1,0
+539,"Kućni teatar",170,,0,1,0
+542,Ostalo,170,,0,1,0
+540,"Prenosivi audio sistemi",170,,0,1,0
+3254,"Akustični paneli i izolacija (Apsorberi, difuzori)",171,,0,1,1
+3255,"Alati za održavanje instrumenata (Setovi za čišćenje)",171,,0,1,2
+3256,"Čepići za uši i zaštita sluha za muzičare",171,,0,1,3
+3257,"Koferi, torbe i rek (Rack) kućišta",171,,0,1,4
+3258,"Metronomi i štimeri (Tuneri)",171,,0,1,5
+3259,"Muzički stalci (Za note, mikrofone, instrumente)",171,,0,1,6
+3260,"Oprema za čišćenje gramofonskih ploča",171,,0,1,7
+3261,"Ostali nepomenuti muzički dodaci",171,,0,1,8
+3262,"Pop filteri i izolacioni štitovi za mikrofone",171,,0,1,9
+3263,"Pribor za muzičare (Trzalice, kapodasteri, remenovi)",171,,0,1,10
+3264,"Punjači, adapteri i napajanja za pedale",171,,0,1,11
+3265,"Rezervni dijelovi za instrumente (Pragovi, čivije, potenciometri)",171,,0,1,12
+3266,"Stolice i klupe za muzičare (Pianino klupe, bubnjarske stolice)",171,,0,1,13
+3267,"Svjetla za note i scenska rasvjeta (Manja)",171,,0,1,14
+3268,"Žice za sve vrste žičanih instrumenata",171,,0,1,15
+173,Knjige,172,,0,1,1
+176,"Stripovi i grafički romani",172,,0,1,2
+175,"E-knjige (elektronske knjige)",172,,0,1,3
+174,Audioknjige,172,,0,1,4
+179,"Magazini i časopisi",172,,0,1,5
+177,"Školski pribor i edukativni materijali",172,,0,1,6
+178,"Katalozi i priručnici",172,,0,1,7
+180,"Ostala literatura",172,,0,1,8
+588,"Beletristika / Romani",173,,0,1,0
+599,"Dječije knjige",173,,0,1,0
+610,"Kuharice i priručnici za dom",173,,0,1,0
+613,"Ostale knjige",173,,0,1,0
+603,"Popularna nauka",173,,0,1,0
+612,"Rijetke i kolekcionarske knjige",173,,0,1,0
+593,"Stručna literatura",173,,0,1,0
+611,"Umjetnost i dizajn",173,,0,1,0
+614,"Beletristika / Romani (audio)",174,,0,1,0
+617,"Biografije i eseji (audio)",174,,0,1,0
+616,"Dječije audioknjige",174,,0,1,0
+618,"Self-help i motivacija (audio)",174,,0,1,0
+615,"Stručna literatura (audio)",174,,0,1,0
+622,"Digitalni priručnici",175,,0,1,0
+621,"E-knjige za djecu",175,,0,1,0
+620,"Edukativne i stručne e-knjige",175,,0,1,0
+619,"PDF / ePub romani",175,,0,1,0
+626,"Albumi i specijalna izdanja",176,,0,1,0
+625,"Grafički romani i kolekcionarska izdanja",176,,0,1,0
+624,Manga,176,,0,1,0
+623,Stripovi,176,,0,1,0
+629,"Edukativni materijali i setovi",177,,0,1,0
+627,"Školske potrepštine",177,,0,1,0
+628,"Udžbenici i radne sveske",177,,0,1,0
+634,"Hobi priručnici",178,,0,1,0
+630,"Katalozi proizvoda",178,,0,1,0
+632,"Servisni i mehanički priručnici",178,,0,1,0
+631,"Tehnički priručnici",178,,0,1,0
+633,"Uputstva i vodiči za rad",178,,0,1,0
+636,"Automoto magazini",179,,0,1,0
+638,"Biznis i tehnologija",179,,0,1,0
+641,"Hobi i specijalizovani časopisi",179,,0,1,0
+637,"Kuhanje i dom",179,,0,1,0
+635,"Moda i lifestyle magazini",179,,0,1,0
+640,"Nauka i edukacija",179,,0,1,0
+642,Ostalo,179,,0,1,0
+639,"Sportski magazini",179,,0,1,0
+646,"Džepna izdanja",180,,0,1,0
+645,Eseji,180,,0,1,0
+644,Poezija,180,,0,1,0
+643,Putopisi,180,,0,1,0
+647,"Stare i antikvarne knjige",180,,0,1,0
+182,"Umjetničke slike",181,,0,1,1
+186,"Skulpture i figure",181,,0,1,2
+184,"Ikone i levhe",181,,0,1,3
+183,"Fotografije i printovi",181,,0,1,4
+185,"Posteri i plakati",181,,0,1,5
+695,"Digitalna umjetnost",181,,0,1,6
+694,"Ramovi i oprema za uokviravanje",181,,0,1,7
+696,"Razni dekorativni predmeti",181,,0,1,8
+187,"Tattoo i body art oprema",181,,0,1,9
+188,Ostalo,181,,0,1,10
+649,"Akrilne slike",182,,0,1,0
+650,"Akvarel / vodene boje",182,,0,1,0
+651,"Crteži i skice",182,,0,1,0
+652,"Moderna i apstraktna umjetnost",182,,0,1,0
+655,"Portreti i figure",182,,0,1,0
+656,"Prilagođene slike po narudžbi",182,,0,1,0
+653,"Realistične i pejzažne slike",182,,0,1,0
+648,"Ulje na platnu",182,,0,1,0
+660,"Arhitektura i ulice",183,,0,1,0
+661,"Crno-bijela fotografija",183,,0,1,0
+663,"Ograničene serije",183,,0,1,0
+658,"Pejzaži i priroda",183,,0,1,0
+659,Portreti,183,,0,1,0
+662,"Štampani motivi / reprodukcije",183,,0,1,0
+657,"Umjetničke fotografije",183,,0,1,0
+666,"Islamske levhe",184,,0,1,0
+669,"Izrada po narudžbi",184,,0,1,0
+665,"Katoličke ikone",184,,0,1,0
+664,"Pravoslavne ikone",184,,0,1,0
+667,"Ručno rađene ikone i levhe",184,,0,1,0
+668,"Štampane ikone i levhe",184,,0,1,0
+676,"Edukativni posteri i karte",185,,0,1,0
+670,"Filmovi i serije",185,,0,1,0
+672,"Motivacioni i citati",185,,0,1,0
+671,"Muzika i izvođači",185,,0,1,0
+674,"Retro i vintage plakati",185,,0,1,0
+675,"Sportski plakati",185,,0,1,0
+673,"Umjetnički posteri",185,,0,1,0
+684,"3D printane figure",186,,0,1,0
+677,"Dekorativne skulpture",186,,0,1,0
+680,"Drvene skulpture",186,,0,1,0
+685,"Edukativni posteri i karte",186,,0,1,0
+681,"Keramičke i glinene figure",186,,0,1,0
+683,"Kolekcionarske figure",186,,0,1,0
+678,"Metalne skulpture",186,,0,1,0
+679,"Metalne skulpture",186,,0,1,0
+682,"Staklene skulpture",186,,0,1,0
+688,"Boje i pigmenti",187,,0,1,0
+687,"Igle i patroni",187,,0,1,0
+686,"Mašinice za tetoviranje",187,,0,1,0
+691,"Oprema za pirsing",187,,0,1,0
+690,"Šabloni i transfer papiri",187,,0,1,0
+689,"Sredstva za sterilizaciju i njegu",187,,0,1,0
+693,"Materijal za umjetnike",188,,0,1,0
+692,"Umjetnički katalozi i knjige",188,,0,1,0
+193,"Numizmatika (kovanice i novčanice)",189,,0,1,1
+190,"Filatelija (poštanske marke i zbirke)",189,,0,1,2
+192,"Militarija i vojni predmeti",189,,0,1,3
+191,"Maketarstvo i modelarstvo",189,,0,1,4
+194,"Figurice i statue",189,,0,1,5
+199,"Sličice i albumi",189,,0,1,6
+206,"Značke i bedževi",189,,0,1,7
+197,"Religijski predmeti i ikonografija",189,,0,1,8
+202,Suveniri,189,,0,1,9
+195,"Plakete i medalje",189,,0,1,10
+205,"Zastave i zastavice",189,,0,1,11
+200,"Sportski pehari i oznake",189,,0,1,12
+201,"Stare ulaznice i memorabilije",189,,0,1,13
+203,"Tablice za vozila",189,,0,1,14
+196,"Razglednice i čestitke",189,,0,1,15
+207,"Žetoni i tokeni",189,,0,1,16
+204,"Telefonske kartice",189,,0,1,17
+198,"Salvete i suvenir papirni materijal",189,,0,1,18
+208,"Ostalo kolekcionarstvo",189,,0,1,19
+215,"Antik namještaj",209,,0,1,1
+220,"Antik slike, gobleni i umjetnički predmeti",209,,0,1,2
+214,"Antik nakit i satovi",209,,0,1,3
+210,"Gramofoni i ploče",209,,0,1,4
+211,"Antik keramika i staklo",209,,0,1,5
+219,"Antik predmeti od metala",209,,0,1,6
+213,"Antik predmeti, pribor i oprema",209,,0,1,7
+221,"Antik uređaji i aparati",209,,0,1,8
+212,"Knjige i dokumenti",209,,0,1,9
+217,"Narodna nošnja i tekstil",209,,0,1,10
+218,"Ponjave i dekorativni tkanini predmeti",209,,0,1,11
+216,"Pisaće mašine",209,,0,1,12
+222,Ostalo,209,,0,1,13
+224,Namještaj,223,,0,1,1
+226,"Kuhinja i kuhinjska oprema",223,,0,1,2
+225,"Grijanje i hlađenje",223,,0,1,3
+227,"Kupatilo i sanitarije",223,,0,1,4
+229,"Vrt, biljke i vrtlarstvo",223,,0,1,5
+3626,"Alati (ručni i električni)",223,,0,1,6
+228,"Stolarija i drvena oprema",223,,0,1,7
+3628,"Građevinski materijali i izolacija",223,,0,1,8
+241,"Vodoinstalacije i oprema",223,,0,1,9
+230,"Lampe i rasvjeta",223,,0,1,10
+233,"Ćilimi, tepisi, etisoni i podne obloge",223,,0,1,11
+240,"Tekstilni proizvodi (posteljina, zavjese, jastuci)",223,,0,1,12
+234,"Dekoracije i ukrasi",223,,0,1,13
+3627,"Boje, lakovi i ljepila",223,,0,1,14
+236,"Keramičke pločice i zidne obloge",223,,0,1,15
+231,"Bazeni i oprema za bazene",223,,0,1,16
+3630,"Smart Home i automatizacija",223,,0,1,17
+3631,"Solarni sistemi i energetika",223,,0,1,18
+238,"Sigurnosni uređaji i alarmi",223,,0,1,19
+235,"Filteri za vodu i pročišćivači",223,,0,1,20
+239,"Sredstva i uređaji za čišćenje",223,,0,1,21
+237,"Poštanska sandučad i kućna oprema",223,,0,1,22
+242,Ostalo,223,,0,1,23
+429,"Dnevni boravak",224,,0,1,0
+433,"Enterijer za hodnike i predsob",224,,0,1,0
+434,"Namještaj po mjeri",224,,0,1,0
+435,Ostalo,224,,0,1,0
+432,"Radne sobe i kancelarija",224,,0,1,0
+430,"Spavaće sobe",224,,0,1,0
+431,Trpezarije,224,,0,1,0
+438,"Grijalice i radijatori",225,,0,1,0
+436,"Klima uređaji",225,,0,1,0
+439,"Peći na drva i peleti",225,,0,1,0
+440,"Termostati i dodatna oprema",225,,0,1,0
+437,Ventilatori,225,,0,1,0
+442,"Kuhinjski elementi i ormarići",226,,0,1,0
+446,"Mali kuhinjski aparati",226,,0,1,0
+447,Ostalo,226,,0,1,0
+443,"Radne ploče i kuhinjski otoci",226,,0,1,0
+444,"Sudoperi i slavine",226,,0,1,0
+445,"Ugradbeni aparati",226,,0,1,0
+452,"Ogledala i dodaci",227,,0,1,0
+451,"Ormarići i police za kupatilo",227,,0,1,0
+450,"Tuševi, kade i tuš kabine",227,,0,1,0
+449,"Umivaonici i slavine",227,,0,1,0
+448,"WC šolje i pisoari",227,,0,1,0
+456,"Drvene dekoracije i paneli",228,,0,1,0
+457,"Namještaj po mjeri i dodatna oprema",228,,0,1,0
+458,Ostalo,228,,0,1,0
+454,"Prozori i prozorske klupice",228,,0,1,0
+455,"Stepenice, rukohvati i gelende",228,,0,1,0
+453,"Vrata i okviri",228,,0,1,0
+463,"Baštenska dekoracija",229,,0,1,0
+459,"Biljke, cvijeće i bonsai",229,,0,1,0
+464,"Sistem za navodnjavanje i crpke",229,,0,1,0
+460,"Sjeme i sadnice",229,,0,1,0
+461,"Vrtni alati i pribor",229,,0,1,0
+462,"Vrtni namještaj i garniture",229,,0,1,0
+470,"Dekorativna rasvjeta i LED trakice",230,,0,1,0
+471,"Ostala rasvjeta",230,,0,1,0
+467,"Plafonska rasvjeta",230,,0,1,0
+466,"Podne lampe i stalci",230,,0,1,0
+465,"Stolne lampe i lampe za čitanje",230,,0,1,0
+469,"Vanjska rasvjeta i vrtne lampe",230,,0,1,0
+468,"Zidne lampe i reflektori",230,,0,1,0
+472,Bazeni,231,,0,1,0
+473,"Filteri i pumpe",231,,0,1,0
+476,"Igračke i dodatna oprema",231,,0,1,0
+474,"Oprema za održavanje",231,,0,1,0
+475,"Pokrivači, tende i zaštitni sistemi",231,,0,1,0
+479,"Etisoni i podne trake",233,,0,1,0
+478,"Laminat, parketi i vinil",233,,0,1,0
+480,"Protuklizne podloge i podloge za djecu",233,,0,1,0
+481,"Samoljepljive pločice i dekorativni podovi",233,,0,1,0
+477,"Tepisi i ćilimi",233,,0,1,0
+483,"Ogledala i okviri",234,,0,1,0
+486,"Sezonski ukrasi i tematski setovi",234,,0,1,0
+485,"Svijećnjaci i lampe",234,,0,1,0
+484,"Vaze, figurice i skulpture",234,,0,1,0
+482,"Zidni ukrasi i slike",234,,0,1,0
+488,"Filteri za frižidere",235,,0,1,0
+487,"Filteri za kućne slavine",235,,0,1,0
+490,"Patroni i zamjenski filteri",235,,0,1,0
+489,"Pročišćivači i ionizatori",235,,0,0,0
+495,"Mozaici i dekorativne pločice",236,,0,1,0
+493,"Pločice za pod",236,,0,1,0
+494,"Pločice za zid",236,,0,1,0
+496,"Samoljepljive i privremene pločice",236,,0,1,0
+498,"Kućni interfoni i zvona",237,,0,1,0
+500,"Ostala kućna oprema",237,,0,1,0
+497,"Poštanska sandučad",237,,0,1,0
+499,"Sigurnosna vrata i brave",237,,0,1,0
+502,"Alarmni sistemi i senzori",238,,0,1,0
+503,"Detektori dima, plina i curenja vode",238,,0,1,0
+504,"Sigurnosne brave i dodaci",238,,0,1,0
+501,"Sigurnosne kamere",238,,0,1,0
+508,"Četke, mopovi i pribor",239,,0,1,0
+507,"Sredstva za čišćenje",239,,0,1,0
+506,"Uređaji za pranje podova",239,,0,1,0
+505,Usisivači,239,,0,1,0
+512,"Jastuci za dekoraciju i sjedenje",240,,0,1,0
+509,"Posteljina, popluni i jastuci",240,,0,1,0
+511,"Prekrivači i navlake",240,,0,1,0
+510,"Zavjese i rolete",240,,0,1,0
+513,"Cijevi, fitinzi i ventili",241,,0,1,0
+516,"Filteri i dodatna oprema",241,,0,1,0
+517,"Ostala oprema",241,,0,1,0
+515,"Rezervoari i bojleri",241,,0,1,0
+514,"Slavine i pumpe",241,,0,1,0
+3238,"Arhiviranje i kutije za uspomene",242,,0,1,1
+3239,"Dekorativne korpe i kutije za odlaganje",242,,0,1,2
+3240,"Dizajnerski detalji i statue",242,,0,1,3
+3241,"Kante za smeće i vreće",242,,0,1,4
+3242,"Kasice za štednju i sefovi za dom",242,,0,1,5
+3243,"Mirisi za dom, svijeće i difuzori",242,,0,1,6
+3244,"Otirači za ulazna vrata",242,,0,1,7
+3245,"Ostali nepomenuti predmeti za domaćinstvo",242,,0,1,8
+3246,"Osvježivači i odvlaživači vazduha (pasivni)",242,,0,1,9
+3247,"Pepeljare i oprema za pušače",242,,0,1,10
+3248,"Pribor za šivenje i krpljenje",242,,0,1,11
+3249,"Satovi (Zidni i stoni)",242,,0,1,12
+3250,"Sredstva za održavanje i poliranje namještaja",242,,0,1,13
+3251,"Sredstva za zaštitu od insekata u domu",242,,0,1,14
+3252,"Stalci za kišobrane i novine",242,,0,1,15
+3253,"Vještačko cvijeće i ukrasne grane",242,,0,1,16
+246,"Mliječni proizvodi",243,,0,1,1
+245,"Životinjski proizvodi",243,,0,1,2
+244,"Biljni proizvodi",243,,0,1,3
+249,"Prerada hrane i konzervirani proizvodi",243,,0,1,4
+250,"Ulja, začini i začinske smjese",243,,0,1,5
+248,Pića,243,,0,1,6
+247,"Dezerti i slastice",243,,0,1,7
+251,"Paketi proizvoda i poklon setovi",243,,0,1,8
+252,Ostalo,243,,0,1,9
+2651,"Biljne kapi i tinkture",244,,0,1,1
+2652,"Biljne masti i melemi",244,,0,1,2
+2653,"Biljni ekstrakti i prahovi",244,,0,1,3
+2654,"Biljni sirupi i eliksiri",244,,0,1,4
+2655,"Čajne mješavine i monokomponentni čajevi",244,,0,1,5
+2656,"Eterična ulja i aromaterapija",244,,0,1,6
+2657,"Fitomedicina i biljni suplementi",244,,0,1,7
+2658,"Hladno cijeđena biljna ulja",244,,0,1,8
+2659,"Ljekovito bilje (Osušeno i rezano)",244,,0,1,9
+2660,"Organski biljni namazi",244,,0,1,10
+2661,"Ostali biljni proizvodi",244,,0,1,11
+2662,"Prirodna biljna kozmetika",244,,0,1,12
+2663,"Sirovine za izradu biljnih preparata",244,,0,1,13
+2664,"Sjemenke i plodovi ljekovitog bilja",244,,0,1,14
+2665,"Vegetarijanski i veganski biljni proizvodi",244,,0,1,15
+2666,"Domuća mast i životinjska masnoća",245,,0,1,1
+2667,"Inkapsulirani životinjski ekstrakti",245,,0,1,2
+2668,"Jaja (Konzumna i rasplodna)",245,,0,1,3
+2669,"Krzno i neobrađena koža",245,,0,1,4
+2670,"Lanolin i derivati vune",245,,0,1,5
+2671,"Mliječni proizvodi (Sir, kajmak, maslac)",245,,0,1,6
+2672,"Mlijeko (Svježe i dugotrajno)",245,,0,1,7
+2673,"Matična mliječ i pčelinji proizvodi",245,,0,1,8
+2674,"Ostali životinjski proizvodi",245,,0,1,9
+2675,"Pčelinji vosak i satne osnove",245,,0,1,10
+2676,"Perje i pahuljice",245,,0,1,11
+2677,"Riblja ulja i Omega-3 dodaci",245,,0,1,12
+2678,"Rogovi, kosti i prirodni ukrasi",245,,0,1,13
+2679,"Suhomesnati proizvodi i delikatesi",245,,0,1,14
+2680,"Vuna i prirodna vlakna",245,,0,1,15
+2681,"Životinjski kolagen i želatin",245,,0,1,16
+2682,"Domaći i zanatski sirevi",246,,0,1,1
+2683,"Jogurt i kiselo-mliječni napici",246,,0,1,2
+2684,"Kajmak (Mladi i zreli)",246,,0,1,3
+2685,"Kefir i probiotski mliječni proizvodi",246,,0,1,4
+2686,"Kisela pavlaka i mileram",246,,0,1,5
+2687,"Maslac i ghee (Prečišćeni maslac)",246,,0,1,6
+2688,"Mlijeko u prahu i kondenzovano mlijeko",246,,0,1,7
+2689,"Mliječni namazi i mliječni deserti",246,,0,1,8
+2690,"Mladi sir i svježi sir",246,,0,1,9
+2691,"Ostali mliječni proizvodi",246,,0,1,10
+2692,"Ovčije i kozije mlijeko i prerađevine",246,,0,1,11
+2693,"Pavlaka za kuhanje i šlag",246,,0,1,12
+2694,"Sirni namazi i topljeni sirevi",246,,0,1,13
+2695,"Surutka i mliječni proteini",246,,0,1,14
+2696,"Tvrdi i polutvrdi sirevi (Trapist, Livanjski, Edamer)",246,,0,1,15
+2697,"Bomboni i gumene bombone",247,,0,1,1
+2698,"Čokolade i čokoladne table",247,,0,1,2
+2699,"Čokoladne bananice i desertne barovi",247,,0,1,3
+2700,"Domaći džemovi, marmelade i slatka",247,,0,1,4
+2701,"Domaći kolači i sitni kolači",247,,0,1,5
+2702,"Keksi, vafli i napolitanke",247,,0,1,6
+2703,"Krofne i peciva sa punjenjem",247,,0,1,7
+2704,"Lizalice i slatkiši za djecu",247,,0,1,8
+2705,"Medenjaci i paprenjaci",247,,0,1,9
+2706,"Ostali deserti i slastice",247,,0,1,10
+2707,"Praline i bombonjere",247,,0,1,11
+2708,"Puding, kreme i instant deserti",247,,0,1,12
+2709,"Sladoledi i zamrznuti deserti",247,,0,1,13
+2710,"Torte (Cijele i na parče)",247,,0,1,14
+2711,"Tradicionalne agdinske slastice (Baklava, hurmašice)",247,,0,1,15
+2712,"Zdravi slatkiši (Bez šećera i sirovi)",247,,0,1,16
+2713,"Bezalkoholna gazirana pića",248,,0,1,1
+2714,"Biljni čajevi i mješavine",248,,0,1,2
+2715,"Craft piva i zanatske pivare",248,,0,1,3
+2716,"Domaći i industrijski sokovi (100% voće)",248,,0,1,4
+2717,"Domaće rakije i likeri",248,,0,1,5
+2718,"Energetski napici i izotonici",248,,0,1,6
+2719,"Gazirana i mineralna voda",248,,0,1,7
+2720,"Kafa (Mljevena, u zrnu i kapsule)",248,,0,1,8
+2721,"Ledeni čajevi i osvježavajući napici",248,,0,1,9
+2722,"Ostala pića i napici",248,,0,1,10
+2723,"Piva (Svijetla, tamna i bezalkoholna)",248,,0,1,11
+2724,"Pribor i sirupi za pripremu pića",248,,0,1,12
+2725,"Prirodna izvorska voda",248,,0,1,13
+2726,"Sirupi na razblaživanje",248,,0,1,14
+2727,"Vina (Crna, bijela i rose)",248,,0,1,15
+2728,"Žestoka alkoholna pića (Viski, džin, votka)",248,,0,1,16
+2729,"Ajvari i namazi od povrća",249,,0,1,1
+2730,"Gotova jela u konzervi i tegli",249,,0,1,2
+2731,"Konzervirana riba i morski plodovi",249,,0,1,3
+2732,"Konzervirano meso i mesni doručak",249,,0,1,4
+2733,"Konzervirano voće (Kompot)",249,,0,1,5
+2734,"Kuhani paradajz i sosovi",249,,0,1,6
+2735,"Masline i maslinovo ulje",249,,0,1,7
+2736,"Ostala konzervirana hrana",249,,0,1,8
+2737,"Paštete i mesni namazi",249,,0,1,9
+2738,"Pečurke i gljive u salamuri",249,,0,1,10
+2739,"Poluproizvodi za brzu pripremu",249,,0,1,11
+2740,"Povrće u tegli (Krastavci, paprike, cvekla)",249,,0,1,12
+2741,"Sirovine za konzerviranje (Konzervansi, soli)",249,,0,1,13
+2742,"Slatka zimnica (Džemovi i marmelade)",249,,0,1,14
+2743,"Turšija i fermentisano povrće",249,,0,1,15
+2744,"Biljne masti i margarini",250,,0,1,1
+2745,"Domaći i univerzalni dodaci jelima",250,,0,1,2
+2746,"Egzotični i orijentalni začini",250,,0,1,3
+2747,"Hladno cijeđena i ljekovita ulja",250,,0,1,4
+2748,"Ljekovito bilje i sušeni začini",250,,0,1,5
+2749,"Maslinovo ulje (Ekstra djevansko i rafinisano)",250,,0,1,6
+2750,"Mješavine začina za meso i roštilj",250,,0,1,7
+2751,"Mješavine začina za ribu i morske plodove",250,,0,1,8
+2752,"Octovi i kiselinski dodaci (Jabuka, kvasina, balzamični)",250,,0,1,9
+2753,"Ostala ulja i začini",250,,0,1,10
+2754,"Paprika (Slatka, ljuta, dimljena, tucana)",250,,0,1,11
+2755,"Papar i šarena zrna papra",250,,0,1,12
+2756,"Soli (Morska, himalajska, začinjena)",250,,0,1,13
+2757,"Suncokretovo i ostala jestiva ulja",250,,0,1,14
+2758,"Umacu i sosovi kao dodaci jelima (Senf, majoneza, kečap)",250,,0,1,15
+2759,"Začini za kolače i slastice (Cimet, vanilija, karanfilić)",250,,0,1,16
+2760,"Dječiji poklon paketi i igračke",251,,0,1,1
+2761,"Gastronomski (Gourmet) paketi hrane",251,,0,1,2
+2762,"Higijenski setovi i setovi za brijanje",251,,0,1,3
+2763,"Kolekcije čajeva i kafa sa šoljama",251,,0,1,4
+2764,"Korporativni i poslovni poklon setovi",251,,0,1,5
+2765,"Kozmetički setovi za njegu lica i tijela",251,,0,1,6
+2766,"Limitirane edicije i kolekcionarski setovi",251,,0,1,7
+2767,"Ostali paketi i setovi",251,,0,1,8
+2768,"Parfemski setovi (Miris + losion)",251,,0,1,9
+2769,"Poklon korpe sa voćem i delicijama",251,,0,1,10
+2770,"Poklon paketi za bebe i novorođenčad",251,,0,1,11
+2771,"Poklon setovi pića (Vino, viski, rakija)",251,,0,1,12
+2772,"Setovi za aromaterapiju i opuštanje",251,,0,1,13
+2773,"Setovi za kreativce i DIY projekte",251,,0,1,14
+2774,"Wellness i SPA poklon paketi",251,,0,1,15
+2775,"Ambalaža i vrećice za čuvanje hrane",252,,0,1,1
+2776,"Dekoracije za torte i kolače (Jestive)",252,,0,1,2
+2777,"Dijetalni i specijalizovani prehrambeni artikli",252,,0,1,3
+2778,"Dodaci za pečenje (Prašak za pecivo, kvasac)",252,,0,1,4
+2779,"Hrana za posebne medicinske potrebe",252,,0,1,5
+2780,"Instant obroci i supe u vrećici",252,,0,1,6
+2781,"Jestive boje i arome",252,,0,1,7
+2782,"Kuhinjski pribor za jednokratnu upotrebu",252,,0,1,8
+2783,"Led i rashladni ulošci za prenos hrane",252,,0,1,9
+2784,"Oprema za serviranje i dekoraciju stola",252,,0,1,10
+2785,"Ostali nepomenuti prehrambeni artikli",252,,0,1,11
+2786,"Pribor za čišćenje i održavanje kuhinje",252,,0,1,12
+2787,"Sredstva za dezinfekciju namirnica",252,,0,1,13
+2788,"Sve za roštilj (Ugalj, potpaljivači)",252,,0,1,14
+2789,"Upaljači i šibice za kuhinjsku upotrebu",252,,0,1,15
+254,"Ručni satovi",253,,0,1,1
+257,"Lančići i ogrlice",253,,0,1,2
+258,Narukvice,253,,0,1,3
+260,Prstenje,253,,0,1,4
+259,Naušnice,253,,0,1,5
+265,"Poluge i dukati",253,,0,1,6
+264,"Kristali, drago i poludrago kamenje",253,,0,1,7
+255,"Zidni i stoni satovi",253,,0,1,8
+256,"Džepni satovi",253,,0,1,9
+261,"Privjesci za nakit",253,,0,1,10
+262,"Broševi i bedževi",253,,0,1,11
+263,"Piercing nakit",253,,0,1,12
+266,"Kutije i etui za satove i nakit",253,,0,1,13
+268,"Repromaterijal za nakit",253,,0,1,14
+267,"Dijelovi za satove",253,,0,1,15
+269,"Pribor i alati za nakit i satove",253,,0,1,16
+270,Ostalo,253,,0,1,17
+272,"Karte za kino",271,,0,1,0
+274,"Karte za koncerte",271,,0,1,0
+273,"Karte za pozorišta",271,,0,1,0
+275,"Karte za sportske događaje",271,,0,1,0
+276,"Ostale karte i ulaznice",271,,0,1,0
+733,"Alarmni sistemi",281,,0,1,0
+735,"Detektori (dim, gas, CO2)",281,,0,1,0
+732,"Kućne sigurnosne kamere",281,,0,1,0
+734,"Video nadzor za domaćinstvo",281,,0,1,0
+727,"Društvene igre",282,,0,1,0
+731,"Igračke i zabavni predmeti",282,,0,1,0
+730,"Oprema za kampiranje i boravak u prirodi",282,,0,1,0
+726,"Party oprema",282,,0,1,0
+728,"Rekviziti za rođendane i proslave",282,,0,1,0
+729,"Sportska rekreativna oprema",282,,0,1,0
+723,"Cigaretnici i etuiji",283,,0,1,0
+722,"Kutije i futrole za cigarete",283,,0,1,0
+724,"Lule i pribor za lule",283,,0,1,0
+725,"Nargile i dodatna oprema",283,,0,1,0
+720,Pepeljare,283,,0,1,0
+721,"Upaljači i punjači",283,,0,1,0
+403,"Aparati za kafu",388,,0,1,0
+408,Blenderi,388,,0,1,0
+407,"Dijelovi za kuhinjske aparate",388,,0,1,0
+406,"Električni rezači",388,,0,1,0
+405,"Električni šporeti",388,,0,1,0
+404,"Frižideri i zamrzivači",388,,0,1,0
+402,"Kuhala za vodu i filteri",388,,0,1,0
+401,"Kuhinjske nape",388,,0,1,0
+400,"Kuhinjski bojleri",388,,0,1,0
+399,"Kuhinjski mikseri",388,,0,1,0
+398,"Mašine za suđe",388,,0,1,0
+397,"Mikrovalne pećnice",388,,0,1,0
+396,"Pekači hljeba i peciva",388,,0,1,0
+395,"Sokovnici / Cijedilice za voće",388,,0,1,0
+394,Tosteri,388,,0,1,0
+393,"Ugradbene ploče i pećnice",388,,0,1,0
+391,"Ostali dijelovi",389,,0,1,0
+392,"Veš mašine i sušilice",389,,0,1,0
+3377,"Bidei (Stojeći i zidni)",389,,0,1,1
+3378,"Daske za WC šolju (Klasične i Soft-close)",389,,0,1,2
+3379,"Ispirne cijevi i pribor",389,,0,1,3
+3380,"Monoblok WC setovi",389,,0,1,4
+3381,"Ostala WC oprema i dijelovi",389,,0,1,5
+3382,"Pametne (Smart) WC daske sa funkcijama",389,,0,1,6
+3383,"Pisoari i prateća oprema",389,,0,1,7
+3384,"Podgradni (Ugradbeni) vodokotlići",389,,0,1,8
+3385,"Rezervni dijelovi za vodokotliće (Ventili, plovci)",389,,0,1,9
+3386,"Tipke za aktivaciju ispiranja",389,,0,1,10
+3387,"Vanjski vodokotlići (Visokomontažni i niskomontažni)",389,,0,1,11
+3388,"WC šolje - Podne (Simplon/Baltik)",389,,0,1,12
+3389,"WC šolje - Viseće (Konzolne)",389,,0,1,13
+3416,"Apsorberi mirisa i vlage za uređaje",390,,0,1,1
+3390,"Držači za toaletni papir",390,,0,1,1
+3417,"Čistači i sredstva za održavanje tehnike",390,,0,1,2
+3391,"Držači za peškire i kuke",390,,0,1,2
+3418,"Dodatni pribor za bijelu tehniku",390,,0,1,3
+3392,"Gume i dihtunzi za WC",390,,0,1,3
+3419,"Filteri za vodu (za frižidere i aparate)",390,,0,1,4
+3393,"Mirisi i osvježivači za WC šolju",390,,0,1,4
+3420,"Mini-bar frižideri i rashladne vitrine",390,,0,1,5
+3394,"Nosači i rukohvati za invalide",390,,0,1,5
+3421,"Nosači i stalci za velike uređaje",390,,0,1,6
+3395,"Ostala nepomenuta WC oprema",390,,0,1,6
+3422,"Oprema za pametnu kuću (Smart home senzori)",390,,0,1,7
+3396,"Oprema za ventilaciju toaleta",390,,0,1,7
+3423,"Ostali nepomenuti uređaji bijele tehnike",390,,0,1,8
+3397,"Podne rešetke i sifoni za toalet",390,,0,1,8
+3424,"Podloške protiv vibracija (za veš mašine)",390,,0,1,9
+3398,"Police i ormarići za toaletnu galanteriju",390,,0,1,9
+3425,"Prenosivi (Portable) rashladni uređaji",390,,0,1,10
+3399,"Sredstva za otčepljivanje i održavanje odvoda",390,,0,1,10
+3426,"Regulatori i stabilizatori napona",390,,0,1,11
+3400,"Stalci i četke za WC",390,,0,1,11
+3427,"Rezervni dijelovi za bijelu tehniku",390,,0,1,12
+3401,"Ugradbeni setovi za montažu sanitarija",390,,0,1,12
+3428,"Vinske vitrine i hladnjaci za piće",390,,0,1,13
+3402,"WC prostirke i tepisi",390,,0,1,13
+3403,"Brinox (fleksibilna) crijeva za vodokotlić",391,,0,1,1
+3404,"Dihtunzi i manžetne za WC šolju",391,,0,1,2
+3405,"Ekscentri i adapteri za odvod",391,,0,1,3
+3406,"Ispirne cijevi (Unutrašnje i vanjske)",391,,0,1,4
+3407,"Mehanizmi za dvokoličinsko ispiranje",391,,0,1,5
+3408,"Nosači i setovi za montažu konzolnih šolja",391,,0,1,6
+3409,"Ostali sitni dijelovi za toalet",391,,0,1,7
+3410,"Plovci za vodokotlić (Bočni i donji priključak)",391,,0,1,8
+3411,"Podloške i ublaživači za WC daske",391,,0,1,9
+3412,"Sifoni za pisoare i bidee",391,,0,1,10
+3413,"Šarke i pribor za fiksiranje WC daske",391,,0,1,11
+3414,"Ulazni i izlazni ventili za vodokotlić",391,,0,1,12
+3415,"Zaptivne gume za ugradbene sisteme",391,,0,1,13
+520,"Dekoracije i neklasifikovani predmeti",435,,0,1,0
+519,"Kućni alati i dodaci",435,,0,1,0
+518,"Ostali kućni uređaji",435,,0,1,0
+544,"Akustične gitare",521,,0,1,0
+545,"Bas gitare",521,,0,1,0
+543,"Električne gitare",521,,0,1,0
+546,"Pribor i dijelovi za gitare",521,,0,1,0
+548,"Akustični klaviri",522,,0,1,0
+547,"Digitalni klaviri",522,,0,1,0
+550,"Pribor i pedale",522,,0,1,0
+549,"Sintisajzeri i MIDI kontroleri",522,,0,1,0
+551,"Akustični bubnjevi",523,,0,1,0
+552,"Elektronski bubnjevi",523,,0,1,0
+553,Perkusije,523,,0,1,0
+554,"Trube, saksofoni, flaute, klarineti",524,,0,1,0
+555,"Violine, violončela, kontrabasi",525,,0,1,0
+556,"Harmonike, ukulele, sitar, didgeridoo",526,,0,1,0
+557,"Kondenzatorski i dinamički mikrofoni",527,,0,1,0
+558,"Stativi, pop filteri",527,,0,1,0
+561,"Aktivni i pasivni zvučnici",528,,0,1,0
+560,"Bas pojačala",528,,0,1,0
+559,"Gitarska pojačala",528,,0,1,0
+562,"Gitarske pedale",529,,0,1,0
+563,Multi-efekti,529,,0,1,0
+564,"DJ kontroleri",530,,0,1,0
+565,"Mikset table",530,,0,1,0
+566,"Turntable ploče i gramofoni",530,,0,1,0
+567,"Audio interfejsi",531,,0,1,0
+568,"Monitoring zvučnici",531,,0,1,0
+569,"Pribor za snimanje",531,,0,1,0
+3269,"Adapteri i pretvarači (Reduciri)",532,,0,1,1
+3270,"Digitalni audio kablovi (Optički, S/PDIF, AES/EBU)",532,,0,1,2
+3271,"DMX kablovi za rasvjetu",532,,0,1,3
+3272,"Instrument kablovi (TS Jack - za gitare i klavijature)",532,,0,1,4
+3273,"Kablovi na metar i konektori u rinfuzi",532,,0,1,5
+3274,"Mrežni kablovi za audio (Ethercon, Cat6)",532,,0,1,6
+3275,"MIDI kablovi",532,,0,1,7
+3276,"Multicore kablovi (Stagebox zmije)",532,,0,1,8
+3277,"Napojni kablovi i razdjelnici za pedale (Daisy chain)",532,,0,1,9
+3278,"Ostali kablovi i pribor",532,,0,1,10
+3279,"Patch kablovi za pedale i rack sisteme",532,,0,1,11
+3280,"RCA (Chinch) kablovi",532,,0,1,12
+3281,"Speakon kablovi za pasivne zvučnike",532,,0,1,13
+3282,"Stereo i balansirani kablovi (TRS Jack)",532,,0,1,14
+3283,"USB i Thunderbolt kablovi za audio interfejse",532,,0,1,15
+3284,"XLR (Mikrofonski) kablovi",532,,0,1,16
+3285,"Alati za održavanje i čišćenje instrumenata",533,,0,1,1
+3286,"Čepići za uši i zaštita sluha za muzičare",533,,0,1,2
+3287,"Kapodasteri i trzalice",533,,0,1,3
+3288,"Metronomi i štimeri (Tuneri)",533,,0,1,4
+3289,"Muzički stalci (Za note i mikrofone)",533,,0,1,5
+3290,"Napajanja i baterije za muzičku opremu",533,,0,1,6
+3291,"Oprema za čišćenje i čuvanje ploča",533,,0,1,7
+3292,"Ostali nepomenuti muzički pribor",533,,0,1,8
+3293,"Pop filteri i izolacioni štitovi",533,,0,1,9
+3294,"Remenovi za gitare i harmonike",533,,0,1,10
+3295,"Rezervni dijelovi (Potenciometri, prekidači, pragovi)",533,,0,1,11
+3296,"Stolice i klupe za muzičare",533,,0,1,12
+3297,"Svjetla za notne stalke i miksetre",533,,0,1,13
+3298,"Vlažni regulatori za drvene instrumente (Humidifieri)",533,,0,1,14
+3299,"Žice za žičane instrumente",533,,0,1,15
+572,"CD/MP3 playeri",534,,0,1,0
+570,"Hi-Fi setovi",534,,0,1,0
+571,"Stereo receiveri",534,,0,1,0
+573,"Aktivni zvučnici",535,,0,1,0
+574,"Pasivni zvučnici",535,,0,1,0
+575,"Soundbar sistemi",535,,0,1,0
+576,"Integrisana pojačala",536,,0,1,0
+577,"Preamp i DAC uređaji",536,,0,1,0
+578,"Audio kablovi",537,,0,1,0
+579,"Stativi i držači",537,,0,1,0
+581,"Mini Hi-Fi setovi",538,,0,1,0
+580,"Stereo linije",538,,0,1,0
+583,Subwooferi,539,,0,1,0
+582,"Surround sistemi",539,,0,1,0
+585,"Bežični sistemi",540,,0,1,0
+584,"Bluetooth zvučnici",540,,0,1,0
+586,"Aktive zvučne kutije",541,,0,1,0
+587,"Mixer + pojačalo setovi",541,,0,1,0
+591,"Drama i klasici",588,,0,1,0
+589,"Ljubavni romani",588,,0,1,0
+609,Ostalo,588,,0,1,0
+592,"Sci-Fi i Fantasy",588,,0,1,0
+590,"Trileri i misterije",588,,0,1,0
+595,"Ekonomija i biznis",593,,0,1,0
+594,"Medicina i zdravstvo",593,,0,1,0
+608,Ostalo,593,,0,1,0
+598,"Pravo i politika",593,,0,1,0
+596,Psihologija,593,,0,1,0
+597,"Religija / duhovnost",593,,0,1,0
+602,"Edukativne knjige za djecu",599,,0,1,0
+601,"Knjige za školsku djecu",599,,0,1,0
+607,Ostalo,599,,0,1,0
+600,Slikovnice,599,,0,1,0
+604,Historija,603,,0,1,0
+605,"Nauka i priroda",603,,0,1,0
+606,Ostalo,603,,0,1,0
+2546,"Domaći recepti i tradicionalna kuhinja",610,,0,1,1
+2547,"Enterijer i uređenje doma",610,,0,1,2
+2548,"Internacionalna kuhinja i egzotična jela",610,,0,1,3
+2549,"Kolači, deserti i peciva",610,,0,1,4
+2550,"Kućne popravke i DIY (Uradi sam) vodiči",610,,0,1,5
+2551,"Njega biljaka i vrtlarenje (Baštovanstvo)",610,,0,1,6
+2552,"Održavanje domaćinstva i čišćenje",610,,0,1,7
+2553,"Ostale kuharice i priručnici",610,,0,1,8
+2554,"Praznične trpeze i dekoracija",610,,0,1,9
+2555,"Priručnici za vino, pivo i koktele",610,,0,1,10
+2556,"Roštilj i jela sa otvorenog plamena",610,,0,1,11
+2557,"Savjeti za štednju i kućni budžet",610,,0,1,12
+2558,"Vegetarijanska i veganska ishrana",610,,0,1,13
+2559,"Zdrava ishrana, dijete i nutricionizam",610,,0,1,14
+2560,"Zimnica i konzerviranje hrane",610,,0,1,15
+2561,"Arhitektura i urbanizam",611,,0,1,1
+2562,"Crtanje, slikanje i grafika (Priručnici)",611,,0,1,2
+2563,"Dizajn enterijera i dekoracija",611,,0,1,3
+2564,"Fotografija i video umjetnost",611,,0,1,4
+2565,"Grafički i digitalni dizajn",611,,0,1,5
+2566,"Historija umjetnosti (Opšta i regionalna)",611,,0,1,6
+2567,"Industrijski i produkt dizajn",611,,0,1,7
+2568,"Kaligrafija i tipografija",611,,0,1,8
+2569,"Katalozi izložbi i monografije umjetnika",611,,0,1,9
+2570,"Moda i kostimografija",611,,0,1,10
+2571,"Muzička teorija i historija muzike",611,,0,1,11
+2572,"Ostalo iz umjetnosti i dizajna",611,,0,1,12
+2573,"Primijenjena umjetnost (Keramika, tekstil, nakit)",611,,0,1,13
+2574,"Skulptura i vajarstvo",611,,0,1,14
+2575,"Teorija i estetika umjetnosti",611,,0,1,15
+2576,"Antikvarne knjige (Prije 1900. godine)",612,,0,1,1
+2577,"Bibliografska i luksuzna izdanja",612,,0,1,2
+2578,"Knjige sa autogramom i posvetom",612,,0,1,3
+2579,"Knjige sa specifičnim uvezom (Kožni, zlatotisak)",612,,0,1,4
+2580,"Limitirane i numerisane edicije",612,,0,1,5
+2581,"Minijaturne knjige",612,,0,1,6
+2582,"Ostale rijetke i unikatne knjige",612,,0,1,7
+2583,"Prva izdanja (First Editions)",612,,0,1,8
+2584,"Rariteti na stranim jezicima",612,,0,1,9
+2585,"Stare vjerske knjige i rukopisi",612,,0,1,10
+2586,"Stari atlasi, mape i karte",612,,0,1,11
+2587,"Zabranjene ili povučene knjige (Cenzura)",612,,0,1,12
+2588,"Zaslužne knjige (Dobitnici velikih nagrada - stara izdanja)",612,,0,1,13
+2589,"Alternativna učenja i misticizam",613,,0,1,1
+2590,"Astrološki vodiči i horoskopi",613,,0,1,2
+2591,"Enciklopedije i leksikoni (Opšta namjena)",613,,0,1,3
+2592,"Enigmatika, kvizovi i mozgalice",613,,0,1,4
+2593,"Ezoterija i okultna literatura",613,,0,1,5
+2594,"Hobi i slobodno vrijeme (Filatelija, numizmatika)",613,,0,1,6
+2595,"Knjige o sportu i rekreaciji",613,,0,1,7
+2596,"Knjige o životinjama i prirodi",613,,0,1,8
+2597,"Mitologija i narodna predanja",613,,0,1,9
+2598,"Ostatak nepomenute literature",613,,0,1,10
+2599,"Paranormalne pojave i misterije",613,,0,1,11
+2600,"Popularna nauka i tehnologija",613,,0,1,12
+2601,"Putopisi i monografije gradova",613,,0,1,13
+2602,"Samoaktualizacija i motivacioni vodiči",613,,0,1,14
+2603,"Vojna literatura i strategija",613,,0,1,15
+2604,"Zabavne činjenice i rekordi (Ginisova knjiga i slično)",613,,0,1,16
+3300,"Bežične (Wireless) tattoo mašinice",686,,0,1,1
+3301,"Coil (Zavojne) mašinice za liner",686,,0,1,2
+3302,"Coil (Zavojne) mašinice za shader",686,,0,1,3
+3303,"Dijelovi za mašinice (Opruge, kondenzatori, vijci)",686,,0,1,4
+3304,"Hibridne tattoo mašinice",686,,0,1,5
+3305,"Mašinice za trajnu šminku (PMU)",686,,0,1,6
+3306,"Ostale mašinice za tetoviranje",686,,0,1,7
+3307,"Pen (Olovka) rotacione mašinice",686,,0,1,8
+3308,"Pneumatske tattoo mašinice",686,,0,1,9
+3309,"Polovne i restaurirane mašinice",686,,0,1,10
+3310,"Rotacione mašinice sa direktnim pogonom",686,,0,1,11
+3311,"Rotacione mašinice sa ekscentrom",686,,0,1,12
+3312,"Setovi za početnike (Mašinica sa priborom)",686,,0,1,13
+3313,"Flat (Ravne) igle i patroni",687,,0,1,1
+3314,"Kertridži (Patroni) - Round Liner (RL)",687,,0,1,2
+3315,"Kertridži (Patroni) - Round Shader (RS)",687,,0,1,3
+3316,"Kertridži (Patroni) - Magnum (M1/M2)",687,,0,1,4
+3317,"Kertridži (Patroni) - Soft Edge Magnum (SEM/RM)",687,,0,1,5
+3318,"Klasične igle na šipki - Round Liner (RL)",687,,0,1,6
+3319,"Klasične igle na šipki - Round Shader (RS)",687,,0,1,7
+3320,"Klasične igle na šipki - Magnum",687,,0,1,8
+3321,"Igle za trajnu šminku (PMU)",687,,0,1,9
+3322,"Igle za piercing (Kanile)",687,,0,1,10
+3323,"Mix pakovanja igala i patrona",687,,0,1,11
+3324,"Ostale igle i specijalne konfiguracije",687,,0,1,12
+3325,"Pribor za igle (Grommeti, gumice)",687,,0,1,13
+3326,"Bijele boje za highlight i miješanje",688,,0,1,1
+3327,"Boje za trajnu šminku (PMU pigmenti)",688,,0,1,2
+3328,"Crne boje za linije (Lining Black)",688,,0,1,3
+3329,"Crne boje za popunjavanje (Filling Black)",688,,0,1,4
+3330,"Čašice za boju (Ink caps) i držači",688,,0,1,5
+3331,"Diluents (Tečnosti za razrijeđivanje boje)",688,,0,1,6
+3332,"Grey Wash setovi (Sjenčenje)",688,,0,1,7
+3333,"Mix setovi boja (Primary i Secondary)",688,,0,1,8
+3334,"Ostale boje i specijalni pigmenti",688,,0,1,9
+3335,"Pigmenti za mikroblejding obrva",688,,0,1,10
+3336,"Sredstva za miješanje i miješalice (Mixers)",688,,0,1,11
+3337,"Svijetleće (UV/Neon) boje za tetoviranje",688,,0,1,12
+3338,"Tinte u boji - Pojedinačne nijanse",688,,0,1,13
+3339,"Autoklavi i ultrazvučni čistači",689,,0,1,1
+3340,"Dezinfekciona sredstva za kožu (Antiseptici)",689,,0,1,2
+3341,"Dezinfekcija radnih površina i opreme",689,,0,1,3
+3342,"Kreme i masti za njegu tetovaže (Aftercare)",689,,0,1,4
+3343,"Ostala sredstva za higijenu i njegu",689,,0,1,5
+3344,"Pjene i sapuni za čišćenje tokom tetoviranja",689,,0,1,6
+3345,"Posude za odlaganje medicinskog otpada (Sharps)",689,,0,1,7
+3346,"Sredstva za pripremu kože i brijanje",689,,0,1,8
+3347,"Sredstva za transfer (Stancil gelovi i tečnosti)",689,,0,1,9
+3348,"Sterilne gaze, tuferi i komprese",689,,0,1,10
+3349,"Vazelin i vitaminske masti (Tokom rada)",689,,0,1,11
+3350,"Zaštitne folije i flasteri za svježu tetovažu",689,,0,1,12
+3351,"Zeleni sapun (Green soap) i koncentrati",689,,0,1,13
+3352,"Hektografski papir (Za ručno crtanje)",690,,0,1,1
+3353,"Markeri i olovke za crtanje na koži (Freehand)",690,,0,1,2
+3354,"Ostali pribor za transfer",690,,0,1,3
+3355,"Sredstva za čišćenje i uklanjanje šablona",690,,0,1,4
+3356,"Stencil gelovi i tečnosti za prenošenje",690,,0,1,5
+3357,"Stencil papir u roli",690,,0,1,6
+3358,"Sprejevi za fiksiranje šablona",690,,0,1,7
+3359,"Termalni printeri za tetoviranje",690,,0,1,8
+3360,"Termalni transfer papir (Spirit/Hectograph)",690,,0,1,9
+3361,"Tracing papir (Pauziranje)",690,,0,1,10
+3362,"Alati i kliješta za pirsing (Forceps)",691,,0,1,1
+3363,"Igle za pirsing i kanile",691,,0,1,2
+3364,"Instrumenti za otvaranje i zatvaranje alkica",691,,0,1,3
+3365,"Nakit - Alke i prstenovi",691,,0,1,4
+3366,"Nakit - Industrijski i specijalni pirsing",691,,0,1,5
+3367,"Nakit - Labreti i šipke (Barbells)",691,,0,1,6
+3368,"Nakit - Mikrotermali i dermalna sidra",691,,0,1,7
+3369,"Nakit - Piercing za nos i obrvu",691,,0,1,8
+3370,"Nakit - Piercing za pupak",691,,0,1,9
+3371,"Nakit - Piercing za jezik i usne",691,,0,1,10
+3372,"Ostala oprema za pirsing",691,,0,1,11
+3373,"Pištolji za bušenje ušiju i nosa",691,,0,1,12
+3374,"Sredstva za dezinfekciju i naknadnu njegu",691,,0,1,13
+3375,"Sterilni setovi za jednokratnu upotrebu",691,,0,1,14
+3376,"Širenje (Tuneli, plugovi i taperi)",691,,0,1,15
+2605,"Alat za uokviravanje (Klamerice, rezači)",694,,0,1,1
+2606,"Antikvarni i barokni ramovi",694,,0,1,2
+2607,"Digitalni ramovi za fotografije",694,,0,1,3
+2608,"Drveni ramovi (Puno drvo)",694,,0,1,4
+2609,"Galerijske šine i sistemi za kačenje",694,,0,1,5
+2610,"Gotovi ramovi za fotografije (Standardni)",694,,0,1,6
+2611,"Lajsne za ramove (Na metar)",694,,0,1,7
+2612,"Metalni i aluminijumski ramovi",694,,0,1,8
+2613,"Moderni i minimalistički ramovi",694,,0,1,9
+2614,"Ostala oprema za uokviravanje",694,,0,1,10
+2615,"Paspartu kartoni (Razne boje i teksture)",694,,0,1,11
+2616,"Plastični i PVC ramovi",694,,0,1,12
+2617,"Ramovi za diplome i certifikate",694,,0,1,13
+2618,"Ramovi za više fotografija (Kolaž ramovi)",694,,0,1,14
+2619,"Staklo i pleksiglas za uokviravanje",694,,0,1,15
+2620,"3D modeli i digitalne skulpture",695,,0,1,1
+2621,"AI generisana umjetnost",695,,0,1,2
+2622,"Animacije i Motion Graphics",695,,0,1,3
+2623,"Digitalne ilustracije i crteži",695,,0,1,4
+2624,"Digitalni kistovi (Brushes) i teksture",695,,0,1,5
+2625,"Digitalni printovi (Art Prints)",695,,0,1,6
+2626,"Fraktalna i algoritamska umjetnost",695,,0,1,7
+2627,"Grafički dizajn i vizuelni identiteti",695,,0,1,8
+2628,"NFT i kripto umjetnost",695,,0,1,9
+2629,"Oprema za digitalno crtanje (Tableti i olovke)",695,,0,1,10
+2630,"Ostalo iz digitalne umjetnosti",695,,0,1,11
+2631,"Pixel Art i Retro dizajn",695,,0,1,12
+2632,"Software licence za digitalnu umjetnost",695,,0,1,13
+2633,"Vektorska grafika i ilustracije",695,,0,1,14
+2634,"Video art i digitalne instalacije",695,,0,1,15
+2635,"Dekorativne kutije i kovčezi",696,,0,1,1
+2636,"Dekorativne tacne i zdjele",696,,0,1,2
+2637,"Dekorativni jastuci i prekrivači",696,,0,1,3
+2638,"Dekorativni kamenčići, pijesak i školjke",696,,0,1,4
+2639,"Figurice i statue (Dekorativne)",696,,0,1,5
+2640,"Kasice za novac",696,,0,1,6
+2641,"Mirisni štapići, ulja i difuzori",696,,0,1,7
+2642,"Naljepnice i dekoracije za zidove",696,,0,1,8
+2643,"Ostali dekorativni predmeti",696,,0,1,9
+2644,"Pješčani satovi i ukrasni mjerni instrumenti",696,,0,1,10
+2645,"Podmetači i staze za stolove",696,,0,1,11
+2646,"Staklene vaze i kristalni predmeti",696,,0,1,12
+2647,"Svijećnjaci i dekorativni fenjeri",696,,0,1,13
+2648,"Umjetno cvijeće i suvi aranžmani",696,,0,1,14
+2649,"Ukrasna ogledala (Zidna i stona)",696,,0,1,15
+2650,"Zidni satovi (Analogni i dekorativni)",696,,0,1,16
+1008,"Donji veš",967,,0,1,0
+997,"Dukserice i duks majice",967,,0,1,0
+1003,Farmerke,967,,0,1,0
+1000,Haljine,967,,0,1,0
+998,"Jakne i kaputi",967,,0,1,0
+999,"Kardigani i džemperi",967,,0,1,0
+1006,Kombinezoni,967,,0,1,0
+996,"Košulje i bluze",967,,0,1,0
+1010,"Kupaći kostimi",967,,0,1,0
+995,"Majice i topovi",967,,0,1,0
+1007,"Odijela i sako kompleti",967,,0,1,0
+1011,"Odjeća za trudnice",967,,0,1,0
+1002,Pantalone,967,,0,1,0
+1004,Šorcevi,967,,0,1,0
+1009,"Spavaćice i pidžame",967,,0,1,0
+1001,Suknje,967,,0,1,0
+1012,"Tradicionalna odjeća",967,,0,1,0
+1005,Trenerke,967,,0,1,0
+1018,Baletanke,968,,0,1,0
+1014,Cipele,968,,0,1,0
+1015,Čizme,968,,0,1,0
+1017,Papuče,968,,0,1,0
+1013,Patike,968,,0,1,0
+1016,Sandale,968,,0,1,0
+1020,"Sportska obuća",968,,0,1,0
+1019,Štikle,968,,0,1,0
+1024,Kape,969,,0,1,0
+1028,Kišobrani,969,,0,1,0
+1029,Marame,969,,0,1,0
+1021,Nakit,969,,0,1,0
+1023,Naočale,969,,0,1,0
+1027,"Pojas / kaiševi",969,,0,1,0
+1026,Rukavice,969,,0,1,0
+1025,Šalovi,969,,0,1,0
+1034,"Elegantne torbice",970,,0,1,0
+1031,"Ručne torbe",970,,0,1,0
+1032,Ruksaci,970,,0,1,0
+1033,"Sportske torbe",970,,0,1,0
+1030,"Torbe preko ramena",970,,0,1,0
+1042,"Patike za trening",972,,0,1,0
+1041,"Sportske jakne",972,,0,1,0
+1035,"Sportske majice",972,,0,1,0
+1037,"Sportske trenerke",972,,0,1,0
+1039,"Sportski grudnjaci",972,,0,1,0
+1038,"Sportski šorcevi",972,,0,1,0
+1044,"Ljetni dodaci",973,,0,1,0
+1043,"Zimski setovi",973,,0,1,0
+1061,"Donji veš",974,,0,1,0
+1047,Dukserice,974,,0,1,0
+1051,Džemperi,974,,0,1,0
+1053,Farmerke,974,,0,1,0
+1049,Jakne,974,,0,1,0
+1050,Kaputi,974,,0,1,0
+1046,Košulje,974,,0,1,0
+1045,Majice,974,,0,1,0
+1057,Odijela,974,,0,1,0
+1052,Pantalone,974,,0,1,0
+1063,Pidžame,974,,0,1,0
+1069,"Radna odjeća",974,,0,1,0
+1059,Sakoi,974,,0,1,0
+1054,Šorcevi,974,,0,1,0
+1068,"Tradicionalna odjeća",974,,0,1,0
+1056,Trenerke,974,,0,1,0
+1073,Cipele,975,,0,1,0
+1075,Čizme,975,,0,1,0
+1074,"Duboke cipele",975,,0,1,0
+1079,Papuče,975,,0,1,0
+1072,Patike,975,,0,1,0
+1080,"Radna obuća",975,,0,1,0
+1077,Sandale,975,,0,1,0
+1083,"Sportska obuća",975,,0,1,0
+1088,Kačketi,976,,0,1,0
+1091,Kaiševi,976,,0,1,0
+1087,Kape,976,,0,1,0
+1092,Nakit,976,,0,1,0
+1086,Naočale,976,,0,1,0
+1090,Rukavice,976,,0,1,0
+1089,Šalovi,976,,0,1,0
+1096,"Poslovne torbe",977,,0,1,0
+1093,Ruksaci,977,,0,1,0
+1094,"Sportske torbe",977,,0,1,0
+1095,"Torbice preko ramena",977,,0,1,0
+1104,"Ljetni dodaci",979,,0,1,0
+1103,"Zimski setovi",979,,0,1,0
+1102,"Patike za trening",1097,,0,1,0
+1100,"Sportske jakne",1097,,0,1,0
+1098,"Sportske majice",1097,,0,1,0
+1101,"Sportski šorcevi",1097,,0,1,0
+1099,Trenerke,1097,,0,1,0
+3632,"Akumulatorski alati (setovi)",3626,,0,1,1
+3633,"Bušilice i odvrtači",3626,,0,1,2
+3634,"Brusilice i polirke",3626,,0,1,3
+3635,"Pile i testere (stacionarne i ručne)",3626,,0,1,4
+3636,"Pneumatski alati i kompresori",3626,,0,1,5
+3637,"Ručni alat (ključevi, kliješta, čekić)",3626,,0,1,6
+3638,"Mjerni instrumenti i laseri",3626,,0,1,7
+3639,"Zavarivanje i lemljenje",3626,,0,1,8
+3640,"Agregati za struju",3626,,0,1,9
+3641,"Visokotlačni čistači i usisivači",3626,,0,1,10
+3642,"Pribor i potrošni materijal (burgije, ploče)",3626,,0,1,11
+3643,"Zaštitna oprema i HTZ",3626,,0,1,12
+3644,"Kutije i torbe za alat",3626,,0,1,13
+3645,"Ostali alati",3626,,0,1,14
+3646,"Unutrašnje boje za zidove (Disperzije)",3627,,0,1,1
+3647,"Fasadne boje i dekorativni malteri",3627,,0,1,2
+3648,"Boje i lakovi za drvo",3627,,0,1,3
+3649,"Boje i premazi za metal (Antikorozivni)",3627,,0,1,4
+3650,"Ljepila za keramiku i kamen",3627,,0,1,5
+3651,"Ljepila za drvo, papir i plastiku",3627,,0,1,6
+3652,"Silikoni, akrili i pur pjene",3627,,0,1,7
+3653,"Mase za fugiranje i gletovanje",3627,,0,1,8
+3654,"Sredstva za impregnaciju i prajmeri",3627,,0,1,9
+3655,"Razrjeđivači i hemijska sredstva",3627,,0,1,10
+3656,"Pribor za krečenje i lakiranje (Valjci, četke)",3627,,0,1,11
+3657,"Ostale boje i hemija",3627,,0,1,12
+3658,"Cigla, blokovi i betonski elementi",3628,,0,1,1
+3659,"Cement, kreč i gotovi malteri",3628,,0,1,2
+3660,"Izolacioni materijali (Stiropor, vuna)",3628,,0,1,3
+3661,"Krovni materijali (Crijep, lim, tegola)",3628,,0,1,4
+3662,"Hidroizolacija (Bitumen, folije, premazi)",3628,,0,1,5
+3663,"Gipsane ploče i suva gradnja (Rigips)",3628,,0,1,6
+3664,"Armatura i metalni profili",3628,,0,1,7
+3665,"Pijesak, šljunak i dekorativni kamen",3628,,0,1,8
+3666,"Oplata, skele i podupirači",3628,,0,1,9
+3667,"Oluci i drenažni sistemi",3628,,0,1,10
+3668,"Dimnjaci i elementi za dimnjake",3628,,0,1,11
+3669,"Ostali građevinski materijali",3628,,0,1,12
+3670,"Pametna rasvjeta (Sijalice, trake, kontroleri)",3630,,0,1,1
+3671,"Pametne utičnice i prekidači",3630,,0,1,2
+3672,"Termostati i kontrola grijanja/hlađenja",3630,,0,1,3
+3673,"Senzori (Pokret, curenje vode, dim, gas)",3630,,0,1,4
+3674,"Pametne brave i kontrola pristupa",3630,,0,1,5
+3675,"Video zvona i interfoni",3630,,0,1,6
+3676,"Smart Hub-ovi i centralne jedinice",3630,,0,1,7
+3677,"Motorizacija roletni i zavjesa",3630,,0,1,8
+3678,"Glasovni asistenti i zvučnici (Alexa, Google Home)",3630,,0,1,9
+3679,"Pametne kamere (Unutrašnje i Baby monitori)",3630,,0,1,10
+3680,"Ostala smart home oprema",3630,,0,1,11
+3681,"Solarni paneli (Fotonaponski)",3631,,0,1,1
+3682,"Inverteri (Pretvarači napona)",3631,,0,1,2
+3683,"Solarne baterije i sistemi za pohranu",3631,,0,1,3
+3684,"Solarni kontroleri punjenja",3631,,0,1,4
+3685,"Montažna oprema i konstrukcije",3631,,0,1,5
+3686,"Solarni kolektori (Grijanje vode/Bojleri)",3631,,0,1,6
+3687,"Prenosne solarne stanice i punjači",3631,,0,1,7
+3688,"Vjetrogeneratori (Male vjetrenjače)",3631,,0,1,8
+3689,"Solarna rasvjeta i dekoracija",3631,,0,1,9
+3690,"Kablovi, konektori i zaštitna oprema",3631,,0,1,10
+3691,"Ostala solarna oprema",3631,,0,1,11
+3768,Odjeća,3764,,0,0,1
+3769,Obuća,3764,,0,0,2
+3770,"Modni dodaci",3764,,0,0,3
+3771,"Torbe i ruksaci",3764,,0,0,4
+3772,"Sportska odjeća",3764,,0,0,5
+3773,"Sezonska oprema",3764,,0,0,6
+3774,Odjeća,3765,,0,0,7
+3775,Obuća,3765,,0,0,8
+3776,"Modni dodaci",3765,,0,0,9
+3777,"Torbe i ruksaci",3765,,0,0,10
+3778,"Sportska odjeća",3765,,0,0,11
+3779,"Sezonska oprema",3765,,0,0,12
+3780,Odjeća,3766,,0,0,13
+3781,Obuća,3766,,0,0,14
+3782,"Oprema za bebe",3766,,0,0,15
+3783,"Sezonska oprema",3766,,0,0,16
+3784,Odjeća,3767,,0,0,17
+3785,Obuća,3767,,0,0,18
+3786,"Modni dodaci",3767,,0,0,19
+3787,"Torbe i ruksaci",3767,,0,0,20
+3788,"Sportska odjeća",3767,,0,0,21
+3789,"Sezonska oprema",3767,,0,0,22
+3790,Majice,3768,,0,0,1
+3791,Dukserice,3768,,0,0,2
+3792,Džemperi,3768,,0,0,3
+3793,"Jakne i kaputi",3768,,0,0,4
+3794,Košulje,3768,,0,0,5
+3795,Hlače,3768,,0,0,6
+3796,Farmerke,3768,,0,0,7
+3797,Šorcevi,3768,,0,0,8
+3798,Trenerke,3768,,0,0,9
+3799,Pidžame,3768,,0,0,10
+3800,"Donje rublje",3768,,0,0,11
+3801,"Kupaći kostimi",3768,,0,0,12
+3802,"Svečana odjeća",3768,,0,0,13
+3803,Patike,3769,,0,0,14
+3804,Cipele,3769,,0,0,15
+3805,Čizme,3769,,0,0,16
+3806,Sandale,3769,,0,0,17
+3807,Papuče,3769,,0,0,18
+3808,"Sportska obuća",3769,,0,0,19
+3809,Kape,3770,,0,0,20
+3810,Šalovi,3770,,0,0,21
+3811,Rukavice,3770,,0,0,22
+3812,Naočale,3770,,0,0,23
+3813,Satovi,3770,,0,0,24
+3814,Kaisevi,3770,,0,0,25
+3815,Ruksaci,3771,,0,0,26
+3816,"Školske torbe",3771,,0,0,27
+3817,"Sportske torbe",3771,,0,0,28
+3818,"Sportske majice",3772,,0,0,29
+3819,"Sportske trenerke",3772,,0,0,30
+3820,"Sportski šorcevi",3772,,0,0,31
+3821,"Sportske jakne",3772,,0,0,32
+3822,"Patike za trening",3772,,0,0,33
+3823,"Zimski setovi",3773,,0,0,34
+3824,"Ljetni dodaci",3773,,0,0,35
+3825,"Majice i topovi",3774,,0,0,36
+3826,Dukserice,3774,,0,0,37
+3827,"Džemperi i kardigani",3774,,0,0,38
+3828,"Jakne i kaputi",3774,,0,0,39
+3829,"Košulje i bluze",3774,,0,0,40
+3830,Hlače,3774,,0,0,41
+3831,Farmerke,3774,,0,0,42
+3832,Šorcevi,3774,,0,0,43
+3833,Suknje,3774,,0,0,44
+3834,Haljine,3774,,0,0,45
+3835,Trenerke,3774,,0,0,46
+3836,Pidžame,3774,,0,0,47
+3837,"Donje rublje",3774,,0,0,48
+3838,"Kupaći kostimi",3774,,0,0,49
+3839,"Svečana odjeća",3774,,0,0,50
+3840,Patike,3775,,0,0,51
+3841,Cipele,3775,,0,0,52
+3842,Čizme,3775,,0,0,53
+3843,Sandale,3775,,0,0,54
+3844,Papuče,3775,,0,0,55
+3845,Baletanke,3775,,0,0,56
+3846,"Sportska obuća",3775,,0,0,57
+3847,Kape,3776,,0,0,58
+3848,Šalovi,3776,,0,0,59
+3849,Rukavice,3776,,0,0,60
+3850,Naočale,3776,,0,0,61
+3852,Nakit,3776,,0,0,63
+3853,Ruksaci,3777,,0,0,64
+3854,"Školske torbe",3777,,0,0,65
+3855,"Sportske torbe",3777,,0,0,66
+3856,Torbice,3777,,0,0,67
+3857,"Sportske majice",3778,,0,0,68
+3858,"Sportske trenerke",3778,,0,0,69
+3859,"Sportski šorcevi",3778,,0,0,70
+3860,"Sportske jakne",3778,,0,0,71
+3861,"Patike za trening",3778,,0,0,72
+3862,"Zimski setovi",3779,,0,0,73
+3863,"Ljetni dodaci",3779,,0,0,74
+3864,Bodići,3780,,0,0,75
+3865,Kombinezoni,3780,,0,0,76
+3866,Majice,3780,,0,0,77
+3867,Hlačice,3780,,0,0,78
+3868,Haljine,3780,,0,0,79
+3869,Jakne,3780,,0,0,80
+3870,Pidžame,3780,,0,0,81
+3871,Čarapice,3780,,0,0,82
+3872,Kapice,3780,,0,0,83
+3873,"Prve cipelice",3781,,0,0,84
+3874,Papučice,3781,,0,0,85
+3875,Čizmice,3781,,0,0,86
+3876,Sandalice,3781,,0,0,87
+3877,Kolica,3782,,0,0,88
+3878,Autosjedalice,3782,,0,0,89
+3879,Krevetići,3782,,0,0,90
+3880,"Hranilice i stolice",3782,,0,0,91
+3881,"Nosiljke i kenguri",3782,,0,0,92
+3882,"Oprema za kupanje",3782,,0,0,93
+3883,"Oprema za hranjenje",3782,,0,0,94
+3884,"Igračke za bebe",3782,,0,0,95
+3885,"Zimski setovi",3783,,0,0,96
+3886,"Ljetni dodaci",3783,,0,0,97
+3887,Majice,3784,,0,0,98
+3888,Dukserice,3784,,0,0,99
+3889,Džemperi,3784,,0,0,100
+3890,"Jakne i kaputi",3784,,0,0,101
+3891,Hlače,3784,,0,0,102
+3892,Farmerke,3784,,0,0,103
+3893,Šorcevi,3784,,0,0,104
+3894,Trenerke,3784,,0,0,105
+3895,Pidžame,3784,,0,0,106
+3896,"Kupaći kostimi",3784,,0,0,107
+3897,Patike,3785,,0,0,108
+3898,Cipele,3785,,0,0,109
+3899,Čizme,3785,,0,0,110
+3900,Sandale,3785,,0,0,111
+3901,Papuče,3785,,0,0,112
+3902,"Sportska obuća",3785,,0,0,113
+3903,Kape,3786,,0,0,114
+3904,Šalovi,3786,,0,0,115
+3905,Rukavice,3786,,0,0,116
+3906,Naočale,3786,,0,0,117
+3907,Satovi,3786,,0,0,118
+3908,Ruksaci,3787,,0,0,119
+3909,"Školske torbe",3787,,0,0,120
+3910,"Sportske torbe",3787,,0,0,121
+3911,"Sportske majice",3788,,0,0,122
+3912,"Sportske trenerke",3788,,0,0,123
+3913,"Sportski šorcevi",3788,,0,0,124
+3914,"Sportske jakne",3788,,0,0,125
+3915,"Patike za trening",3788,,0,0,126
+3916,"Zimski setovi",3789,,0,0,127
+3917,"Ljetni dodaci",3789,,0,0,128
+3936,"Grafičke kartice (GPU)",3929,,0,0,0
+3941,"Hlađenje i ventilatori",3929,,0,0,0
+3940,Kućišta,3929,,0,0,0
+3937,"Matične ploče",3929,,0,0,0
+3939,"Napojne jedinice (PSU)",3929,,0,0,0
+3943,"Optički uređaji (DVD/Blu-ray)",3929,,0,0,0
+3935,"Procesori (CPU)",3929,,0,0,0
+3938,"RAM memorija",3929,,0,0,0
+3942,"Zvučne kartice",3929,,0,0,0
+3932,"Eksterni HDD i SSD",3931,,0,0,0
+3934,"Memorijske kartice",3931,,0,0,0
+3955,"NAS uređaji",3931,,0,0,0
+3954,SSD,3931,,0,0,0
+3933,"USB Flash memorije",3931,,0,0,0
+3952,"Rack ormari i oprema",3944,,0,0,0
+3950,"Serveri (Rack i Tower)",3944,,0,0,0
+3951,"Serverske komponente (CPU, RAM)",3944,,0,0,0
+3953,"Storage sistemi",3944,,0,0,0
