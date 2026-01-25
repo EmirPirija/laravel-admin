@@ -65,6 +65,9 @@ use Illuminate\Validation\Rule;
 use Throwable;
 use Twilio\Rest\Client as TwilioRestClient;
 
+use Illuminate\Support\Facades\Cache;
+
+
 class ApiController extends Controller
 {
     private string $uploadFolder;
@@ -76,6 +79,12 @@ class ApiController extends Controller
             $this->middleware('auth:sanctum');
         }
     }
+
+    protected static function booted()
+{
+    static::saved(fn() => Cache::flush());   // brzo rješenje
+    static::deleted(fn() => Cache::flush());
+}
 
     public function getSystemSettings(Request $request)
     {
@@ -1743,89 +1752,143 @@ public function getItem(Request $request)
         $validator = Validator::make($request->all(), [
             'category_id' => 'nullable|integer',
         ]);
-
+    
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
+    
         try {
-            $sql = Category::withCount(['subcategories' => function ($q) {
-                $q->where('status', 1);
-            }])->with('translations')->where(['status' => 1])->orderBy('sequence', 'ASC')
-                ->with(['subcategories' => function ($query) {
-                    $query->where('status', 1)->orderBy('sequence', 'ASC')->with('translations')->withCount(['approved_items', 'subcategories' => function ($q) {
+            $sql = Category::withCount([
+                    'subcategories' => function ($q) {
                         $q->where('status', 1);
-                    }]); // Order subcategories by 'sequence'
-                },
-                    'subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)->orderBy('sequence', 'ASC')->with('translations')->withCount(['approved_items', 'subcategories' => function ($q) {
-                            $q->where('status', 1);
-                        }]);
                     },
+                ])
+                ->with('translations')
+                ->where(['status' => 1])
+                ->orderBy('sequence', 'ASC')
+                ->with([
+                    'subcategories' => function ($query) {
+                        $query->where('status', 1)
+                            ->orderBy('sequence', 'ASC')
+                            ->with('translations')
+                            ->withCount([
+                                'approved_items',
+                                'subcategories' => function ($q) {
+                                    $q->where('status', 1);
+                                },
+                            ]);
+                    },
+    
+                    'subcategories.subcategories' => function ($query) {
+                        $query->where('status', 1)
+                            ->orderBy('sequence', 'ASC')
+                            ->with('translations')
+                            ->withCount([
+                                'approved_items',
+                                'subcategories' => function ($q) {
+                                    $q->where('status', 1);
+                                },
+                            ]);
+                    },
+    
                     'subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)->orderBy('sequence', 'ASC')->with('translations')->withCount(['approved_items', 'subcategories' => function ($q) {
-                            $q->where('status', 1);
-                        }]);
-                    }, 'subcategories.subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)->orderBy('sequence', 'ASC')->with('translations')->withCount(['approved_items', 'subcategories' => function ($q) {
-                            $q->where('status', 1);
-                        }]);
-                    }, 'subcategories.subcategories.subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)->orderBy('sequence', 'ASC')->with('translations')->withCount(['approved_items', 'subcategories' => function ($q) {
-                            $q->where('status', 1);
-                        }]);
+                        $query->where('status', 1)
+                            ->orderBy('sequence', 'ASC')
+                            ->with('translations')
+                            ->withCount([
+                                'approved_items',
+                                'subcategories' => function ($q) {
+                                    $q->where('status', 1);
+                                },
+                            ]);
+                    },
+    
+                    'subcategories.subcategories.subcategories.subcategories' => function ($query) {
+                        $query->where('status', 1)
+                            ->orderBy('sequence', 'ASC')
+                            ->with('translations')
+                            ->withCount([
+                                'approved_items',
+                                'subcategories' => function ($q) {
+                                    $q->where('status', 1);
+                                },
+                            ]);
+                    },
+    
+                    'subcategories.subcategories.subcategories.subcategories.subcategories' => function ($query) {
+                        $query->where('status', 1)
+                            ->orderBy('sequence', 'ASC')
+                            ->with('translations')
+                            ->withCount([
+                                'approved_items',
+                                'subcategories' => function ($q) {
+                                    $q->where('status', 1);
+                                },
+                            ]);
                     },
                 ]);
-            if (! empty($request->category_id)) {
+    
+            if (!empty($request->category_id)) {
                 $sql = $sql->where('parent_category_id', $request->category_id);
-            } elseif (! empty($request->slug)) {
+            } elseif (!empty($request->slug)) {
                 $parentCategory = Category::where('slug', $request->slug)->firstOrFail();
                 $sql = $sql->where('parent_category_id', $parentCategory->id);
             } else {
                 $sql = $sql->whereNull('parent_category_id');
             }
-
+    
             $sql = $sql->paginate();
+    
             $sql->map(function ($category) {
                 $category->all_items_count = $category->all_items_count;
-
                 return $category;
             });
-            ResponseService::successResponse(null, $sql, ['self_category' => $parentCategory ?? null]);
+    
+            ResponseService::successResponse(null, $sql, [
+                'self_category' => $parentCategory ?? null,
+            ]);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> getCategories');
             ResponseService::errorResponse();
         }
     }
-
+    
     public function getParentCategoryTree(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'child_category_id' => 'nullable|integer',
-            'tree' => 'nullable|boolean',
-            'slug' => 'nullable|string',
+            'tree'             => 'nullable|boolean',
+            'slug'             => 'nullable|string',
         ]);
-
+    
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
+    
         try {
-            $sql = Category::with('translations')->when($request->child_category_id, function ($sql) use ($request) {
-                $sql->where('id', $request->child_category_id);
-            })
+            $sql = Category::with('translations')
+                ->when($request->child_category_id, function ($sql) use ($request) {
+                    $sql->where('id', $request->child_category_id);
+                })
                 ->when($request->slug, function ($sql) use ($request) {
                     $sql->where('slug', $request->slug);
                 })
                 ->firstOrFail()
-                ->ancestorsAndSelf()->breadthFirst()->get();
+                ->ancestorsAndSelf()
+                ->breadthFirst()
+                ->get();
+    
             if ($request->tree) {
                 $sql = $sql->toTree();
             }
+    
             ResponseService::successResponse(null, $sql);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> getCategories');
             ResponseService::errorResponse();
         }
     }
+    
 
     public function getNotificationList()
     {
@@ -4606,30 +4669,35 @@ public function getMyReview(Request $request)
     }
 
     public function getCategories(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'language_code' => 'nullable',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'language_code' => 'nullable',
+    ]);
 
-        if ($validator->fails()) {
-            ResponseService::validationError($validator->errors()->first());
-        }
-        try {
-            $categories = Category::all();
-            $languageCode = $request->get('language_code', 'en');
-
-            $translator = new GoogleTranslate($languageCode);
-            $categoriesJson = $categories->toJson();
-            $translatedJson = $translator->translate($categoriesJson);
-            $translatedCategories = json_decode($translatedJson, true);
-
-            return ResponseService::successResponse(null, $translatedCategories);
-            ResponseService::successResponse(null, $sql);
-        } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'API Controller -> getCategories');
-            ResponseService::errorResponse();
-        }
+    if ($validator->fails()) {
+        ResponseService::validationError($validator->errors()->first());
     }
+
+    try {
+        $categories = Category::all();
+
+        $languageCode = $request->get('language_code', 'en');
+        $translator   = new GoogleTranslate($languageCode);
+
+        $categoriesJson        = $categories->toJson();
+        $translatedJson        = $translator->translate($categoriesJson);
+        $translatedCategories  = json_decode($translatedJson, true);
+
+        return ResponseService::successResponse(null, $translatedCategories);
+
+        // NOTE: This line was unreachable in your original code because of the return above.
+        // ResponseService::successResponse(null, $sql);
+    } catch (Throwable $th) {
+        ResponseService::logErrorResponse($th, 'API Controller -> getCategories');
+        ResponseService::errorResponse();
+    }
+}
+
 
     public function bankTransferUpdate(Request $request)
     {
