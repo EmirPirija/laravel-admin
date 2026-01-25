@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\Api\SavedSearchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ItemStatisticsController;
 use App\Http\Controllers\MembershipController;
@@ -42,6 +43,12 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::post('update-profile', [ApiController::class, 'updateProfile']);
     Route::delete('delete-user', [ApiController::class, 'deleteUser']);
     Route::get('get-user-info', [ApiController::class, 'getUser']);
+
+     // ✅ SAČUVANE PRETRAGE
+    Route::get('saved-searches', [SavedSearchController::class, 'index']);
+    Route::post('saved-searches', [SavedSearchController::class, 'store']);
+    Route::put('saved-searches/{id}', [SavedSearchController::class, 'update']);
+    Route::delete('saved-searches/{id}', [SavedSearchController::class, 'destroy']);
 
     Route::get('my-items', [ApiController::class, 'getItem']);
     Route::post('add-item', [ApiController::class, 'addItem']);
