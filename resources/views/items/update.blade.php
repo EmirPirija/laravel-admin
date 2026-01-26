@@ -85,6 +85,31 @@
                                 <label>{{ __('Description') }}</label>
                                 <textarea name="description" class="form-control">{{ $item->description }}</textarea>
                             </div>
+
+                            {{-- Scheduled Publishing --}}
+                            <div class="col-6 mb-3">
+                                <label>{{ __('Schedule Publishing') }}</label>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="enable-scheduling" name="enable_scheduling" 
+                                        {{ $item->status === 'scheduled' || old('enable_scheduling') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="enable-scheduling">
+                                        {{ __('Schedule this ad for later') }}
+                                    </label>
+                                </div>
+                                <input type="datetime-local" name="scheduled_at" id="scheduled-at-input" 
+                                    class="form-control" 
+                                    value="{{ old('scheduled_at', $item->scheduled_at ? $item->scheduled_at->format('Y-m-d\TH:i') : '') }}"
+                                    style="display: {{ ($item->status === 'scheduled' || old('enable_scheduling')) ? 'block' : 'none' }};"
+                                    min="{{ now()->format('Y-m-d\TH:i') }}">
+                                <small class="text-muted" id="scheduling-help" style="display: {{ ($item->status === 'scheduled' || old('enable_scheduling')) ? 'block' : 'none' }};">
+                                    {{ __('The ad will be automatically published at the selected date and time.') }}
+                                </small>
+                                @if($item->status === 'scheduled' && $item->scheduled_at)
+                                    <div class="alert alert-info mt-2 p-2">
+                                        <small><i class="fa fa-clock"></i> {{ __('Currently scheduled for:') }} {{ $item->scheduled_at->format('d.m.Y H:i') }}</small>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
 &nbsp;
@@ -527,5 +552,25 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+<script>
+// Scheduling toggle handler
+$(document).ready(function() {
+    $('#enable-scheduling').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#scheduled-at-input').show().attr('required', true);
+            $('#scheduling-help').show();
+        } else {
+            $('#scheduled-at-input').hide().removeAttr('required').val('');
+            $('#scheduling-help').hide();
+        }
+    });
+
+    // Initialize on page load
+    if ($('#enable-scheduling').is(':checked')) {
+        $('#scheduled-at-input').show().attr('required', true);
+        $('#scheduling-help').show();
+    }
+});
+</script>
 
 @endsection
