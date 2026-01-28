@@ -45,6 +45,7 @@ use App\Models\UserReports;
 use App\Models\VerificationField;
 use App\Models\VerificationFieldValue;
 use App\Models\VerificationRequest;
+use App\Models\TempMedia;
 use App\Services\CachingService;
 use App\Services\FileService;
 use App\Services\HelperService;
@@ -68,6 +69,7 @@ use Twilio\Rest\Client as TwilioRestClient;
 use Illuminate\Support\Facades\Cache;
 
 
+use Illuminate\Support\Str;
 class ApiController extends Controller
 {
     private string $uploadFolder;
@@ -545,20 +547,47 @@ class ApiController extends Controller
             : null;
         $data['price_history'] = json_encode([]);
 
-        // 🔹 Glavna slika
+        // 🔹 Glavna slika (podržava upload file ILI temp upload)
+        $tempMainImageId = $request->input('temp_main_image_id');
+        $tempImageIds = $request->input('temp_image_ids'); // fallback (ako šalješ sve slike u jednom nizu)
+        $tempVideoId = $request->input('temp_video_id');
+
+        if (is_string($tempImageIds)) {
+            $tempImageIds = array_values(array_filter(explode(',', $tempImageIds)));
+        }
+
         if ($request->hasFile('image')) {
-            $data['image'] = FileService::compressAndUpload(
+            $data['image'] = FileService::compressAndUploadWithWatermark(
                 $request->file('image'),
                 $this->uploadFolder
             );
+        } elseif (!empty($tempMainImageId)) {
+            $temp = TempMedia::where('id', $tempMainImageId)->where('type', 'image')->first();
+            if ($temp) {
+                $data['image'] = $this->moveTempMediaToPermanent($temp->path, $this->uploadFolder);
+                $temp->delete();
+            }
+        } elseif (is_array($tempImageIds) && count($tempImageIds) > 0) {
+            // ako nije eksplicitno poslan main, uzmi prvi kao main
+            $temp = TempMedia::where('id', $tempImageIds[0])->where('type', 'image')->first();
+            if ($temp) {
+                $data['image'] = $this->moveTempMediaToPermanent($temp->path, $this->uploadFolder);
+                $temp->delete();
+            }
         }
 
-        // 🎬 Video upload
+        // 🎬 Video upload (podržava upload file ILI temp upload)
         if ($request->hasFile('video')) {
             $data['video'] = FileService::upload(
                 $request->file('video'),
                 'item_videos'
             );
+        } elseif (!empty($tempVideoId)) {
+            $tempV = TempMedia::where('id', $tempVideoId)->where('type', 'video')->first();
+            if ($tempV) {
+                $data['video'] = $this->moveTempMediaToPermanent($tempV->path, 'item_videos');
+                $tempV->delete();
+            }
         }
 
         // 🔹 Kreiranje item-a
@@ -580,21 +609,57 @@ class ApiController extends Controller
             }
         }
 
-        // 🔹 Gallery slike
+        // 🔹 Gallery slike (upload file ILI temp IDs)
+        $tempGalleryIds = $request->input('temp_gallery_image_ids');
+        $tempImageIds = $request->input('temp_image_ids'); // fallback: ako šalješ sve slike
+        if (is_string($tempGalleryIds)) {
+            $tempGalleryIds = array_values(array_filter(explode(',', $tempGalleryIds)));
+        }
+        if (is_string($tempImageIds)) {
+            $tempImageIds = array_values(array_filter(explode(',', $tempImageIds)));
+        }
+
+        $galleryImages = [];
+
+        // 1) temp galerija (ako je poslana)
+        $idsToUse = [];
+        if (is_array($tempGalleryIds) && count($tempGalleryIds) > 0) {
+            $idsToUse = $tempGalleryIds;
+        } elseif (is_array($tempImageIds) && count($tempImageIds) > 1) {
+            // ako je prvi bio main, ostalo je galerija
+            $idsToUse = array_slice($tempImageIds, 1);
+        }
+
+        if (count($idsToUse) > 0) {
+            $temps = TempMedia::whereIn('id', $idsToUse)->where('type', 'image')->get()->keyBy('id');
+            foreach ($idsToUse as $id) {
+                $t = $temps->get($id);
+                if (!$t) continue;
+                $newPath = $this->moveTempMediaToPermanent($t->path, $this->uploadFolder);
+                $galleryImages[] = [
+                    'image'     => $newPath,
+                    'item_id'   => $item->id,
+                    'created_at'=> time(),
+                    'updated_at'=> time(),
+                ];
+                $t->delete();
+            }
+        }
+
+        // 2) klasični upload (backward compatibility)
         if ($request->hasFile('gallery_images')) {
-            $galleryImages = [];
             foreach ($request->file('gallery_images') as $file) {
                 $galleryImages[] = [
-                    'image'     => FileService::compressAndUpload($file, $this->uploadFolder),
+                    'image'     => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder),
                     'item_id'   => $item->id,
                     'created_at'=> time(),
                     'updated_at'=> time(),
                 ];
             }
+        }
 
-            if (count($galleryImages) > 0) {
-                ItemImages::insert($galleryImages);
-            }
+        if (count($galleryImages) > 0) {
+            ItemImages::insert($galleryImages);
         }
 
         // 🔹 Custom fields (default)
@@ -1384,6 +1449,8 @@ public function getItem(Request $request)
             'custom_field_files.*' => 'nullable|mimes:jpeg,png,jpg,pdf,doc|max:7168',
             'gallery_images' => 'nullable|array',
             'show_only_to_premium' => 'nullable|boolean',
+            'video_link' => 'nullable|url',
+            'video' => 'nullable|mimetypes:video/mp4,video/quicktime,video/webm|max:51200',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
@@ -1418,16 +1485,74 @@ public function getItem(Request $request)
             // Generate unique slug
             $uniqueSlug = HelperService::generateUniqueSlug(new Item, $slug, $request->id);
 
-            $data = $request->all();
+            $data = $request->except(['video', 'image', 'gallery_images', 'custom_field_files']);
             $data['slug'] = $uniqueSlug;
             $data['status'] = $status;
-            if ($request->hasFile('image')) {
-                $data['image'] = FileService::compressAndReplace($request->file('image'), $this->uploadFolder, $item->getRawOriginal('image'));
+            // image: upload file OR temp_main_image_id
+            $tempMainImageId = $request->input('temp_main_image_id');
+            if (!empty($tempMainImageId) && !$request->hasFile('image')) {
+                $temp = TempMedia::where('id', $tempMainImageId)->where('type', 'image')->first();
+                if ($temp) {
+                    // delete old
+                    if (!empty($item->getRawOriginal('image'))) {
+                        FileService::delete($item->getRawOriginal('image'));
+                    }
+                    $data['image'] = $this->moveTempMediaToPermanent($temp->path, $this->uploadFolder);
+                    $temp->delete();
+                }
+            } elseif ($request->hasFile('image')) {
+                $data['image'] = FileService::compressAndReplaceWithWatermark(
+                    $request->file('image'),
+                    $this->uploadFolder,
+                    $item->getRawOriginal('image')
+                );
             }
             if ($request->has('show_only_to_premium')) {
                 $data['show_only_to_premium'] = $request->boolean('show_only_to_premium') ? 1 : 0;
             } else {
                 $data['show_only_to_premium'] = $item->show_only_to_premium;
+            }
+            // Video handling:
+            // - If a new video file is uploaded, store it and clear any video_link
+            // - If a video_link is provided, clear stored video file (optional) and set video_link
+            // - If neither is provided, keep existing values (do NOT overwrite with null/string tmp paths)
+            $tempVideoId = $request->input('temp_video_id');
+            if (!empty($tempVideoId) && !$request->hasFile('video') && !$request->filled('video_link')) {
+                $tempV = TempMedia::where('id', $tempVideoId)->where('type', 'video')->first();
+                if ($tempV) {
+                    if (!empty($item->getRawOriginal('video'))) {
+                        FileService::delete($item->getRawOriginal('video'));
+                    }
+                    $data['video'] = $this->moveTempMediaToPermanent($tempV->path, 'item_videos');
+                    $data['video_link'] = null;
+                    $data['video_thumbnail'] = null;
+                    $data['video_duration'] = null;
+                    $tempV->delete();
+                }
+            } elseif ($request->hasFile('video')) {
+                if (!empty($item->getRawOriginal('video'))) {
+                    FileService::delete($item->getRawOriginal('video'));
+                }
+                $data['video'] = FileService::upload($request->file('video'), 'item_videos');
+                $data['video_link'] = null;
+                $data['video_thumbnail'] = null;
+                $data['video_duration'] = null;
+            } elseif ($request->filled('video_link')) {
+                // If switching to a link, remove previously stored file (if any)
+                if (!empty($item->getRawOriginal('video'))) {
+                    FileService::delete($item->getRawOriginal('video'));
+                }
+                $data['video'] = null;
+                $data['video_link'] = $request->input('video_link');
+                $data['video_thumbnail'] = null;
+                $data['video_duration'] = null;
+            } else {
+                // Frontend sometimes sends video/video_link as null or as a tmp path string - ignore it
+                unset($data['video']);
+                if (!$request->filled('video_link')) {
+                    unset($data['video_link']);
+                }
+                unset($data['video_thumbnail'], $data['video_duration']);
             }
 
             $item->update($data);
@@ -1480,20 +1605,54 @@ public function getItem(Request $request)
                 }
             }
 
-            //Add new gallery images
+            //Add new gallery images (upload file OR temp IDs)
+            $galleryImages = [];
+
+            $tempGalleryIds = $request->input('temp_gallery_image_ids');
+            $tempImageIds = $request->input('temp_image_ids'); // optional fallback
+            if (is_string($tempGalleryIds)) {
+                $tempGalleryIds = array_values(array_filter(explode(',', $tempGalleryIds)));
+            }
+            if (is_string($tempImageIds)) {
+                $tempImageIds = array_values(array_filter(explode(',', $tempImageIds)));
+            }
+
+            $idsToUse = [];
+            if (is_array($tempGalleryIds) && count($tempGalleryIds) > 0) {
+                $idsToUse = $tempGalleryIds;
+            } elseif (is_array($tempImageIds) && count($tempImageIds) > 0) {
+                $idsToUse = $tempImageIds;
+            }
+
+            if (count($idsToUse) > 0) {
+                $temps = TempMedia::whereIn('id', $idsToUse)->where('type', 'image')->get()->keyBy('id');
+                foreach ($idsToUse as $id) {
+                    $t = $temps->get($id);
+                    if (!$t) continue;
+                    $newPath = $this->moveTempMediaToPermanent($t->path, $this->uploadFolder);
+                    $galleryImages[] = [
+                        'image' => $newPath,
+                        'item_id' => $item->id,
+                        'created_at' => time(),
+                        'updated_at' => time(),
+                    ];
+                    $t->delete();
+                }
+            }
+
             if ($request->hasFile('gallery_images')) {
-                $galleryImages = [];
                 foreach ($request->file('gallery_images') as $file) {
                     $galleryImages[] = [
-                        'image' => FileService::compressAndUpload($file, $this->uploadFolder),
+                        'image' => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder),
                         'item_id' => $item->id,
                         'created_at' => time(),
                         'updated_at' => time(),
                     ];
                 }
-                if (count($galleryImages) > 0) {
-                    ItemImages::insert($galleryImages);
-                }
+            }
+
+            if (count($galleryImages) > 0) {
+                ItemImages::insert($galleryImages);
             }
 
             if ($request->custom_field_files) {
@@ -5379,6 +5538,90 @@ public function getMyReview(Request $request)
             ResponseService::logErrorResponse($th, 'API Controller -> getCategoriesSlug');
             ResponseService::errorResponse();
         }
+    }
+
+
+    /**
+     * Moves a temp media (stored on the configured filesystem disk) to a permanent folder.
+     * Returns the NEW storage path.
+     */
+    private function moveTempMediaToPermanent(string $tempPath, string $destFolder): string
+    {
+        $diskName = config('filesystems.default');
+        $disk = Storage::disk($diskName);
+
+        if (!$disk->exists($tempPath)) {
+            throw new \RuntimeException('Temp file not found: ' . $tempPath);
+        }
+
+        $ext = pathinfo($tempPath, PATHINFO_EXTENSION);
+        $fileName = (string) Str::uuid() . ($ext ? ('.' . $ext) : '');
+        $destFolder = trim($destFolder, '/');
+        $newPath = $destFolder . '/' . $fileName;
+
+        // Works for local + s3 (copy+delete)
+        $disk->move($tempPath, $newPath);
+
+        return $newPath;
+    }
+
+    private function storagePublicUrl(?string $path): ?string
+    {
+        if (!$path) return null;
+        return Storage::disk(config('filesystems.default'))->url($path);
+    }
+
+
+    // ======================================================
+    // TEMP MEDIA UPLOAD (upload on select)
+    // ======================================================
+    public function uploadTempImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|file|mimes:jpg,jpeg,png,webp|max:10240', // 10MB
+        ]);
+
+        $user = Auth::user();
+
+        // Store in temp folder, but STILL compress + watermark
+        $path = FileService::compressAndUploadWithWatermark(
+            $request->file('image'),
+            'temp_media/images'
+        );
+
+        $temp = TempMedia::create([
+            'user_id' => $user?->id,
+            'type'    => 'image',
+            'path'    => $path,
+        ]);
+
+        return ResponseService::successResponse('Temp image uploaded', [
+            'id'  => $temp->id,
+            'url' => $this->storagePublicUrl($path),
+        ]);
+    }
+
+    public function uploadTempVideo(Request $request)
+    {
+        $request->validate([
+            'video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/webm,video/x-matroska|max:204800', // 200MB
+        ]);
+
+        $user = Auth::user();
+
+        // Keep video as-is (we can add server-side transcoding later). Just store with proper extension.
+        $path = FileService::upload($request->file('video'), 'temp_media/videos');
+
+        $temp = TempMedia::create([
+            'user_id' => $user?->id,
+            'type'    => 'video',
+            'path'    => $path,
+        ]);
+
+        return ResponseService::successResponse('Temp video uploaded', [
+            'id'  => $temp->id,
+            'url' => $this->storagePublicUrl($path),
+        ]);
     }
 
 }

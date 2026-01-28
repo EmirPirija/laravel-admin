@@ -20,6 +20,7 @@
         "google/apiclient": "^2.16",
         "guzzlehttp/guzzle": "^7.2",
         "imlolman/phonepe-php-sdk": "^0.0.2",
+        "intervention/image": "^2.7",
         "kingflamez/laravelrave": "4.2.1",
         "kornrunner/blurhash": "^1.2",
         "laravel/framework": "^10.0",

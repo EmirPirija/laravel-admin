@@ -50,6 +50,10 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::put('saved-searches/{id}', [SavedSearchController::class, 'update']);
     Route::delete('saved-searches/{id}', [SavedSearchController::class, 'destroy']);
 
+    Route::post('/upload-temp/image', [TempMediaController::class, 'uploadImage']);
+    Route::post('/upload-temp/video', [TempMediaController::class, 'uploadVideo']);
+    Route::delete('/upload-temp/{id}', [TempMediaController::class, 'delete']);
+
     Route::get('my-items', [ApiController::class, 'getItem']);
     Route::post('add-item', [ApiController::class, 'addItem']);
     Route::post('update-item', [ApiController::class, 'updateItem']);
