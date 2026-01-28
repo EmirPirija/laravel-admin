@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '8558146f8476835d84e0217d4a26e17ce86a6936',
+        'reference' => '6f24948f9ab9056bd7710d72d91de552b53a1a37',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -676,7 +676,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '8558146f8476835d84e0217d4a26e17ce86a6936',
+            'reference' => '6f24948f9ab9056bd7710d72d91de552b53a1a37',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -1012,6 +1012,15 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
+        'php-ffmpeg/php-ffmpeg' => array(
+            'pretty_version' => 'v1.4.0',
+            'version' => '1.4.0.0',
+            'reference' => '41fa00949ea2758cd34f076a8030df7198d57759',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../php-ffmpeg/php-ffmpeg',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'php-http/async-client-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
@@ -1178,6 +1187,12 @@
             'install_path' => __DIR__ . '/../psr/cache',
             'aliases' => array(),
             'dev_requirement' => false,
+        ),
+        'psr/cache-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '2.0|3.0',
+            ),
         ),
         'psr/clock' => array(
             'pretty_version' => '1.0.0',
@@ -1758,6 +1773,30 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'symfony/cache' => array(
+            'pretty_version' => 'v7.4.5',
+            'version' => '7.4.5.0',
+            'reference' => '8dde98d5a4123b53877aca493f9be57b333f14bd',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../symfony/cache',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'symfony/cache-contracts' => array(
+            'pretty_version' => 'v3.6.0',
+            'version' => '3.6.0.0',
+            'reference' => '5d68a57d66910405e5c0b63d6f0af941e66fc868',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../symfony/cache-contracts',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'symfony/cache-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '1.1|2.0|3.0',
+            ),
+        ),
         'symfony/console' => array(
             'pretty_version' => 'v6.4.11',
             'version' => '6.4.11.0',
@@ -2043,6 +2082,15 @@
             'reference' => 'ee14c8254a480913268b1e3b1cba8045ed122694',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/var-dumper',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'symfony/var-exporter' => array(
+            'pretty_version' => 'v7.4.0',
+            'version' => '7.4.0.0',
+            'reference' => '03a60f169c79a28513a78c967316fbc8bf17816f',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../symfony/var-exporter',
             'aliases' => array(),
             'dev_requirement' => false,
         ),

@@ -31,6 +31,7 @@
         "laravelcollective/html": "^6.3",
         "league/flysystem-aws-s3-v3": "^3.0",
         "nesbot/carbon": "^2.72.3",
+        "php-ffmpeg/php-ffmpeg": "^1.4",
         "php-webdriver/webdriver": "^1.14",
         "phpoffice/phpspreadsheet": "^5.2",
         "rap2hpoutre/laravel-log-viewer": "^2.4",
