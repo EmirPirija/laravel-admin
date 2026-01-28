@@ -415,7 +415,11 @@ class ApiController extends Controller
             'video_link' => 'nullable|url',
             'gallery_images' => 'nullable|array|min:1',
             'gallery_images.*' => 'nullable|mimes:jpeg,png,jpg|max:7168',
-            'image' => 'required|mimes:jpeg,png,jpg|max:7168',
+            'image' => 'nullable|mimes:jpeg,png,jpg|max:7168',
+            'temp_main_image_id' => 'nullable|integer|exists:temp_media,id',
+            'temp_gallery_image_ids' => 'nullable|array',
+            'temp_gallery_image_ids.*' => 'integer|exists:temp_media,id',
+            'temp_video_id' => 'nullable|integer|exists:temp_media,id',
             'country' => 'required',
             'state' => 'nullable',
             'city' => 'required',
@@ -438,10 +442,6 @@ class ApiController extends Controller
 
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
-        }
-
-        if ($request->has('inventory_count') && $request->inventory_count !== null) {
-            $item->inventory_count = (int) $request->inventory_count;
         }
 
         // 🔹 Validacija translations
@@ -592,6 +592,11 @@ class ApiController extends Controller
 
         // 🔹 Kreiranje item-a
         $item = Item::create($data);
+
+        if ($request->has('inventory_count') && $request->inventory_count !== null) {
+            $item->inventory_count = (int) $request->inventory_count;
+        }
+        
 
         // 🔹 Translations za item
         if (!empty($translations)) {
