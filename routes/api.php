@@ -10,6 +10,8 @@ use App\Http\Controllers\ItemQuestionController;
 use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\ItemConversationController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\TempMediaController;
+
 
 
 /*
@@ -50,9 +52,9 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::put('saved-searches/{id}', [SavedSearchController::class, 'update']);
     Route::delete('saved-searches/{id}', [SavedSearchController::class, 'destroy']);
 
-    Route::post('/upload-temp/image', [TempMediaController::class, 'uploadImage']);
-    Route::post('/upload-temp/video', [TempMediaController::class, 'uploadVideo']);
-    Route::delete('/upload-temp/{id}', [TempMediaController::class, 'delete']);
+    Route::post('upload-temp/image', [TempMediaController::class, 'uploadImage']);
+    Route::post('upload-temp/video', [TempMediaController::class, 'uploadVideo']);
+    Route::delete('upload-temp/{id}', [TempMediaController::class, 'delete']);    
 
     Route::get('my-items', [ApiController::class, 'getItem']);
     Route::post('add-item', [ApiController::class, 'addItem']);
