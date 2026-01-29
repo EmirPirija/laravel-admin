@@ -786,7 +786,8 @@ public function getItem(Request $request)
     }
     try {
         //TODO : need to simplify this whole module
-        $sql = Item::with('user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code', 'category:id,name,image,is_job_category,price_optional',
+        $sql = Item::with('user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code,response_time_avg', 'category:id,name,image,is_job_category,price_optional',
+
             'gallery_images:id,image,item_id', 'featured_items', 'favourites', 'item_custom_field_values.custom_field.translations', 'area:id,name', 'job_applications', 'translations')
             ->withCount('featured_items')
             ->withCount('job_applications')

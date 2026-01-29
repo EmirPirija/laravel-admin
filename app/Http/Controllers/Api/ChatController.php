@@ -11,6 +11,8 @@ use App\Events\UserTyping;
 use App\Events\NewMessage;
 use App\Events\MessageStatusUpdated;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
@@ -157,6 +159,60 @@ class ChatController extends Controller
         'status' => 'sent',
     ]);
 
+// =========================
+// ✅ UPDATE SELLER response_time_avg (minutes)
+// =========================
+$sellerId = (int) $itemOffer->seller_id;
+$buyerId  = (int) $itemOffer->buyer_id;
+
+// računamo samo kad SELLER šalje i nije auto-reply
+$isSellerSending = ((int)$user->id === $sellerId);
+$isAuto = (bool)($chat->is_auto_reply ?? false);
+
+if ($isSellerSending && !$isAuto) {
+
+    // zadnja seller poruka prije ove (non-auto)
+    $prevSellerMsg = \App\Models\Chat::where('item_offer_id', $itemOffer->id)
+        ->where('sender_id', $sellerId)
+        ->where(function ($q) {
+            $q->whereNull('is_auto_reply')->orWhere('is_auto_reply', false);
+        })
+        ->where('created_at', '<', $chat->created_at)
+        ->orderByDesc('created_at')
+        ->first();
+
+    // zadnja buyer poruka poslije zadnje seller poruke (da ne uzmeš neku staru)
+    $buyerQuery = \App\Models\Chat::where('item_offer_id', $itemOffer->id)
+        ->where('sender_id', $buyerId)
+        ->where('created_at', '<', $chat->created_at);
+
+    if ($prevSellerMsg) {
+        $buyerQuery->where('created_at', '>', $prevSellerMsg->created_at);
+    }
+
+    $lastBuyerMsg = $buyerQuery->orderByDesc('created_at')->first();
+
+    if ($lastBuyerMsg) {
+        $diffMin = $chat->created_at->diffInMinutes($lastBuyerMsg->created_at);
+
+        // clamp (0..7 dana)
+        $diffMin = max(0, min((int)$diffMin, 10080));
+
+        $seller = \App\Models\User::find($sellerId);
+        if ($seller) {
+            $old = $seller->response_time_avg;
+
+            // EMA 80/20
+            $seller->response_time_avg = $old === null
+                ? $diffMin
+                : (int) round(((float)$old * 0.8) + ($diffMin * 0.2));
+
+            $seller->save();
+        }
+    }
+}
+
+
     $itemOffer = ItemOffer::find($validated['item_offer_id']);
     $senderId = Auth::id();
     $receiverId = $itemOffer->buyer_id == $senderId ? $itemOffer->seller_id : $itemOffer->buyer_id;
@@ -165,6 +221,35 @@ class ChatController extends Controller
     $deletedBy = $itemOffer->deleted_by ?? [];
     if (is_string($deletedBy)) {
         $deletedBy = json_decode($deletedBy, true) ?? [];
+    }
+
+    if ($itemOffer && (int)$itemOffer->seller_id === (int)$senderId) {
+
+        // Nađi zadnju buyer poruku prije ove seller poruke u istom chatu
+        $lastBuyerMsg = Chat::where('item_offer_id', $itemOffer->id)
+            ->where('sender_id', $receiverId) // buyer
+            ->where('created_at', '<', $message->created_at)
+            ->orderByDesc('created_at')
+            ->first();
+    
+        if ($lastBuyerMsg) {
+            $diffMin = Carbon::parse($lastBuyerMsg->created_at)->diffInMinutes($message->created_at);
+    
+            // Clamp da ne ode u besmisao (npr. 0..10080 = 7 dana)
+            $diffMin = max(0, min($diffMin, 10080));
+    
+            $seller = User::find($senderId);
+            if ($seller) {
+                $old = $seller->response_time_avg;
+    
+                // EMA: 80% stari prosjek + 20% novo mjerenje
+                $seller->response_time_avg = $old === null
+                    ? $diffMin
+                    : (int) round(((float)$old * 0.8) + ($diffMin * 0.2));
+    
+                $seller->save();
+            }
+        }
     }
 
     // Ako je primatelj obrisao chat, ukloni ga iz deleted liste (restore)
