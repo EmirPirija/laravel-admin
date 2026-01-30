@@ -57,6 +57,8 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::post('upload-temp/video', [TempMediaController::class, 'uploadVideo']);
     Route::delete('upload-temp/{id}', [TempMediaController::class, 'delete']);    
 
+    Route::get('/items/bulk', [ItemController::class, 'bulkDetails']);
+
     Route::get('my-items', [ApiController::class, 'getItem']);
     Route::post('add-item', [ApiController::class, 'addItem']);
     Route::post('update-item', [ApiController::class, 'updateItem']);

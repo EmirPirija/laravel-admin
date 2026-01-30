@@ -138,6 +138,32 @@ class ItemController extends Controller
         }
     }
 
+    public function getBulkDetails(Request $request)
+{
+    try {
+        $ids = $request->input('ids'); // Očekujemo string "1,2,3"
+
+        if (!$ids) {
+            return response()->json(['error' => true, 'message' => 'No IDs provided']);
+        }
+
+        $idArray = explode(',', $ids);
+
+        // Dohvati oglase sa svim potrebnim relacijama
+        $items = Item::whereIn('id', $idArray)
+            ->with(['category', 'user', 'area', 'city', 'customFields']) // Dodaj relacije koje ti trebaju
+            ->get();
+
+        return response()->json([
+            'error' => false,
+            'data' => $items
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => true, 'message' => $e->getMessage()]);
+    }
+}
+
     public function updateItemApproval(Request $request, $id)
     {
         try {
