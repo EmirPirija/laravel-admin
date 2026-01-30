@@ -3210,146 +3210,427 @@ public function markAsSeen(Request $request)
 
 public function sendMessage(Request $request)
 {
-    $validated = $request->validate([
-        'item_offer_id' => 'required|integer|exists:item_offers,id',
-        'message' => 'nullable|string',
-        'file' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
-        'audio' => 'nullable|file|mimes:mp3,mpeg|max:5120',
+    $validator = Validator::make($request->all(), [
+        'item_offer_id' => 'required|integer',
+        'message' => (! $request->file('file') && ! $request->file('audio')) ? 'required' : 'nullable',
+        'file' => 'nullable|mimes:jpg,jpeg,png|max:7168',
+        'audio' => 'nullable|mimetypes:audio/mpeg,video/webm,audio/ogg,video/mp4,audio/x-wav,text/plain|max:7168',
     ]);
 
-    $senderId = Auth::id();
-    $itemOffer = ItemOffer::findOrFail($validated['item_offer_id']);
-
-    $receiverId = ((int)$itemOffer->buyer_id === (int)$senderId)
-        ? (int)$itemOffer->seller_id
-        : (int)$itemOffer->buyer_id;
-
-    // message type + storage
-    $messageType = 'text';
-    $filePath = null;
-    $audioPath = null;
-
-    if ($request->hasFile('file')) {
-        $filePath = $request->file('file')->store('chat_files', 'public');
-        $messageType = $request->filled('message') ? 'file_and_text' : 'file';
+    if ($validator->fails()) {
+        ResponseService::validationError($validator->errors()->first());
     }
 
-    if ($request->hasFile('audio')) {
-        $audioPath = $request->file('audio')->store('chat_audio', 'public');
-        $messageType = 'audio';
-    }
+    try {
+        DB::beginTransaction();
 
-    // Create message
-    $message = Chat::create([
-        'item_offer_id' => $validated['item_offer_id'],
-        'sender_id' => $senderId,
-        'message' => $validated['message'] ?? '',
-        'message_type' => $messageType,
-        'file' => $filePath,
-        'audio' => $audioPath,
-        'status' => 'sent',
-        'is_read' => 0,
-        'is_auto_reply' => false,
-        'auto_reply_type' => null,
-    ]);
+        $user = Auth::user();
 
-    // =========================
-    // ✅ UPDATE response_time_avg (SELLER replying to BUYER)
-    // =========================
-    if ((int)$itemOffer->seller_id === (int)$senderId) {
-        $sellerId = (int)$itemOffer->seller_id;
-        $buyerId  = (int)$itemOffer->buyer_id;
+        $authUserBlockList = BlockUser::where('user_id', $user->id)->get();
+        $otherUserBlockList = BlockUser::where('blocked_user_id', $user->id)->get();
 
-        // zadnja SELLER poruka prije ove (non-auto) da ne uzmeš buyer poruku iz stare runde
-        $prevSellerMsg = Chat::where('item_offer_id', $itemOffer->id)
-            ->where('sender_id', $sellerId)
-            ->where(function ($q) {
-                $q->whereNull('is_auto_reply')->orWhere('is_auto_reply', false)->orWhere('is_auto_reply', 0);
-            })
-            ->where('created_at', '<', $message->created_at)
-            ->orderByDesc('created_at')
-            ->first();
+        $itemOffer = ItemOffer::with('item')->findOrFail($request->item_offer_id);
 
-        $buyerQuery = Chat::where('item_offer_id', $itemOffer->id)
-            ->where('sender_id', $buyerId)
-            ->where('created_at', '<', $message->created_at);
+        // Block check (tvoj postojeći kod)
+        if ($itemOffer->seller_id == $user->id) {
+            $blockStatus = $authUserBlockList->filter(function ($data) use ($itemOffer) {
+                return $data->user_id == $itemOffer->seller_id && $data->blocked_user_id == $itemOffer->buyer_id;
+            });
+            if (count($blockStatus) !== 0) {
+                ResponseService::errorResponse(__('You Cannot send message because You have blocked this user'));
+            }
 
-        if ($prevSellerMsg) {
-            $buyerQuery->where('created_at', '>', $prevSellerMsg->created_at);
-        }
+            $blockStatus = $otherUserBlockList->filter(function ($data) use ($itemOffer) {
+                return $data->user_id == $itemOffer->buyer_id && $data->blocked_user_id == $itemOffer->seller_id;
+            });
+            if (count($blockStatus) !== 0) {
+                ResponseService::errorResponse(__('You Cannot send message because other user has blocked you.'));
+            }
+        } else {
+            $blockStatus = $authUserBlockList->filter(function ($data) use ($itemOffer) {
+                return $data->user_id == $itemOffer->buyer_id && $data->blocked_user_id == $itemOffer->seller_id;
+            });
+            if (count($blockStatus) !== 0) {
+                ResponseService::errorResponse(__('You Cannot send message because You have blocked this user'));
+            }
 
-        $lastBuyerMsg = $buyerQuery->orderByDesc('created_at')->first();
-
-        if ($lastBuyerMsg) {
-            $diffMin = Carbon::parse($lastBuyerMsg->created_at)->diffInMinutes($message->created_at);
-            $diffMin = max(0, min((int)$diffMin, 10080));
-
-            $seller = User::find($sellerId);
-            if ($seller) {
-                $old = $seller->response_time_avg;
-                $seller->response_time_avg = $old === null
-                    ? $diffMin
-                    : (int) round(((float)$old * 0.8) + ($diffMin * 0.2));
-                $seller->save();
+            $blockStatus = $otherUserBlockList->filter(function ($data) use ($itemOffer) {
+                return $data->user_id == $itemOffer->seller_id && $data->blocked_user_id == $itemOffer->buyer_id;
+            });
+            if (count($blockStatus) !== 0) {
+                ResponseService::errorResponse(__('You Cannot send message because other user has blocked you.'));
             }
         }
+
+        // Message type (tvoj postojeći kod)
+        $messageType = 'text';
+        if ($request->hasFile('file') && $request->filled('message')) {
+            $messageType = 'file_and_text';
+        } elseif ($request->hasFile('file')) {
+            $messageType = 'file';
+        } elseif ($request->hasFile('audio')) {
+            $messageType = 'audio';
+        }
+
+        // Kreiraj poruku (tvoj postojeći kod)
+        $chat = Chat::create([
+            'sender_id' => $user->id,
+            'item_offer_id' => $request->item_offer_id,
+            'message' => $request->message ?? '',
+            'message_type' => $messageType,
+            'file' => $request->hasFile('file') ? FileService::compressAndUpload($request->file('file'), 'chat') : '',
+            'audio' => $request->hasFile('audio') ? FileService::compressAndUpload($request->file('audio'), 'chat') : '',
+            'is_read' => 0,
+            'status' => 'sent',
+
+            // ako imaš kolone (preporuka)
+            'is_auto_reply' => false,
+            'auto_reply_type' => null,
+        ]);
+
+        // Receiver / userType (tvoj postojeći kod)
+        if ($itemOffer->seller_id == $user->id) {
+            $receiver_id = $itemOffer->buyer_id;
+            $userType = 'Seller';
+        } else {
+            $receiver_id = $itemOffer->seller_id;
+            $userType = 'Buyer';
+        }
+
+        $unreadMessagesCount = Chat::where('item_offer_id', $itemOffer->id)
+            ->where('is_read', 0)
+            ->count();
+
+        // displayMessage (tvoj postojeći kod)
+        $displayMessage = $request->message;
+        if (empty($displayMessage)) {
+            if ($request->hasFile('file')) {
+                $mime = $request->file('file')->getMimeType();
+                if (str_contains($mime, 'image')) {
+                    $displayMessage = '📷 Sent you an image';
+                } elseif (str_contains($mime, 'pdf')) {
+                    $displayMessage = '📄 Sent you a PDF file';
+                } elseif (str_contains($mime, 'word')) {
+                    $displayMessage = '📘 Sent you a document';
+                } elseif (str_contains($mime, 'text')) {
+                    $displayMessage = '📄 Sent you a text file';
+                } else {
+                    $displayMessage = '📎 Sent you a file';
+                }
+            } elseif ($request->hasFile('audio')) {
+                $displayMessage = '🎤 Sent you an audio message';
+            } else {
+                $displayMessage = '💬 Sent you a message';
+            }
+        }
+
+        // FCM payload (tvoj postojeći kod)
+        $notificationPayload = $chat->toArray();
+        $fcmMsg = [
+            ...$notificationPayload,
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_profile' => $user->profile,
+            'user_type' => $userType,
+            'item_id' => $itemOffer->item->id,
+            'item_name' => $itemOffer->item->name,
+            'item_image' => $itemOffer->item->image,
+            'item_price' => $itemOffer->item->price,
+            'item_offer_id' => $itemOffer->id,
+            'item_offer_amount' => $itemOffer->amount,
+            'type' => $notificationPayload['message_type'],
+            'message_type_temp' => $notificationPayload['message_type'],
+            'unread_count' => $unreadMessagesCount,
+        ];
+        unset($fcmMsg['message_type']);
+
+        $receiverFCMTokens = UserFcmToken::where('user_id', $receiver_id)->pluck('fcm_token')->toArray();
+
+        // =========================
+        // ✅ AUTO-REPLY LOGIKA (PRO)
+        // =========================
+        $autoReplyChat = null;
+
+        $sellerId = $itemOffer->seller_id;
+        $buyerId  = $itemOffer->buyer_id;
+        $senderId = $user->id;
+
+        // Auto-reply samo kad buyer piše selleru
+        $isBuyerSending = ($senderId == $buyerId && $senderId != $sellerId);
+
+        if ($isBuyerSending) {
+            $sellerSettings = \App\Models\SellerSetting::where('user_id', $sellerId)->first();
+         
+            $membership = \App\Models\UserMembership::where('user_id', $sellerId)
+                ->where('status', 'active')
+                ->first();
+                
+         
+            // Provjera Pro/Shop statusa - podržava tier_id (int) i tier (string)
+            $isPro = false;
+            $isShop = false;
+            
+            if ($membership) {
+                // 1. Provjeri tier kao string
+                $tier = strtolower($membership->tier ?? $membership->tier_name ?? $membership->plan ?? '');
+                
+                if (strpos($tier, 'shop') !== false || strpos($tier, 'business') !== false) {
+                    $isPro = true;
+                    $isShop = true;
+                } elseif (strpos($tier, 'pro') !== false || strpos($tier, 'premium') !== false) {
+                    $isPro = true;
+                }
+                
+                // 2. Fallback na tier_id ako string nije dao rezultat
+                if (!$isPro && !empty($membership->tier_id)) {
+                    $tierId = (int) $membership->tier_id;
+                    if ($tierId === 3) { // Shop
+                        $isPro = true;
+                        $isShop = true;
+                    } elseif ($tierId === 2) { // Pro
+                        $isPro = true;
+                    }
+                }
+                
+                // 3. Debug log 
+                \Log::info('Auto-reply membership check', [
+                    'seller_id' => $sellerId,
+                    'tier' => $tier,
+                    'tier_id' => $membership->tier_id ?? null,
+                    'isPro' => $isPro,
+                    'isShop' => $isShop,
+                ]);
+            }
+         
+            if ($isPro && $sellerSettings) {
+         
+                // Vacation mode auto-reply (prioritet)
+                if (!empty($sellerSettings->vacation_mode) && !empty($sellerSettings->vacation_message)) {
+         
+                    $existingVacationReply = Chat::where('item_offer_id', $request->item_offer_id)
+                        ->where('sender_id', $sellerId)
+                        ->where('is_auto_reply', true)
+                        ->where('auto_reply_type', 'vacation')
+                        ->where('created_at', '>', now()->subHours(24))
+                        ->exists();
+         
+                    if (!$existingVacationReply) {
+                        $autoReplyChat = Chat::create([
+                            'sender_id' => $sellerId,
+                            'item_offer_id' => $request->item_offer_id,
+                            'message' => $sellerSettings->vacation_message,
+                            'message_type' => 'text',
+                            'file' => '',
+                            'audio' => '',
+                            'is_read' => 0,
+                            'status' => 'sent',
+                            'is_auto_reply' => true,
+                            'auto_reply_type' => 'vacation',
+                        ]);
+                        
+                    }
+                }
+                // Standard auto-reply
+                elseif (!empty($sellerSettings->auto_reply_enabled) && !empty($sellerSettings->auto_reply_message)) {
+         
+                    $recentBuyerMessages = Chat::where('item_offer_id', $request->item_offer_id)
+                        ->where('sender_id', $buyerId)
+                        ->where('created_at', '>', now()->subHours(24))
+                        ->count();
+         
+                    if ($recentBuyerMessages <= 1) {
+                        $autoReplyChat = Chat::create([
+                            'sender_id' => $sellerId,
+                            'item_offer_id' => $request->item_offer_id,
+                            'message' => $sellerSettings->auto_reply_message,
+                            'message_type' => 'text',
+                            'file' => '',
+                            'audio' => '',
+                            'is_read' => 0,
+                            'status' => 'sent',
+                            'is_auto_reply' => true,
+                            'auto_reply_type' => 'standard',
+                        ]);
+                        
+                    }
+                }
+                // =====================================
+// ✅ UPDATE seller.response_time_avg (minutes)
+// =====================================
+$sellerIdForAvg = (int) $itemOffer->seller_id;
+$buyerIdForAvg  = (int) $itemOffer->buyer_id;
+
+// samo kad SELLER šalje poruku (ne buyer)
+if ((int)$user->id === $sellerIdForAvg) {
+
+    // zadnja SELLER poruka prije ove (non-auto) – da ne uhvatimo buyer poruku iz stare runde
+    $prevSellerMsg = Chat::where('item_offer_id', $itemOffer->id)
+        ->where('sender_id', $sellerIdForAvg)
+        ->where(function ($q) {
+            $q->whereNull('is_auto_reply')->orWhere('is_auto_reply', false)->orWhere('is_auto_reply', 0);
+        })
+        ->where('created_at', '<', $chat->created_at)
+        ->orderByDesc('created_at')
+        ->first();
+
+    // zadnja BUYER poruka prije ovog seller odgovora
+    $buyerQuery = Chat::where('item_offer_id', $itemOffer->id)
+        ->where('sender_id', $buyerIdForAvg)
+        ->where('created_at', '<', $chat->created_at);
+
+    if ($prevSellerMsg) {
+        $buyerQuery->where('created_at', '>', $prevSellerMsg->created_at);
     }
 
-    // Restore deleted chat for receiver (tvoja logika, ali sigurno)
-    $deletedBy = $itemOffer->deleted_by ?? [];
-    if (is_string($deletedBy)) $deletedBy = json_decode($deletedBy, true) ?? [];
+    $lastBuyerMsg = $buyerQuery->orderByDesc('created_at')->first();
 
-    if (in_array($receiverId, $deletedBy)) {
-        $deletedBy = array_values(array_diff($deletedBy, [$receiverId]));
-        $itemOffer->deleted_by = $deletedBy;
+    if ($lastBuyerMsg) {
+        $diffMin = $chat->created_at->diffInMinutes($lastBuyerMsg->created_at);
+        $diffMin = max(0, min((int)$diffMin, 10080)); // clamp 0..7 dana
 
-        $deletedAtBy = $itemOffer->deleted_at_by ?? [];
-        if (is_string($deletedAtBy)) $deletedAtBy = json_decode($deletedAtBy, true) ?? [];
-        unset($deletedAtBy[$receiverId]);
-        $itemOffer->deleted_at_by = $deletedAtBy;
+        // EMA 80/20 (stabilniji prosjek)
+        $sellerUser = User::find($sellerIdForAvg);
+        if ($sellerUser) {
+            $old = $sellerUser->response_time_avg;
+
+            $newAvg = $old === null
+                ? $diffMin
+                : (int) round(((float)$old * 0.8) + ($diffMin * 0.2));
+
+            // update direktno (sigurno)
+            User::where('id', $sellerIdForAvg)->update(['response_time_avg' => $newAvg]);
+        }
     }
-
-    // Update last message fields (ovo ti je falilo u ChatController)
-    $displayMessage = $message->message;
-    if ($message->message_type === 'file' || $message->message_type === 'file_and_text') $displayMessage = "📎 Attachment";
-    if ($message->message_type === 'audio') $displayMessage = "🎤 Voice message";
-
-    $itemOffer->last_message = $displayMessage;
-    $itemOffer->last_message_type = $message->message_type;
-    $itemOffer->last_message_sender_id = $senderId;
-    $itemOffer->last_message_time = now()->format('Y-m-d H:i:s');
-    $itemOffer->touch();
-    $itemOffer->save();
-
-    // Notifications (tvoj helper ako postoji)
-    $mutedBy = $itemOffer->muted_by ?? [];
-    if (is_string($mutedBy)) $mutedBy = json_decode($mutedBy, true) ?? [];
-
-    if (!in_array($receiverId, $mutedBy) && method_exists($this, 'sendPushNotification')) {
-        $this->sendPushNotification($receiverId, $message, $itemOffer);
-    }
-
-    // Broadcast
-    $messageData = [
-        'id' => $message->id,
-        'chat_id' => $validated['item_offer_id'],
-        'sender_id' => $message->sender_id,
-        'message' => $message->message,
-        'message_type' => $message->message_type,
-        'file' => $message->file ? asset('storage/' . $message->file) : null,
-        'audio' => $message->audio ? asset('storage/' . $message->audio) : null,
-        'created_at' => $message->created_at->toISOString(),
-        'status' => 'sent',
-    ];
-
-    broadcast(new NewMessage($messageData))->toOthers();
-
-    return response()->json([
-        'error' => false,
-        'data' => $messageData,
-    ]);
 }
 
+            }
+        }
+
+        DB::commit();
+
+        // =========================
+        // ✅ Broadcast + FCM (tvoj)
+        // =========================
+        $messageData = [
+            'id' => $chat->id,
+            'chat_id' => $request->item_offer_id,
+            'sender_id' => $chat->sender_id,
+            'message' => $chat->message,
+            'message_type' => $chat->message_type,
+            'file' => $chat->file ? asset('storage/' . $chat->file) : null,
+            'audio' => $chat->audio ? asset('storage/' . $chat->audio) : null,
+            'created_at' => $chat->created_at->toISOString(),
+            'status' => 'sent',
+            'is_auto_reply' => (bool) ($chat->is_auto_reply ?? false),
+            'auto_reply_type' => $chat->auto_reply_type ?? null,
+        ];
+
+        try {
+            broadcast(new \App\Events\NewMessage($messageData))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('WebSocket broadcast failed: ' . $e->getMessage());
+        }
+
+        $notification = NotificationService::sendFcmNotification(
+            $receiverFCMTokens,
+            'Message',
+            $displayMessage,
+            'chat',
+            $fcmMsg
+        );
+
+        // =========================
+        // ✅ Ako je kreiran auto-reply, pošalji ga buyeru
+        // =========================
+        $autoReplyDebug = null;
+
+        if ($autoReplyChat) {
+            $autoMessageData = [
+                'id' => $autoReplyChat->id,
+                'chat_id' => $request->item_offer_id,
+                'sender_id' => $autoReplyChat->sender_id,
+                'message' => $autoReplyChat->message,
+                'message_type' => $autoReplyChat->message_type,
+                'file' => null,
+                'audio' => null,
+                'created_at' => $autoReplyChat->created_at->toISOString(),
+                'status' => 'sent',
+                'is_auto_reply' => true,
+                'auto_reply_type' => $autoReplyChat->auto_reply_type,
+            ];
+
+            // Broadcast (da buyer dobije poruku)
+            try {
+                broadcast(new \App\Events\NewMessage($autoMessageData));
+            } catch (\Exception $e) {
+                \Log::error('WebSocket broadcast auto-reply failed: ' . $e->getMessage());
+            }
+
+            // FCM buyeru
+            $buyerTokens = UserFcmToken::where('user_id', $buyerId)->pluck('fcm_token')->toArray();
+
+            $sellerUser = \App\Models\User::find($sellerId);
+            $autoFcmMsg = [
+                ...$autoReplyChat->toArray(),
+                'user_id' => $sellerId,
+                'user_name' => $sellerUser->name ?? 'Seller',
+                'user_profile' => $sellerUser->profile ?? null,
+                'user_type' => 'Seller',
+                'item_id' => $itemOffer->item->id,
+                'item_name' => $itemOffer->item->name,
+                'item_image' => $itemOffer->item->image,
+                'item_price' => $itemOffer->item->price,
+                'item_offer_id' => $itemOffer->id,
+                'item_offer_amount' => $itemOffer->amount,
+                'type' => 'text',
+                'message_type_temp' => 'text',
+                'unread_count' => Chat::where('item_offer_id', $itemOffer->id)->where('is_read', 0)->count(),
+            ];
+
+            // ne diramo message_type, ali ako postoji u modelu i smeta, možeš unset kao gore
+            $autoReplyDebug = NotificationService::sendFcmNotification(
+                $buyerTokens,
+                'Message',
+                $autoReplyChat->message,
+                'chat',
+                $autoFcmMsg
+            );
+        }
+
+        // Response (tvoj + dodao auto_reply ako postoji)
+        $responseData = $chat->toArray();
+        $responseData['status'] = 'sent';
+        $responseData['message_type'] = $messageType;
+
+        if ($autoReplyChat) {
+            $responseData['auto_reply'] = [
+                'id' => $autoReplyChat->id,
+                'sender_id' => $autoReplyChat->sender_id,
+                'message' => $autoReplyChat->message,
+                'message_type' => $autoReplyChat->message_type,
+                'created_at' => $autoReplyChat->created_at->toISOString(),
+                'status' => 'sent',
+                'is_auto_reply' => true,
+                'auto_reply_type' => $autoReplyChat->auto_reply_type,
+            ];
+        } else {
+            $responseData['auto_reply'] = null;
+        }
+
+        
+
+        ResponseService::successResponse(
+            __('Message Fetched Successfully'),
+            $responseData,
+            ['debug' => $notification, 'auto_reply_debug' => $autoReplyDebug]
+        );
+
+    } catch (Throwable $th) {
+        DB::rollBack();
+        ResponseService::logErrorResponse($th, 'API Controller -> sendMessage');
+        ResponseService::errorResponse();
+    }
+}
 
 
 public function getChatMessages(Request $request)
@@ -4036,6 +4317,15 @@ public function getSeller(Request $request)
             ];
         }
         // =====================================================
+
+        if ($seller->response_time_avg === null) {
+            $avg = $this->calculateAverageResponseMinutes((int)$sellerId);
+            if ($avg !== null) {
+                $seller->response_time_avg = $avg;
+                User::where('id', $sellerId)->whereNull('response_time_avg')->update(['response_time_avg' => $avg]);
+            }
+        }
+        
  
         $responseData = [
             'seller' => $seller,
@@ -4109,6 +4399,50 @@ private function calculateAverageResponseTime(int $sellerId): ?string
     if ($avgMinutes < 1440) return 'same_day';
     return 'few_days';
 }
+
+private function calculateAverageResponseMinutes(int $sellerId): ?int
+{
+    $offers = ItemOffer::where('seller_id', $sellerId)
+        ->select('id', 'seller_id', 'buyer_id')
+        ->orderByDesc('id')
+        ->limit(50)
+        ->get();
+
+    if ($offers->isEmpty()) return null;
+
+    $total = 0;
+    $count = 0;
+
+    foreach ($offers as $offer) {
+        $buyerMsg = Chat::where('item_offer_id', $offer->id)
+            ->where('sender_id', $offer->buyer_id)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$buyerMsg) continue;
+
+        $sellerReply = Chat::where('item_offer_id', $offer->id)
+            ->where('sender_id', $offer->seller_id)
+            ->where('created_at', '>', $buyerMsg->created_at)
+            ->where(function ($q) {
+                $q->whereNull('is_auto_reply')->orWhere('is_auto_reply', false)->orWhere('is_auto_reply', 0);
+            })
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        if ($sellerReply) {
+            $mins = $sellerReply->created_at->diffInMinutes($buyerMsg->created_at);
+            $mins = max(0, min((int)$mins, 10080));
+            $total += $mins;
+            $count++;
+        }
+    }
+
+    if ($count === 0) return null;
+
+    return (int) round($total / $count);
+}
+
 
 
     public function renewItem(Request $request)
