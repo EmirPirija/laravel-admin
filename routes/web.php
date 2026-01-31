@@ -485,4 +485,3 @@ Route::get('auto-translate/{id}/{type}/{locale}', function ($id, $type, $locale)
     return redirect()->route('languageedit', ['id' => $id, 'type' => $type])
         ->with('success', 'Auto translation started in background.');
 })->name('auto-translate');
-

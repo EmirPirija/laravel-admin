@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ItemCollection;
 use App\Models\Area;
 use App\Models\SellerSetting;
+use App\Jobs\NotifyFollowersInstant;
 use App\Models\UserMembership;
 use App\Models\BlockUser;
 use App\Models\Blog;
@@ -755,6 +756,36 @@ class ApiController extends Controller
 
         DB::commit();
 
+        // ✅ Instant obavijesti pratiteljima (samo za odmah objavljene oglase)
+        // Napomena: ne želimo rušiti addItem ako notifikacije/queue padnu.
+        try {
+            $status = (string) ($item->status ?? '');
+            $isScheduled = !empty($item->scheduled_at) || $status === 'scheduled';
+            if (!$isScheduled) {
+                $sellerId = (int) ($item->user_id ?? $request->user()?->id);
+                $sellerName = $request->user()?->name ?? null;
+
+                // Frontend ruta za detalje oglasa (u web-u je /ad-details/[slug])
+                $frontendBase = config('app.frontend_url') ?: env('FRONTEND_URL');
+                $url = null;
+                if (!empty($frontendBase)) {
+                    $slugOrId = $item->slug ?: $item->id;
+                    $url = rtrim($frontendBase, '/') . '/ad-details/' . $slugOrId;
+                }
+
+                NotifyFollowersInstant::dispatch($sellerId, [
+                    'id' => $item->id,
+                    'slug' => $item->slug ?? null,
+                    'title' => $item->name ?? $item->title ?? 'Novi oglas',
+                    'seller_name' => $sellerName,
+                    'url' => $url,
+                    'created_at' => $item->created_at?->toIso8601String(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // silent fail
+        }
+
         ResponseService::successResponse(__('Advertisement Added Successfully'), $result);
     } catch (Throwable $th) {
         DB::rollBack();
@@ -762,6 +793,7 @@ class ApiController extends Controller
         ResponseService::errorResponse();
     }
 }
+
 
 
 public function getItem(Request $request)

@@ -11,7 +11,10 @@ use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\ItemConversationController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\TempMediaController;
-
+use App\Http\Controllers\Api\SavedUserController;
+use App\Http\Controllers\Api\SavedUserListController;
+use App\Http\Controllers\Api\SavedUserListItemController;
+use App\Http\Controllers\Api\FollowPreferenceController;
 
 
 
@@ -55,7 +58,30 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
 
     Route::post('upload-temp/image', [TempMediaController::class, 'uploadImage']);
     Route::post('upload-temp/video', [TempMediaController::class, 'uploadVideo']);
-    Route::delete('upload-temp/{id}', [TempMediaController::class, 'delete']);    
+    Route::delete('upload-temp/{id}', [TempMediaController::class, 'delete']);   
+    
+    Route::post('manage-saved-user', [SavedUserController::class, 'toggle']);
+    Route::get('check-saved-user', [SavedUserController::class, 'check']);
+    Route::get('get-saved-users', [SavedUserController::class, 'index']);
+
+      // Kolekcije
+  Route::get('saved-lists', [SavedUserListController::class, 'index']);
+  Route::post('saved-lists', [SavedUserListController::class, 'store']);
+  Route::patch('saved-lists/{list}', [SavedUserListController::class, 'update']);
+  Route::delete('saved-lists/{list}', [SavedUserListController::class, 'destroy']);
+
+  // Itemi u kolekcijama
+  Route::get('saved-lists/{list}/items', [SavedUserListItemController::class, 'index']);
+  Route::post('saved-lists/{list}/items', [SavedUserListItemController::class, 'store']);
+  Route::delete('saved-lists/{list}/items/{savedUserId}', [SavedUserListItemController::class, 'destroy']);
+  Route::patch('saved-lists/{list}/items/{savedUserId}/note', [SavedUserListItemController::class, 'updateNote']);
+
+  // Membership (za dropdown na kartici)
+  Route::get('saved-users/membership', [SavedUserListItemController::class, 'membership']);
+
+  // Notifikacije (follow preferences)
+  Route::get('follow-preferences', [FollowPreferenceController::class, 'index']);
+  Route::put('follow-preferences/{followedUserId}', [FollowPreferenceController::class, 'upsert']);
 
     Route::get('/items/bulk', [ItemController::class, 'bulkDetails']);
 
