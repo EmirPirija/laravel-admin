@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SavedUserList;
 use App\Models\SavedUserListItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class SavedUserListItemController extends Controller
 {
@@ -22,16 +23,22 @@ class SavedUserListItemController extends Controller
 
     $q = trim((string) $request->get('q', ''));
 
+    // ✅ Bulletproof: only select columns that EXIST on your users table
+    $userColumns = ['id', 'name', 'profile', 'created_at'];
+    if (Schema::hasColumn('users', 'profile_image')) $userColumns[] = 'profile_image';
+    if (Schema::hasColumn('users', 'is_pro')) $userColumns[] = 'is_pro';
+    if (Schema::hasColumn('users', 'is_shop')) $userColumns[] = 'is_shop';
+
     $items = SavedUserListItem::query()
       ->where('list_id', $list->id)
+      ->select(['id', 'list_id', 'user_id', 'saved_user_id', 'note', 'created_at', 'updated_at'])
       ->when($q !== '', function ($query) use ($q) {
         $query->whereHas('savedUser', function ($u) use ($q) {
           $u->where('name', 'like', "%{$q}%");
         });
       })
-      ->with(['savedUser' => function ($u) {
-        // Minimal fields for card; extend as needed
-        $u->select('id', 'name', 'profile', 'profile_image', 'created_at', 'is_pro', 'is_shop');
+      ->with(['savedUser' => function ($u) use ($userColumns) {
+        $u->select($userColumns);
       }])
       ->latest()
       ->paginate($perPage);
@@ -45,7 +52,6 @@ class SavedUserListItemController extends Controller
 
   /**
    * GET /saved-users/membership?saved_user_id=123
-   * Returns list ids in which this seller exists
    */
   public function membership(Request $request)
   {
@@ -75,7 +81,6 @@ class SavedUserListItemController extends Controller
 
   /**
    * POST /saved-lists/{list}/items
-   * Adds seller to list (idempotent). Optional note.
    */
   public function store(Request $request, SavedUserList $list)
   {
@@ -101,7 +106,6 @@ class SavedUserListItemController extends Controller
       ['user_id' => $me->id, 'note' => $request->note]
     );
 
-    // If existed, update note only if provided
     if ($item->wasRecentlyCreated === false && $request->has('note')) {
       $item->note = $request->note;
       $item->save();
