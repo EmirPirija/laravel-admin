@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\ConversationBootstrapController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\Api\SavedSearchController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,7 @@ Route::post('item-statistics/track-search-impressions', [ItemStatisticsControlle
 Route::post('item-statistics/track-search-click', [ItemStatisticsController::class, 'trackSearchClick']);
 
 
+
 /* Authenticated Routes */
 Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::get('get-package', [ApiController::class, 'getPackage']);
@@ -59,6 +61,10 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::post('upload-temp/image', [TempMediaController::class, 'uploadImage']);
     Route::post('upload-temp/video', [TempMediaController::class, 'uploadVideo']);
     Route::delete('upload-temp/{id}', [TempMediaController::class, 'delete']);   
+
+    Route::post('start-item-conversation', [ConversationBootstrapController::class, 'startItemConversation']);
+    Route::get('check-direct-conversation', [ConversationBootstrapController::class, 'checkDirectConversation']);
+    Route::post('start-direct-conversation', [ConversationBootstrapController::class, 'startDirectConversation']);
     
     Route::post('manage-saved-user', [SavedUserController::class, 'toggle']);
     Route::get('check-saved-user', [SavedUserController::class, 'check']);
