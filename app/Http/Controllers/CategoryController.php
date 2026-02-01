@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Item;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
 use App\Models\CategoryTranslation;
 use App\Models\CustomField;
 use App\Models\CustomFieldCategory;
@@ -30,6 +33,9 @@ class CategoryController extends Controller {
         ResponseService::noAnyPermissionThenRedirect(['category-list', 'category-create', 'category-update', 'category-delete']);
         return view('category.index');
     }
+
+    
+    
 
     public function create(Request $request) {
         $languages = CachingService::getLanguages()->values();
@@ -114,63 +120,272 @@ class CategoryController extends Controller {
 
     public function show(Request $request, $id) {
         ResponseService::noPermissionThenSendJson('category-list');
-        $offset = $request->input('offset', 0);
-        $limit = $request->input('limit', 10);
-        $sort = $request->input('sort', 'sequence');
-        $order = $request->input('order', 'ASC');
-        $sql = Category::withCount('subcategories')->withCount('custom_fields')->with('subcategories');
+    
+        $offset = (int) $request->input('offset', 0);
+        $limit  = (int) $request->input('limit', 10);
+        $sort   = $request->input('sort', 'sequence');
+        $order  = $request->input('order', 'ASC');
+    
+        $base = Category::withCount('subcategories')
+            ->withCount('custom_fields')
+            ->with('subcategories');
+    
         if ($id == "0") {
-            $sql->whereNull('parent_category_id');
+            $base->whereNull('parent_category_id');
         } else {
-            $sql->where('parent_category_id', $id);
+            $base->where('parent_category_id', $id);
         }
+    
         if (!empty($request->search)) {
-            $sql = $sql->search($request->search);
+            $base->search($request->search);
         }
+    
+        $total = (clone $base)->count();
+    
+        // Normal sort: paginate in SQL (FAST)
         if ($sort !== 'advertisements_count') {
-            $sql->orderBy($sort, $order);
-        }
-        $result = $sql->get();
-
-
-        if ($sort === 'advertisements_count') {
-            $result = $result->sortBy(function ($category) {
-                return $category->all_items_count;
-            }, SORT_REGULAR, strtolower($order) === 'desc')->values();
-
-            $result = $result->slice($offset, $limit)->values();
+            $result = (clone $base)
+                ->orderBy($sort, $order)
+                ->skip($offset)
+                ->take($limit)
+                ->get();
         } else {
-            $result = $result->slice($offset, $limit);
+            // For ad-count sort, we need all, then sort in PHP
+            $result = (clone $base)->get();
         }
-        $total = $sql->count();
-        $bulkData = array();
-        $bulkData['total'] = $total;
-        $rows = array();
-        $no = 1;
-
-        foreach ($result as $key => $row) {
+    
+        // Build parent->children map (single query, no translations)
+        $allCats = Category::without('translations')->select('id', 'parent_category_id')->get();
+        $children = [];
+        foreach ($allCats as $c) {
+            $p = $c->parent_category_id ?? 0;
+            $children[$p][] = $c->id;
+        }
+    
+        // Direct approved + non-expired counts grouped by category_id (single query)
+        $directCounts = Item::query()
+            ->selectRaw('category_id, COUNT(*) as cnt')
+            ->where('status', 'approved')
+            ->getNonExpiredItems()
+            ->groupBy('category_id')
+            ->pluck('cnt', 'category_id')
+            ->toArray();
+    
+        // Memoized subtree sum
+        $memo = [];
+        $sumSubtree = function ($catId) use (&$sumSubtree, &$memo, $children, $directCounts) {
+            if (isset($memo[$catId])) return $memo[$catId];
+            $sum = (int)($directCounts[$catId] ?? 0);
+            foreach ($children[$catId] ?? [] as $childId) {
+                $sum += $sumSubtree($childId);
+            }
+            return $memo[$catId] = $sum;
+        };
+    
+        // Attach calculated count
+        foreach ($result as $r) {
+            $r->advertisements_count_calc = $sumSubtree($r->id);
+        }
+    
+        // If sorting by ads count, do it now + slice
+        if ($sort === 'advertisements_count') {
+            $desc = strtolower($order) === 'desc';
+            $result = $result->sortBy('advertisements_count_calc', SORT_REGULAR, $desc)->values();
+            $result = $result->slice($offset, $limit)->values();
+        }
+    
+        $rows = [];
+        $no = $offset + 1;
+    
+        foreach ($result as $row) {
             $operate = '';
+    
             if (Auth::user()->can('category-update')) {
                 $operate .= BootstrapTableService::editButton(route('category.edit', $row->id));
             }
-
             if (Auth::user()->can('category-delete')) {
                 $operate .= BootstrapTableService::deleteButton(route('category.destroy', $row->id));
             }
             if ($row->subcategories_count > 1) {
-                $operate .= BootstrapTableService::button('fa fa-list-ol',route('sub.category.order.change', $row->id),['btn-secondary']);
+                $operate .= BootstrapTableService::button('fa fa-list-ol', route('sub.category.order.change', $row->id), ['btn-secondary']);
             }
+    
             $tempRow = $row->toArray();
             $tempRow['no'] = $no++;
             $tempRow['subcategories_count'] = $row->subcategories_count . ' ' . __('Subcategories');
             $tempRow['custom_fields_count'] = $row->custom_fields_count . ' ' . __('Custom Fields');
             $tempRow['operate'] = $operate;
-            $tempRow['advertisements_count'] = $row->all_items_count;
+    
+            // use calculated
+            $tempRow['advertisements_count'] = (int)($row->advertisements_count_calc ?? 0);
+    
             $rows[] = $tempRow;
         }
-        $bulkData['rows'] = $rows;
-        return response()->json($bulkData);
+    
+        return response()->json([
+            'total' => $total,
+            'rows'  => $rows,
+        ]);
     }
+    
+
+
+    /**
+     * BULK EDIT (Categories + expanded Subcategories)
+     */
+    public function bulkEdit(Request $request)
+{
+    ResponseService::noPermissionThenRedirect('category-update');
+
+    $ids = $request->input('ids', '');
+    if (is_string($ids)) {
+        $ids = array_filter(array_map('intval', explode(',', $ids)));
+    }
+    if (empty($ids) || !is_array($ids)) {
+        return redirect()->route('category.index')->withErrors(['message' => 'Select at least one category.']);
+    }
+
+    $languages = CachingService::getLanguages()->values();
+
+    $categories = Category::with('translations')
+        ->whereIn('id', $ids)
+        ->get();
+
+    $translationsByCategory = [];
+    foreach ($categories as $cat) {
+        $translationsByCategory[$cat->id][1] = [
+            'name' => $cat->name,
+            'description' => $cat->description,
+        ];
+
+        foreach ($cat->translations as $tr) {
+            $translationsByCategory[$cat->id][$tr->language_id] = [
+                'name' => $tr->name,
+                'description' => $tr->description,
+            ];
+        }
+    }
+
+    $allCategories = Category::orderBy('sequence')->get();
+
+    return view('category.bulk-edit', compact(
+        'categories',
+        'languages',
+        'allCategories',
+        'translationsByCategory'
+    ));
+}
+
+public function bulkUpdate(Request $request)
+{
+    ResponseService::noPermissionThenRedirect('category-update');
+
+    $payload = $request->input('categories', []);
+    if (empty($payload) || !is_array($payload)) {
+        return redirect()->back()->withErrors(['message' => 'Nothing to update.']);
+    }
+
+    $languages = CachingService::getLanguages();
+    $defaultLangId = 1;
+    $otherLanguages = $languages->where('id', '!=', $defaultLangId);
+
+    DB::beginTransaction();
+    try {
+        foreach ($payload as $id => $data) {
+            $id = (int)$id;
+            $category = Category::findOrFail($id);
+
+            // Build validation rules per category
+            $rules = [
+                "categories.$id.name.$defaultLangId" => 'required|string|max:30',
+                "categories.$id.image" => 'nullable|mimes:jpg,jpeg,png|max:7168',
+                "categories.$id.parent_category_id" => 'nullable|integer',
+                "categories.$id.description.$defaultLangId" => 'nullable|string',
+                "categories.$id.slug" => ['nullable','regex:/^[a-zA-Z0-9\-_]+$/'],
+                "categories.$id.status" => 'required|boolean',
+                "categories.$id.is_job_category" => 'required|boolean',
+                "categories.$id.price_optional" => 'required|boolean',
+            ];
+
+            foreach ($otherLanguages as $lang) {
+                $langId = $lang->id;
+                $rules["categories.$id.name.$langId"] = 'nullable|string|max:30';
+                $rules["categories.$id.description.$langId"] = 'nullable|string';
+            }
+
+            $v = \Illuminate\Support\Facades\Validator::make($request->all(), $rules, [
+                'slug.regex' => 'Slug must be only English letters, numbers, hyphens (-), or underscores (_).'
+            ]);
+            if ($v->fails()) {
+                DB::rollBack();
+                return redirect()->back()->withErrors($v->errors())->withInput();
+            }
+
+            // prevent self-parent
+            $parentId = $data['parent_category_id'] ?? null;
+            if (!empty($parentId) && (int)$parentId === $category->id) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['parent_category' => 'A category cannot be set as its own parent.'])->withInput();
+            }
+
+            $update = [
+                'name' => $data['name'][$defaultLangId] ?? $category->name,
+                'description' => $data['description'][$defaultLangId] ?? null,
+                'parent_category_id' => $parentId ?: null,
+                'status' => (int)($data['status'] ?? 0),
+                'is_job_category' => (int)($data['is_job_category'] ?? 0),
+                'price_optional' => (int)($data['price_optional'] ?? 0),
+            ];
+
+            if ($request->hasFile("categories.$id.image")) {
+                $update['image'] = FileService::compressAndReplace(
+                    $request->file("categories.$id.image"),
+                    $this->uploadFolder,
+                    $category->getRawOriginal('image')
+                );
+            }
+
+            $slug = trim($data['slug'] ?? '');
+            $slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower($slug));
+            $slug = trim($slug, '-');
+            if (empty($slug)) {
+                $slug = HelperService::generateRandomSlug();
+            }
+            $update['slug'] = HelperService::generateUniqueSlug(new Category(), $slug, $category->id);
+
+            $oldJob = (int)$category->is_job_category;
+            $oldPriceOpt = (int)$category->price_optional;
+
+            $category->update($update);
+
+            // propagate only if changed (faster)
+            if ($oldJob !== (int)$update['is_job_category']) {
+                $category->subcategories()->update(['is_job_category' => (int)$update['is_job_category']]);
+            }
+            if ($oldPriceOpt !== (int)$update['price_optional']) {
+                $category->subcategories()->update(['price_optional' => (int)$update['price_optional']]);
+            }
+
+            foreach ($otherLanguages as $lang) {
+                $langId = $lang->id;
+                $translatedName = $data['name'][$langId] ?? '';
+                $translatedDescription = $data['description'][$langId] ?? null;
+
+                CategoryTranslation::updateOrCreate(
+                    ['category_id' => $category->id, 'language_id' => $langId],
+                    ['name' => $translatedName ?? '', 'description' => $translatedDescription]
+                );
+            }
+        }
+
+        DB::commit();
+        return ResponseService::successRedirectResponse("Categories Updated Successfully", route('category.index'));
+    } catch (Throwable $th) {
+        DB::rollBack();
+        ResponseService::logErrorRedirect($th);
+        return ResponseService::errorRedirectResponse('Something Went Wrong');
+    }
+}
 
     public function edit($id) {
         ResponseService::noPermissionThenRedirect('category-update');
@@ -316,32 +531,38 @@ class CategoryController extends Controller {
         }
     }
 
-    public function getSubCategories($id) {
-        ResponseService::noPermissionThenRedirect('category-list');
-        $subcategories = Category::where('parent_category_id', $id)
-            ->with('subcategories')
-            ->withCount('custom_fields')
-            ->withCount('subcategories')
-            ->withCount('items')
-            ->orderBy('sequence')
-            ->get()
-            ->map(function ($subcategory) {
-                $operate = '';
-                if (Auth::user()->can('category-update')) {
-                    $operate .= BootstrapTableService::editButton(route('category.edit', $subcategory->id));
-                }
-                if (Auth::user()->can('category-delete')) {
-                    $operate .= BootstrapTableService::deleteButton(route('category.destroy', $subcategory->id));
-                }
-                if ($subcategory->subcategories_count > 1) {
-                    $operate .= BootstrapTableService::button('fa fa-list-ol',route('sub.category.order.change',$subcategory->id),['btn-secondary']);
-                }
-                $subcategory->operate = $operate;
-                return $subcategory;
-            });
+    public function getSubCategories($id)
+{
+    ResponseService::noPermissionThenRedirect('category-list');
 
-        return response()->json($subcategories);
-    }
+    $subcategories = Category::without('translations')
+        ->where('parent_category_id', $id)
+        ->withCount('custom_fields')
+        ->withCount('subcategories')
+        ->withCount('items')
+        ->orderBy('sequence')
+        ->get()
+        ->map(function ($subcategory) {
+            $subcategory->setAppends([]);
+
+            $operate = '';
+            if (Auth::user()->can('category-update')) {
+                $operate .= BootstrapTableService::editButton(route('category.edit', $subcategory->id));
+            }
+            if (Auth::user()->can('category-delete')) {
+                $operate .= BootstrapTableService::deleteButton(route('category.destroy', $subcategory->id));
+            }
+            if ($subcategory->subcategories_count > 1) {
+                $operate .= BootstrapTableService::button('fa fa-list-ol', route('sub.category.order.change', $subcategory->id), ['btn-secondary']);
+            }
+
+            $subcategory->operate = $operate;
+            return $subcategory;
+        });
+
+    return response()->json($subcategories);
+}
+
 
     public function customFields($id) {
         ResponseService::noPermissionThenRedirect('custom-field-list');
@@ -431,4 +652,63 @@ class CategoryController extends Controller {
             ResponseService::errorResponse('Something Went Wrong');
         }
     }
+
+    private function forgetAdminCategoryCaches(): void
+{
+    Cache::forget('admin:category:approved_nonexpired_rollup:v1');
+    Cache::forget('admin:category:path_map:v1'); // koristi se u custom fields fix-u
+    Cache::forget('admin:category:parent_map:v1'); // koristi se u custom fields fix-u
+}
+
+private function getApprovedNonExpiredRollupCountMap(): array
+{
+    return Cache::remember('admin:category:approved_nonexpired_rollup:v1', 300, function () {
+        $categories = Category::without('translations')
+            ->select('id', 'parent_category_id')
+            ->get();
+
+        // children adjacency map
+        $children = [];
+        foreach ($categories as $c) {
+            $pid = $c->parent_category_id ? (int)$c->parent_category_id : 0;
+            $children[$pid][] = (int)$c->id;
+        }
+
+        // direct counts per category (approved + non-expired)
+        $direct = Item::query()
+            ->where('status', 'approved')
+            ->getNonExpiredItems()
+            ->selectRaw('category_id, COUNT(*) as cnt')
+            ->groupBy('category_id')
+            ->pluck('cnt', 'category_id')
+            ->map(fn($v) => (int)$v)
+            ->toArray();
+
+        $memo = [];
+        $visiting = [];
+
+        $dfs = function (int $id) use (&$dfs, &$children, &$direct, &$memo, &$visiting) {
+            if (isset($memo[$id])) return $memo[$id];
+            if (isset($visiting[$id])) return $memo[$id] = ($direct[$id] ?? 0); // loop guard
+
+            $visiting[$id] = true;
+            $sum = $direct[$id] ?? 0;
+
+            foreach ($children[$id] ?? [] as $childId) {
+                $sum += $dfs((int)$childId);
+            }
+
+            unset($visiting[$id]);
+            return $memo[$id] = $sum;
+        };
+
+        foreach ($categories as $c) {
+            $dfs((int)$c->id);
+        }
+
+        return $memo; // [category_id => totalCountIncludingDescendants]
+    });
+}
+
+
 }

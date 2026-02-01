@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 
 
+
 class Category extends Model {
     use HasFactory, HasRecursiveRelationships;
 
@@ -117,24 +118,39 @@ class Category extends Model {
 
     public function parent() { return $this->belongsTo(Category::class, 'parent_category_id'); }
 
+    protected static ?\Illuminate\Support\Collection $fullPathLookupCache = null;
+
+    protected static function fullPathLookup()
+    {
+        if (self::$fullPathLookupCache === null) {
+            self::$fullPathLookupCache = self::without('translations')
+                ->select('id', 'name', 'parent_category_id')
+                ->get()
+                ->keyBy('id');
+        }
+        return self::$fullPathLookupCache;
+    }
+    
     public function getFullPathAttribute()
     {
-        $names   = [];
-        $current = $this;
+        $lookup = self::fullPathLookup();
+    
+        $names = [];
+        $currentId = $this->id;
         $visited = [];
-
-        while ($current) {
-            if (in_array($current->id, $visited, true)) {
-                break; // prevent loop
-            }
-            $visited[] = $current->id;
-
-            $names[]  = $current->name;
-            $current  = $current->parent;
+    
+        while ($currentId && isset($lookup[$currentId])) {
+            if (isset($visited[$currentId])) break;
+            $visited[$currentId] = true;
+    
+            $cat = $lookup[$currentId];
+            $names[] = $cat->name;
+            $currentId = $cat->parent_category_id;
         }
-
+    
         return implode(' > ', array_reverse($names));
     }
+    
     public function getItemsGroupedByStatusAttribute()
     {
         $counts = [];

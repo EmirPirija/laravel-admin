@@ -14,6 +14,7 @@ use App\Services\ResponseService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -59,6 +60,183 @@ class CustomFieldController extends Controller {
             compact('categories', 'cat_id', 'languages', 'selected_categories', 'selected_all_categories')
         );
     }
+
+    public function bulkEdit(Request $request)
+    {
+        ResponseService::noPermissionThenRedirect('custom-field-update');
+    
+        $ids = $request->input('ids', '');
+        if (is_string($ids)) {
+            $ids = array_filter(array_map('intval', explode(',', $ids)));
+        }
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->route('custom-fields.index')->withErrors(['message' => 'Select at least one custom field.']);
+        }
+    
+        $languages = CachingService::getLanguages()->values();
+    
+        $customFields = CustomField::with(['custom_field_category', 'translations', 'categories'])
+            ->whereIn('id', $ids)
+            ->get();
+    
+        // categories tree (same as normal editor)
+        $all = Category::without('translations')->get()->each->setAppends([]);
+        $all = HelperService::buildNestedChildSubcategoryObject($all);
+        $categories = $all->whereNull('parent_category_id');
+    
+        // parent map for "open parents"
+        $parentMap = Category::without('translations')->pluck('parent_category_id', 'id')->toArray();
+    
+        $translationsByField = [];
+        $selectedCategoriesByField = [];
+        $selectedAllCategoriesByField = [];
+    
+        foreach ($customFields as $cf) {
+            // translations
+            $translationsByField[$cf->id][1] = ['name' => $cf->name, 'value' => $cf->values];
+            foreach ($cf->translations as $tr) {
+                $translationsByField[$cf->id][$tr->language_id] = [
+                    'name' => $tr->name,
+                    'value' => $tr->value,
+                ];
+            }
+    
+            // selected categories
+            $selected = $cf->categories->pluck('id')->toArray();
+            $selectedCategoriesByField[$cf->id] = $selected;
+    
+            // selected + all parents (for open caret)
+            $allParents = $selected;
+            foreach ($selected as $catId) {
+                $cur = $catId;
+                while (!empty($parentMap[$cur])) {
+                    $cur = (int)$parentMap[$cur];
+                    $allParents[] = $cur;
+                }
+            }
+            $selectedAllCategoriesByField[$cf->id] = array_values(array_unique($allParents));
+        }
+    
+        return view('custom-fields.bulk-edit', compact(
+            'customFields',
+            'languages',
+            'categories',
+            'translationsByField',
+            'selectedCategoriesByField',
+            'selectedAllCategoriesByField'
+        ));
+    }
+    
+    public function bulkUpdate(Request $request)
+    {
+        ResponseService::noPermissionThenSendJson('custom-field-update');
+    
+        $payload = $request->input('fields', []);
+        if (empty($payload) || !is_array($payload)) {
+            ResponseService::validationError('Nothing to update.');
+        }
+    
+        $languages = CachingService::getLanguages();
+        $defaultLangId = 1;
+        $otherLanguages = $languages->where('id', '!=', $defaultLangId);
+    
+        $valuesTypes = ['radio', 'dropdown', 'checkbox'];
+        $allowedTypes = ['number','textbox','fileinput','radio','dropdown','checkbox'];
+    
+        DB::beginTransaction();
+        try {
+            foreach ($payload as $id => $data) {
+                $id = (int)$id;
+                $cf = CustomField::findOrFail($id);
+    
+                // Validate
+                $rules = [
+                    "fields.$id.name.$defaultLangId" => 'required|string',
+                    "fields.$id.type" => 'required|in:' . implode(',', $allowedTypes),
+                    "fields.$id.min_length" => 'nullable|integer',
+                    "fields.$id.max_length" => 'nullable|integer',
+                    "fields.$id.image" => 'nullable|mimes:jpg,jpeg,png,svg|max:7168',
+                    "fields.$id.required" => 'required|boolean',
+                    "fields.$id.status" => 'required|boolean',
+                    "fields.$id.selected_categories" => 'required|array|min:1',
+                ];
+    
+                foreach ($otherLanguages as $lang) {
+                    $rules["fields.$id.name.$lang->id"] = 'nullable|string';
+                }
+    
+                // values required only for valuesTypes (on lang 1)
+                $type = $data['type'] ?? $cf->type;
+                if (in_array($type, $valuesTypes, true)) {
+                    $rules["fields.$id.values.$defaultLangId"] = 'required|array|min:1';
+                }
+    
+                $v = \Illuminate\Support\Facades\Validator::make($request->all(), $rules);
+                if ($v->fails()) {
+                    DB::rollBack();
+                    ResponseService::validationError($v->errors()->first());
+                }
+    
+                // Type cannot change (force to existing)
+                $type = $cf->type;
+    
+                $update = [
+                    'name' => $data['name'][$defaultLangId] ?? $cf->name,
+                    'type' => $type,
+                    'min_length' => $data['min_length'] ?? null,
+                    'max_length' => $data['max_length'] ?? null,
+                    'required' => (int)($data['required'] ?? 0),
+                    'status' => (int)($data['status'] ?? 0),
+                ];
+    
+                // values only for radio/dropdown/checkbox
+                if (in_array($type, $valuesTypes, true)) {
+                    $update['values'] = array_values($data['values'][$defaultLangId] ?? []);
+                } else {
+                    $update['values'] = null;
+                }
+    
+                if ($request->hasFile("fields.$id.image")) {
+                    $update['image'] = FileService::compressAndReplace(
+                        $request->file("fields.$id.image"),
+                        $this->uploadFolder,
+                        $cf->getRawOriginal('image')
+                    );
+                }
+    
+                $cf->update($update);
+    
+                // categories faster
+                $selectedCats = array_map('intval', $data['selected_categories'] ?? []);
+                $cf->categories()->sync($selectedCats);
+    
+                // translations
+                foreach ($otherLanguages as $lang) {
+                    $langId = $lang->id;
+                    $trName = $data['name'][$langId] ?? null;
+    
+                    $trValues = null;
+                    if (in_array($type, $valuesTypes, true)) {
+                        $trValues = $data['values'][$langId] ?? null; // can be null/empty
+                    }
+    
+                    CustomFieldTranslation::updateOrCreate(
+                        ['custom_field_id' => $cf->id, 'language_id' => $langId],
+                        ['name' => $trName, 'value' => $trValues]
+                    );
+                }
+            }
+    
+            DB::commit();
+            ResponseService::successResponse("Custom Fields Updated Successfully");
+        } catch (Throwable $th) {
+            DB::rollBack();
+            ResponseService::logErrorResponse($th, "CustomFieldController -> bulkUpdate");
+            ResponseService::errorResponse('Something Went Wrong');
+        }
+    }
+    
+
 
 
     public function store(Request $request)
@@ -487,6 +665,8 @@ class CustomFieldController extends Controller {
 
         return response()->json($bulkData);
     }
+
+    
 
     public function addCustomFieldValue(Request $request, $id) {
         ResponseService::noPermissionThenSendJson('custom-field-create');
@@ -1052,5 +1232,60 @@ class CustomFieldController extends Controller {
         
         return response()->download($pdfPath, 'custom-fields-bulk-upload-instructions.pdf');
     }
+
+    private function getCategoryParentMap(): array
+{
+    return Cache::remember('admin:category:parent_map:v1', 3600, function () {
+        return Category::without('translations')
+            ->select('id', 'parent_category_id')
+            ->get()
+            ->mapWithKeys(fn($c) => [(int)$c->id => $c->parent_category_id ? (int)$c->parent_category_id : null])
+            ->toArray();
+    });
+}
+
+private function getCategoryPathMap(): array
+{
+    return Cache::remember('admin:category:path_map:v1', 3600, function () {
+        $cats = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->get();
+
+        $parent = [];
+        $name = [];
+
+        foreach ($cats as $c) {
+            $id = (int)$c->id;
+            $parent[$id] = $c->parent_category_id ? (int)$c->parent_category_id : null;
+            $name[$id] = (string)$c->name;
+        }
+
+        $memo = [];
+        $visiting = [];
+
+        $build = function (int $id) use (&$build, &$parent, &$name, &$memo, &$visiting) {
+            if (isset($memo[$id])) return $memo[$id];
+            if (isset($visiting[$id])) return $memo[$id] = ($name[$id] ?? ''); // loop guard
+
+            $visiting[$id] = true;
+
+            $path = $name[$id] ?? '';
+            $p = $parent[$id] ?? null;
+            if ($p && isset($name[$p])) {
+                $path = $build($p) . ' > ' . $path;
+            }
+
+            unset($visiting[$id]);
+            return $memo[$id] = $path;
+        };
+
+        foreach (array_keys($name) as $id) {
+            $build((int)$id);
+        }
+
+        return $memo; // [id => "Parent > Child > ..."]
+    });
+}
+
 
 }

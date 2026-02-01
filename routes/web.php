@@ -156,10 +156,18 @@ Route::group(['middleware' => ['auth', 'language']], static function () {
     Route::post('change-profile', [HomeController::class, 'changeProfileUpdate'])->name('change-profile.update');
     /*** Home Module : END ***/
 
+    // CATEGORY BULK EDIT (place ABOVE Route::resource('category', ...))
+    Route::get('category/bulk-edit', [App\Http\Controllers\CategoryController::class, 'bulkEdit'])
+    ->name('category.bulk-edit');
+    Route::post('category/bulk-edit', [App\Http\Controllers\CategoryController::class, 'bulkUpdate'])
+    ->name('category.bulk-update');
+
+
     /*** Category Module : START ***/
     Route::resource('category', CategoryController::class);
     Route::group(['prefix' => 'category'], static function () {
         Route::get('/{id}/subcategories', [CategoryController::class, 'getSubCategories'])->name('category.subcategories');
+        Route::post('/bulk-edit', [CategoryController::class, 'bulkUpdate'])->name('category.bulk-update');
         Route::get('/{id}/custom-fields', [CategoryController::class, 'customFields'])->name('category.custom-fields');
         Route::get('/{id}/custom-fields/show', [CategoryController::class, 'getCategoryCustomFields'])->name('category.custom-fields.show');
         Route::delete('/{id}/custom-fields/{customFieldID}/delete', [CategoryController::class, 'destroyCategoryCustomField'])->name('category.custom-fields.destroy');
@@ -184,6 +192,17 @@ Route::group(['middleware' => ['auth', 'language']], static function () {
     });
     Route::resource('custom-fields', CustomFieldController::class);
     /*** Custom Field Module : END ***/
+
+    Route::group(['prefix' => 'custom-fields'], static function () {
+        Route::get('/bulk-edit', [App\Http\Controllers\CustomFieldController::class, 'bulkEdit'])
+        ->name('custom-fields.bulk-edit');
+    Route::post('/bulk-edit', [App\Http\Controllers\CustomFieldController::class, 'bulkUpdate'])
+        ->name('custom-fields.bulk-update');
+
+    });
+
+    
+    
 
 
     /*NOTE : Improve this mess of routes*/
