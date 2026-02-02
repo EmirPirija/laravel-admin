@@ -11,6 +11,127 @@
 </style>
     <section class="section">
         <div class="dashboard_title mb-3">{{__("Hi, Admin")}}</div>
+        <div class="row mb-3">
+    <div class="col-12 mb-2">
+        <h5 style="font-weight:600;">{{ __('Today') }}</h5>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="total_customer d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-user text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayStats['visitors'] ?? 0 }}</div>
+                        <div class="card_title">{{ __('Visitors (unique)') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="total_items d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-eye text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayStats['views'] ?? 0 }}</div>
+                        <div class="card_title">{{ __('Item Views') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="item_for_sale d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-search text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayStats['search_impressions'] ?? 0 }}</div>
+                        <div class="card_title">{{ __('Search Impressions') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="properties_for_rent d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-comments text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayStats['contacts'] ?? 0 }}</div>
+                        <div class="card_title">{{ __('Contact Events') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- opcionalno --}}
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="total_customer d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-user-plus text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayNewUsers ?? 0 }}</div>
+                        <div class="card_title">{{ __('New Users') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="card h-100">
+            <div class="total_items d-flex">
+                <div class="curtain"></div>
+                <div class="row w-100">
+                    <div class="col-4 col-md-12">
+                        <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                            <span class="fa fa-plus-square text-white fa-2x"></span>
+                        </div>
+                    </div>
+                    <div class="col-8 col-md-12">
+                        <div class="total_number">{{ $todayNewAds ?? 0 }}</div>
+                        <div class="card_title">{{ __('New Ads') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
         <div class="row mb-3 d-flex">
             <div class="col-lg-4 col-md-6 col-sm-12">
                 <div class="row">

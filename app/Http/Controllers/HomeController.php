@@ -11,6 +11,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use App\Models\ItemStatistic;
+use App\Models\ItemVisitorSession;
+use App\Models\ItemSearchImpression;
+use App\Models\ItemContactEvent;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Carbon;
+
 use Throwable;
 
 class HomeController extends Controller {
@@ -41,7 +49,59 @@ class HomeController extends Controller {
         $item_count = Item::withTrashed()->count();
         $custom_field_count = CustomField::count();
         // $items = Item::all();
-        return view('home', compact('category_item_count', 'category_name', 'categories_count', 'item_count', 'user_count', 'custom_field_count','items'));
+        $today = Carbon::today();
+$todayKey = $today->toDateString();
+
+$todayStats = Cache::remember("dashboard:today-stats:{$todayKey}", 60, function () use ($today) {
+    // default
+    $visitors = 0;
+    $views = 0;
+    $searchImpressions = 0;
+    $contacts = 0;
+
+    if (Schema::hasTable('item_visitor_sessions')) {
+        $visitors = ItemVisitorSession::where('created_at', '>=', $today)
+            ->distinct('visitor_id')
+            ->count('visitor_id');
+    }
+
+    if (Schema::hasTable('item_statistics')) {
+        $views = (int) ItemStatistic::where('date', $today->toDateString())->sum('views');
+    }
+
+    if (Schema::hasTable('item_search_impressions')) {
+        $searchImpressions = (int) ItemSearchImpression::where('created_at', '>=', $today)->count();
+    }
+
+    if (Schema::hasTable('item_contact_events')) {
+        $contacts = (int) ItemContactEvent::where('created_at', '>=', $today)->count();
+    }
+
+    return [
+        'visitors' => $visitors,
+        'views' => $views,
+        'search_impressions' => $searchImpressions,
+        'contacts' => $contacts,
+    ];
+});
+
+// (Opcionalno “i sl”)
+$todayNewUsers = User::role('User')->where('created_at', '>=', $today)->count();
+$todayNewAds   = Item::where('created_at', '>=', $today)->count();
+
+return view('home', compact(
+    'category_item_count',
+    'category_name',
+    'categories_count',
+    'item_count',
+    'user_count',
+    'custom_field_count',
+    'items',
+    'todayStats',
+    'todayNewUsers',
+    'todayNewAds'
+));
+
     }
 
     public function changePasswordIndex() {

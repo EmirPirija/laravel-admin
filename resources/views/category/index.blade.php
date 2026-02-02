@@ -16,6 +16,18 @@
                     </button>
                 @endcan
 
+                @can('category-update')
+    <a class="btn btn-outline-secondary me-2" href="{{ route('category.port.export') }}">
+        {{ __('Export JSON') }}
+    </a>
+
+    <button type="button" class="btn btn-outline-secondary me-2"
+            data-bs-toggle="modal" data-bs-target="#categoryImportModal">
+        {{ __('Import JSON') }}
+    </button>
+@endcan
+
+
                 @if (!empty($category))
                     <a class="btn btn-primary me-2" href="{{ route('category.index') }}">
                         < {{ __("Back to All Categories") }}
@@ -96,6 +108,36 @@
                             </tr>
                             </thead>
                         </table>
+
+                        <!-- Import Modal -->
+<div class="modal fade" id="categoryImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('category.port.import') }}" enctype="multipart/form-data" class="modal-content">
+            @csrf
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('Import Categories JSON') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ __('JSON file') }}</label>
+                    <input type="file" name="file" class="form-control" accept=".json,application/json" required>
+                    <small class="text-muted d-block mt-2">
+                        File format: categories-port/v1. Import radi update/create po <code>slug</code> i povezuje hijerarhiju preko <code>parent_slug</code>.
+                        Za nove kategorije <code>image</code> mora biti validan storage path (npr. <code>category/xxx.jpg</code>).
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="submit" class="btn btn-primary">{{ __('Import') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
                     </div>
                 </div>

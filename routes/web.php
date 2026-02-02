@@ -146,6 +146,13 @@ Route::group(['middleware' => ['auth', 'language']], static function () {
         Route::put('/change-status', [Controller::class, 'changeStatus'])->name('common.status.change');
     });
 
+    // Category Port (export/import JSON) - safe paths (3 segments), no conflict with Route::resource('category', ...)
+Route::prefix('category/port')->group(function () {
+    Route::get('/export', [CategoryController::class, 'exportPort'])->name('category.port.export');
+    Route::post('/import', [CategoryController::class, 'importPort'])->name('category.port.import');
+});
+
+
 
     /*** Home Module : START ***/
     Route::get('/home', [HomeController::class, 'index'])->name('home');

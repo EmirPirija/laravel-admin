@@ -227,6 +227,285 @@ class CategoryController extends Controller {
             'rows'  => $rows,
         ]);
     }
+
+    public function exportPort(Request $request)
+{
+    ResponseService::noAnyPermissionThenRedirect(['category-list', 'category-update', 'category-create']);
+
+    $languages = CachingService::getLanguages();
+    $languagesById = $languages->keyBy('id');
+
+    $defaultLangId = 1; // kod tebe je hardcoded u create/update
+    $defaultCode = $languagesById[$defaultLangId]->code ?? 'en';
+
+    $categories = Category::with('translations')
+        ->orderByRaw('COALESCE(parent_category_id,0) ASC')
+        ->orderBy('sequence', 'ASC')
+        ->get();
+
+    $idToSlug = $categories->pluck('slug', 'id');
+
+    $rows = $categories->map(function (Category $c) use ($idToSlug, $languagesById, $defaultCode) {
+        $translations = [];
+
+        // default (ide u categories tabelu)
+        $translations[$defaultCode] = [
+            'name' => $c->name,
+            'description' => $c->description,
+        ];
+
+        // ostali jezici iz category_translations
+        foreach ($c->translations as $tr) {
+            $code = $languagesById[$tr->language_id]->code ?? null;
+            if (!$code) continue;
+
+            $translations[$code] = [
+                'name' => $tr->name,
+                'description' => $tr->description,
+            ];
+        }
+
+        return [
+            'slug' => $c->slug,
+            'parent_slug' => $c->parent_category_id ? ($idToSlug[$c->parent_category_id] ?? null) : null,
+            'sequence' => (int) $c->sequence,
+            'status' => (int) $c->status,
+            'is_job_category' => (int) $c->is_job_category,
+            'price_optional' => (int) $c->price_optional,
+            'image' => $c->getRawOriginal('image'),
+            'translations' => $translations,
+        ];
+    })->values();
+
+    $payload = [
+        'schema' => 'categories-port/v1',
+        'exported_at' => now()->toIso8601String(),
+        'default_language_code' => $defaultCode,
+        'categories' => $rows,
+    ];
+
+    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return response($json, 200, [
+        'Content-Type' => 'application/json',
+        'Content-Disposition' => 'attachment; filename=categories-port.json',
+    ]);
+}
+
+public function importPort(Request $request)
+{
+    ResponseService::noPermissionThenRedirect('category-update');
+
+    $v = Validator::make($request->all(), [
+        'file' => 'required|file|max:10240', // 10MB
+    ]);
+    if ($v->fails()) {
+        return redirect()->back()->withErrors($v->errors())->withInput();
+    }
+
+    $raw = file_get_contents($request->file('file')->getRealPath());
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        return redirect()->back()->withErrors(['file' => 'Invalid JSON file.']);
+    }
+
+    $rows = $decoded['categories'] ?? null;
+    if (!is_array($rows)) {
+        return redirect()->back()->withErrors(['file' => 'JSON must contain "categories" array.']);
+    }
+
+    $languages = CachingService::getLanguages();
+    $languagesById = $languages->keyBy('id');
+    $languagesByCode = $languages->keyBy('code');
+
+    $defaultLangId = 1;
+    $defaultCode = $languagesById[$defaultLangId]->code ?? 'en';
+
+    $normalizeSlug = function ($s) {
+        $s = trim((string) $s);
+        if ($s === '') return '';
+        $s = preg_replace('/[^a-z0-9\-_]+/i', '-', strtolower($s));
+        return trim($s, '-');
+    };
+
+    $errors = [];
+    $seen = [];
+    $clean = [];
+
+    foreach ($rows as $i => $row) {
+        if (!is_array($row)) {
+            $errors[] = "Row #$i is not an object.";
+            continue;
+        }
+
+        $slug = $normalizeSlug($row['slug'] ?? '');
+        if ($slug === '') {
+            $errors[] = "Row #$i: missing slug.";
+            continue;
+        }
+        if (isset($seen[$slug])) {
+            $errors[] = "Duplicate slug: $slug";
+            continue;
+        }
+        $seen[$slug] = true;
+
+        $parentSlug = $normalizeSlug($row['parent_slug'] ?? '');
+        $parentSlug = $parentSlug !== '' ? $parentSlug : null;
+        if ($parentSlug === $slug) {
+            $errors[] = "Row #$i: slug '$slug' cannot be its own parent.";
+        }
+
+        $translations = $row['translations'] ?? [];
+        if (!is_array($translations)) $translations = [];
+
+        $defaultT = $translations[$defaultCode] ?? [];
+        $name = $row['name'] ?? ($defaultT['name'] ?? null);
+        if (!is_string($name) || trim($name) === '') {
+            $errors[] = "Row #$i ($slug): missing default name (use translations.$defaultCode.name).";
+        }
+
+        $desc = $row['description'] ?? ($defaultT['description'] ?? null);
+
+        $image = isset($row['image']) ? trim((string) $row['image']) : null;
+        if ($image === '') $image = null;
+
+        $clean[] = [
+            'slug' => $slug,
+            'parent_slug' => $parentSlug,
+            'sequence' => isset($row['sequence']) ? (int) $row['sequence'] : 0,
+            'status' => isset($row['status']) ? (int) !!$row['status'] : 1,
+            'is_job_category' => isset($row['is_job_category']) ? (int) !!$row['is_job_category'] : 0,
+            'price_optional' => isset($row['price_optional']) ? (int) !!$row['price_optional'] : 0,
+            'image' => $image,
+            'name_default' => trim((string) $name),
+            'description_default' => $desc,
+            'translations' => $translations,
+        ];
+    }
+
+    if (!empty($errors)) {
+        return redirect()->back()->withErrors(['file' => implode("\n", $errors)]);
+    }
+
+    DB::beginTransaction();
+    try {
+        $slugs = array_values(array_keys($seen));
+
+        $existing = Category::without('translations')
+            ->whereIn('slug', $slugs)
+            ->get()
+            ->keyBy('slug');
+
+        $slugToId = [];
+
+        // PASS 1: upsert categories (no parent yet)
+        foreach ($clean as $row) {
+            /** @var Category|null $cat */
+            $cat = $existing[$row['slug']] ?? null;
+
+            if ($cat) {
+                $update = [
+                    'name' => $row['name_default'],
+                    'description' => $row['description_default'],
+                    'status' => $row['status'],
+                    'is_job_category' => $row['is_job_category'],
+                    'price_optional' => $row['price_optional'],
+                    'sequence' => $row['sequence'],
+                ];
+                if (!empty($row['image'])) {
+                    $update['image'] = $row['image'];
+                }
+                $cat->update($update);
+            } else {
+                if (empty($row['image'])) {
+                    throw new \RuntimeException("Image is required for NEW category: {$row['slug']}");
+                }
+
+                $cat = Category::create([
+                    'name' => $row['name_default'],
+                    'description' => $row['description_default'],
+                    'parent_category_id' => null,
+                    'status' => $row['status'],
+                    'is_job_category' => $row['is_job_category'],
+                    'price_optional' => $row['price_optional'],
+                    'sequence' => $row['sequence'],
+                    'slug' => $row['slug'],
+                    'image' => $row['image'],
+                ]);
+            }
+
+            $slugToId[$row['slug']] = $cat->id;
+        }
+
+        // Add parent slugs that might exist in DB but not in file
+        $parentSlugs = collect($clean)->pluck('parent_slug')->filter()->unique()->values()->all();
+        if (!empty($parentSlugs)) {
+            $parentCats = Category::without('translations')
+                ->whereIn('slug', $parentSlugs)
+                ->get()
+                ->keyBy('slug');
+
+            foreach ($parentCats as $pSlug => $pCat) {
+                $slugToId[$pSlug] = $pCat->id;
+            }
+        }
+
+        // PASS 2: set parents
+        foreach ($clean as $row) {
+            if (empty($row['parent_slug'])) continue;
+
+            $childId = $slugToId[$row['slug']] ?? null;
+            $parentId = $slugToId[$row['parent_slug']] ?? null;
+
+            if (!$parentId) {
+                throw new \RuntimeException("Unknown parent_slug '{$row['parent_slug']}' for '{$row['slug']}'");
+            }
+            if ($childId === $parentId) {
+                throw new \RuntimeException("Category '{$row['slug']}' cannot be its own parent.");
+            }
+
+            Category::without('translations')
+                ->where('id', $childId)
+                ->update(['parent_category_id' => $parentId]);
+        }
+
+        // PASS 3: translations (skip default language code)
+        foreach ($clean as $row) {
+            $catId = $slugToId[$row['slug']];
+
+            foreach (($row['translations'] ?? []) as $code => $tr) {
+                $code = strtolower(trim((string) $code));
+                if ($code === $defaultCode) continue;
+
+                $lang = $languagesByCode[$code] ?? null;
+                if (!$lang) continue;           // ignore unknown language codes
+                if (!is_array($tr)) continue;
+
+                $tName = (string)($tr['name'] ?? '');
+                $tDesc = $tr['description'] ?? null;
+
+                if ($tName === '' && empty($tDesc)) continue;
+
+                CategoryTranslation::updateOrCreate(
+                    ['category_id' => $catId, 'language_id' => $lang->id],
+                    ['name' => $tName, 'description' => $tDesc]
+                );
+            }
+        }
+
+        DB::commit();
+        $this->forgetAdminCategoryCaches();
+
+        return ResponseService::successRedirectResponse("Categories imported successfully", route('category.index'));
+    } catch (Throwable $e) {
+        DB::rollBack();
+        ResponseService::logErrorRedirect($e);
+
+        return ResponseService::errorRedirectWithToast($e->getMessage());
+    }
+}
+
     
 
 
