@@ -3049,6 +3049,212 @@ public function getItem(Request $request)
         }
     }
 
+    public function getMyOffers(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'nullable|in:received,sent,all',
+            'page' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        try {
+            $user = Auth::user();
+            $type = $request->input('type', 'received');
+
+            $query = ItemOffer::with([
+                'item:id,name,price,image,user_id',
+                'seller:id,name,profile',
+                'buyer:id,name,profile',
+            ]);
+
+            if ($type === 'sent') {
+                $query->where('buyer_id', $user->id);
+            } elseif ($type === 'received') {
+                $query->where('seller_id', $user->id);
+            } else {
+                $query->where(function ($subQuery) use ($user) {
+                    $subQuery->where('seller_id', $user->id)
+                        ->orWhere('buyer_id', $user->id);
+                });
+            }
+
+            $offers = $query->orderBy('updated_at', 'desc')->paginate(20);
+
+            ResponseService::successResponse(__('Offers fetched successfully'), $offers);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> getMyOffers');
+            ResponseService::errorResponse();
+        }
+    }
+
+    public function acceptOffer(int $id)
+    {
+        try {
+            $user = Auth::user();
+            $offer = ItemOffer::with([
+                'item:id,name,price,image',
+                'seller:id,name,profile',
+                'buyer:id,name,profile',
+            ])->findOrFail($id);
+
+            if ((int) $offer->seller_id !== (int) $user->id) {
+                ResponseService::errorResponse(__('Unauthorized to accept this offer.'), 403);
+            }
+
+            if ($offer->status === 'accepted') {
+                ResponseService::successResponse(__('Offer already accepted.'), $offer);
+            }
+
+            if ($offer->status === 'rejected') {
+                ResponseService::errorResponse(__('Offer already rejected.'), 422);
+            }
+
+            $offer->status = 'accepted';
+            $offer->save();
+
+            $buyerTokens = UserFcmToken::where('user_id', $offer->buyer_id)->pluck('fcm_token')->toArray();
+            if (! empty($buyerTokens)) {
+                $payload = [
+                    'item_id' => $offer->item->id ?? null,
+                    'item_name' => $offer->item->name ?? null,
+                    'item_image' => $offer->item->image ?? null,
+                    'item_price' => $offer->item->price ?? null,
+                    'item_offer_id' => $offer->id,
+                    'item_offer_amount' => $offer->amount,
+                    'status' => $offer->status,
+                ];
+
+                NotificationService::sendFcmNotification(
+                    $buyerTokens,
+                    'Offer Accepted',
+                    'Your offer has been accepted.',
+                    'offer-status',
+                    $payload
+                );
+            }
+
+            ResponseService::successResponse(__('Offer accepted successfully.'), $offer);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> acceptOffer');
+            ResponseService::errorResponse();
+        }
+    }
+
+    public function rejectOffer(int $id)
+    {
+        try {
+            $user = Auth::user();
+            $offer = ItemOffer::with([
+                'item:id,name,price,image',
+                'seller:id,name,profile',
+                'buyer:id,name,profile',
+            ])->findOrFail($id);
+
+            if ((int) $offer->seller_id !== (int) $user->id) {
+                ResponseService::errorResponse(__('Unauthorized to reject this offer.'), 403);
+            }
+
+            if ($offer->status === 'rejected') {
+                ResponseService::successResponse(__('Offer already rejected.'), $offer);
+            }
+
+            if ($offer->status === 'accepted') {
+                ResponseService::errorResponse(__('Offer already accepted.'), 422);
+            }
+
+            $offer->status = 'rejected';
+            $offer->save();
+
+            $buyerTokens = UserFcmToken::where('user_id', $offer->buyer_id)->pluck('fcm_token')->toArray();
+            if (! empty($buyerTokens)) {
+                $payload = [
+                    'item_id' => $offer->item->id ?? null,
+                    'item_name' => $offer->item->name ?? null,
+                    'item_image' => $offer->item->image ?? null,
+                    'item_price' => $offer->item->price ?? null,
+                    'item_offer_id' => $offer->id,
+                    'item_offer_amount' => $offer->amount,
+                    'status' => $offer->status,
+                ];
+
+                NotificationService::sendFcmNotification(
+                    $buyerTokens,
+                    'Offer Rejected',
+                    'Your offer has been rejected.',
+                    'offer-status',
+                    $payload
+                );
+            }
+
+            ResponseService::successResponse(__('Offer rejected successfully.'), $offer);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> rejectOffer');
+            ResponseService::errorResponse();
+        }
+    }
+
+    public function counterOffer(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'offer_id' => 'required|integer|exists:item_offers,id',
+            'amount' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        try {
+            $user = Auth::user();
+            $offer = ItemOffer::with([
+                'item:id,name,price,image',
+                'seller:id,name,profile',
+                'buyer:id,name,profile',
+            ])->findOrFail($request->offer_id);
+
+            if ((int) $offer->seller_id !== (int) $user->id) {
+                ResponseService::errorResponse(__('Unauthorized to counter this offer.'), 403);
+            }
+
+            if (in_array($offer->status, ['accepted', 'rejected'], true)) {
+                ResponseService::errorResponse(__('Offer can no longer be countered.'), 422);
+            }
+
+            $offer->amount = $request->amount;
+            $offer->status = 'countered';
+            $offer->save();
+
+            $buyerTokens = UserFcmToken::where('user_id', $offer->buyer_id)->pluck('fcm_token')->toArray();
+            if (! empty($buyerTokens)) {
+                $payload = [
+                    'item_id' => $offer->item->id ?? null,
+                    'item_name' => $offer->item->name ?? null,
+                    'item_image' => $offer->item->image ?? null,
+                    'item_price' => $offer->item->price ?? null,
+                    'item_offer_id' => $offer->id,
+                    'item_offer_amount' => $offer->amount,
+                    'status' => $offer->status,
+                ];
+
+                NotificationService::sendFcmNotification(
+                    $buyerTokens,
+                    'Counter Offer',
+                    'Seller sent a counter-offer.',
+                    'offer-status',
+                    $payload
+                );
+            }
+
+            ResponseService::successResponse(__('Counter offer sent successfully.'), $offer);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> counterOffer');
+            ResponseService::errorResponse();
+        }
+    }
+
     public function getChatList(Request $request)
 {
     $type = $request->query('type', 'buyer');
