@@ -2,6 +2,7 @@
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\ConversationBootstrapController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Api\SavedSearchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ItemStatisticsController;
@@ -44,6 +45,11 @@ Route::post('item-statistics/track-search-impressions', [ItemStatisticsControlle
 Route::post('item-statistics/track-search-click', [ItemStatisticsController::class, 'trackSearchClick']);
 
 
+// ============================================
+// JAVNE RUTE ZA KORISNIKE (bez auth)
+// ============================================
+Route::get('/users', [AdminController::class, 'getUsers']); // ← JAVNO
+Route::get('/users/{id}', [AdminController::class, 'getUser']); // ← JAVNO
 
 /* Authenticated Routes */
 Route::group(['middleware' => ['auth:sanctum']], static function () {
@@ -51,7 +57,14 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::post('update-profile', [ApiController::class, 'updateProfile']);
     Route::delete('delete-user', [ApiController::class, 'deleteUser']);
     Route::get('get-user-info', [ApiController::class, 'getUser']);
-    Route::get('/admin/users', [AdminController::class, 'getUsers']);
+    
+    // ============================================
+    // ADMIN API RUTE
+    // ============================================
+    Route::prefix('admin')->group(function () {
+        Route::patch('/users/{id}/status', [AdminController::class, 'updateUserStatus']);
+        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+    });
 
      // ✅ SAČUVANE PRETRAGE
     Route::get('saved-searches', [SavedSearchController::class, 'index']);
