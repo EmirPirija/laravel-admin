@@ -143,6 +143,11 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
 
     // In routes/api.php - Chat Module section
     Route::post('item-offer', [ApiController::class, 'createItemOffer']);
+    Route::get('my-offers', [ApiController::class, 'getMyOffers']);
+    Route::post('offer/accept/{id}', [ApiController::class, 'acceptOffer']);
+    Route::post('offer/reject/{id}', [ApiController::class, 'rejectOffer']);
+    Route::post('offer/counter', [ApiController::class, 'counterOffer']);
+
     Route::get('chat-list', [ApiController::class, 'getChatList']);
     Route::post('send-message', [ApiController::class, 'sendMessage']);
     Route::get('chat-messages', [ApiController::class, 'getChatMessages']);
