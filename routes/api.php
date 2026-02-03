@@ -51,6 +51,7 @@ Route::group(['middleware' => ['auth:sanctum']], static function () {
     Route::post('update-profile', [ApiController::class, 'updateProfile']);
     Route::delete('delete-user', [ApiController::class, 'deleteUser']);
     Route::get('get-user-info', [ApiController::class, 'getUser']);
+    Route::get('/admin/users', [AdminController::class, 'getUsers']);
 
      // ✅ SAČUVANE PRETRAGE
     Route::get('saved-searches', [SavedSearchController::class, 'index']);

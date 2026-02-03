@@ -15,6 +15,7 @@ class ItemOffer extends Model
         'seller_id',
         'buyer_id',
         'amount',
+        'status',
         'muted_by',
     ];
 
