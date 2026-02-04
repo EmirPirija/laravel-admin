@@ -21,6 +21,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+
+        // NOVO: Procesira zakazane postove na društvene mreže
+$schedule->command('social:process-scheduled-posts')
+->everyMinute()
+->name('process-scheduled-social-posts')
+->withoutOverlapping();
+
+$schedule->command('vacation:process-schedules')
+    ->dailyAt('00:05')
+    ->name('process-vacation-schedules')
+    ->withoutOverlapping();
+
+
         // Postojeći taskovi
         $schedule->command('notify:expiring-items')->dailyAt('09:00');
         $schedule->command('notify:expiring-packages')->daily();

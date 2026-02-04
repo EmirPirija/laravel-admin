@@ -43,6 +43,11 @@ class SellerSettingsController extends Controller
                     'vacation_mode' => false,
                     'vacation_message' => 'Trenutno sam na odmoru. Vratit ću se uskoro!',
 
+                    // ✅ vacation schedule defaulti
+                    'vacation_start_date' => null,
+                    'vacation_end_date' => null,
+                    'vacation_auto_activate' => false,
+
                     // ove tekstualne/socijalne ostavi null po defaultu (frontend će prikazati "")
                     'business_description' => null,
                     'return_policy' => null,
@@ -83,9 +88,9 @@ class SellerSettingsController extends Controller
             /**
              * ✅ FULL FIX:
              * - Konvertuje "" -> null za nullable polja (da nullable|url NE puca)
-             * - Dodaje https:// za social url ako nema scheme (opciono ali korisno)
+             * - Dodaje https:// za social url ako nema scheme
              * - Normalizuje business_hours da bude array ili null
-             * - Validacija sa sometimes za boolean (da ne zavisiš od slanja svih polja)
+             * - Validacija sa sometimes za boolean
              */
 
             // 1) "" -> null (za polja gdje je prazno realno "nema vrijednosti")
@@ -120,7 +125,7 @@ class SellerSettingsController extends Controller
                 }
             }
 
-            // 2) Ako social url nema scheme, dodaj https:// (da "facebook.com/..." prođe url rule)
+            // 2) Ako social url nema scheme, dodaj https://
             $socialFields = ['social_facebook','social_instagram','social_tiktok','social_youtube','social_website'];
             foreach ($socialFields as $f) {
                 if (array_key_exists($f, $merged) && is_string($merged[$f]) && $merged[$f] !== null) {
@@ -171,6 +176,11 @@ class SellerSettingsController extends Controller
                 'vacation_mode' => 'sometimes|boolean',
                 'vacation_message' => 'nullable|string|max:200',
 
+                // ✅ vacation schedule validation
+                'vacation_start_date' => 'nullable|date',
+                'vacation_end_date' => 'nullable|date|after_or_equal:vacation_start_date',
+                'vacation_auto_activate' => 'sometimes|boolean',
+
                 'business_description' => 'nullable|string|max:500',
                 'return_policy' => 'nullable|string|max:300',
                 'shipping_info' => 'nullable|string|max:300',
@@ -186,7 +196,6 @@ class SellerSettingsController extends Controller
                 return response()->json([
                     'error' => true,
                     'message' => $validator->errors()->first(),
-                    // korisno za debug (možeš maknuti kasnije)
                     'errors' => $validator->errors(),
                 ], 422);
             }
@@ -219,6 +228,11 @@ class SellerSettingsController extends Controller
 
                 'vacation_mode',
                 'vacation_message',
+
+                // ✅ vacation schedule fields (OVO JE FALILO)
+                'vacation_start_date',
+                'vacation_end_date',
+                'vacation_auto_activate',
 
                 'business_description',
                 'return_policy',
