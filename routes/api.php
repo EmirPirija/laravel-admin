@@ -81,6 +81,9 @@ Route::prefix('instagram')->group(function () {
     Route::get('sync-status/{itemId}', [\App\Http\Controllers\Api\InstagramController::class, 'getSyncStatus']);
 });
 
+Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestions']);
+
+
     
     // ============================================
     // ADMIN API RUTE

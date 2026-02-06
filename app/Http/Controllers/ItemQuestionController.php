@@ -9,6 +9,9 @@ use App\Models\ItemQuestionReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Notifications;
+use App\Models\UserFcmToken;
+use App\Services\NotificationService;
 
 class ItemQuestionController extends Controller
 {
@@ -58,6 +61,90 @@ class ItemQuestionController extends Controller
             'data' => $questions,
         ]);
     }
+
+    /**
+ * Dohvati sva pitanja na prodavačevim oglasima
+ * Za stranicu "Javna pitanja" u profilu prodavača
+ */
+public function getSellerQuestions(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'page' => 'nullable|integer|min:1',
+        'status' => 'nullable|in:all,unanswered,answered',
+        'item_id' => 'nullable|exists:items,id',
+    ]);
+ 
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => $validator->errors()->first(),
+        ], 422);
+    }
+ 
+    $userId = Auth::id();
+    $status = $request->input('status', 'all');
+    $itemId = $request->input('item_id');
+ 
+    // Dohvati sve item_id od prodavača
+    $sellerItemIds = Item::where('user_id', $userId)->pluck('id');
+ 
+    if ($sellerItemIds->isEmpty()) {
+        return response()->json([
+            'error' => false,
+            'message' => 'Nemate objavljenih oglasa',
+            'data' => [
+                'data' => [],
+                'total' => 0,
+            ],
+            'unanswered_count' => 0,
+            'answered_count' => 0,
+        ]);
+    }
+ 
+    $query = ItemQuestion::whereIn('item_id', $sellerItemIds)
+        ->where('is_hidden', false)
+        ->with([
+            'user:id,name,profile,is_verified',
+            'item:id,name,slug,image,price,status'
+        ]);
+ 
+    // Filter po item_id ako je proslijeđen
+    if ($itemId) {
+        $query->where('item_id', $itemId);
+    }
+ 
+    // Filter po statusu
+    if ($status === 'unanswered') {
+        $query->whereNull('answer');
+    } elseif ($status === 'answered') {
+        $query->whereNotNull('answer');
+    }
+ 
+    // Sortiraj - neodgovorena prva, zatim po datumu
+    $query->orderByRaw('CASE WHEN answer IS NULL THEN 0 ELSE 1 END')
+          ->orderByDesc('created_at');
+ 
+    $questions = $query->paginate(15);
+ 
+    // Dodaj statistiku
+    $unansweredCount = ItemQuestion::whereIn('item_id', $sellerItemIds)
+        ->where('is_hidden', false)
+        ->whereNull('answer')
+        ->count();
+ 
+    $answeredCount = ItemQuestion::whereIn('item_id', $sellerItemIds)
+        ->where('is_hidden', false)
+        ->whereNotNull('answer')
+        ->count();
+ 
+    return response()->json([
+        'error' => false,
+        'message' => 'Pitanja uspješno dohvaćena',
+        'data' => $questions,
+        'unanswered_count' => $unansweredCount,
+        'answered_count' => $answeredCount,
+    ]);
+}
 
     public function addQuestion(Request $request)
     {
