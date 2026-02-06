@@ -45,30 +45,37 @@ Route::post('item-statistics/track-search-impressions', [ItemStatisticsControlle
 Route::post('item-statistics/track-search-click', [ItemStatisticsController::class, 'trackSearchClick']);
 
 
-// ============================================
-// JAVNE RUTE ZA KORISNIKE (bez auth)
-// ============================================
-Route::get('/users', [AdminController::class, 'getUsers']); // ← JAVNO
-Route::get('/users/{id}', [AdminController::class, 'getUser']); // ← JAVNO
+    // ============================================
+    // JAVNE RUTE ZA KORISNIKE (bez auth)
+    // ============================================
+    Route::get('/users', [AdminController::class, 'getUsers']); // ← JAVNO
+    Route::get('/users/{id}', [AdminController::class, 'getUser']); // ← JAVNO
 
-/* Authenticated Routes */
-Route::group(['middleware' => ['auth:sanctum']], static function () {
-    Route::get('get-package', [ApiController::class, 'getPackage']);
-    Route::post('update-profile', [ApiController::class, 'updateProfile']);
-    Route::delete('delete-user', [ApiController::class, 'deleteUser']);
-    Route::get('get-user-info', [ApiController::class, 'getUser']);
+    /* Authenticated Routes */
+    Route::group(['middleware' => ['auth:sanctum']], static function () {
+        Route::get('get-package', [ApiController::class, 'getPackage']);
+        Route::post('update-profile', [ApiController::class, 'updateProfile']);
+        Route::delete('delete-user', [ApiController::class, 'deleteUser']);
+        Route::get('get-user-info', [ApiController::class, 'getUser']);
+
+        // ============================================
+    // JAVNA PITANJA NA OGLASIMA
+    // ============================================
+
+    // Dohvati pitanja (može i bez auth)
+    Route::get('item-questions', [ItemQuestionController::class, 'getQuestions']);
 
     // ============================================
-// SOCIAL MEDIA API
-// ============================================
-Route::prefix('social')->group(function () {
-    Route::get('connected-accounts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getConnectedAccounts']);
-    Route::get('connect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'connectAccount']);
-    Route::post('disconnect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'disconnectAccount']);
-    Route::post('schedule-post', [\App\Http\Controllers\Api\SocialMediaController::class, 'schedulePost']);
-    Route::get('scheduled-posts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getScheduledPosts']);
-    Route::post('scheduled-posts/{id}/cancel', [\App\Http\Controllers\Api\SocialMediaController::class, 'cancelScheduledPost']);
-});
+    // SOCIAL MEDIA API
+    // ============================================
+    Route::prefix('social')->group(function () {
+        Route::get('connected-accounts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getConnectedAccounts']);
+        Route::get('connect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'connectAccount']);
+        Route::post('disconnect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'disconnectAccount']);
+        Route::post('schedule-post', [\App\Http\Controllers\Api\SocialMediaController::class, 'schedulePost']);
+        Route::get('scheduled-posts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getScheduledPosts']);
+        Route::post('scheduled-posts/{id}/cancel', [\App\Http\Controllers\Api\SocialMediaController::class, 'cancelScheduledPost']);
+    });
 
 // ============================================
 // INSTAGRAM SHOP API
@@ -279,12 +286,6 @@ Route::get('get-blogs-slug', [ApiController::class, 'getBlogsSlug']);
 Route::get('get-featured-section-slug', [ApiController::class, 'getFeatureSectionSlug']);
 Route::get('get-seller-slug', [ApiController::class, 'getSellerSlug']);
 
-// ============================================
-// JAVNA PITANJA NA OGLASIMA
-// ============================================
-
-// Dohvati pitanja (može i bez auth)
-Route::get('item-questions', [ItemQuestionController::class, 'getQuestions']);
 
 // ============================================
 // BIH LOCATION ROUTES
