@@ -5130,6 +5130,7 @@ public function getMyReview(Request $request)
         'social_tiktok' => 'nullable|string|max:255',
         'social_youtube' => 'nullable|string|max:255',
         'social_website' => 'nullable|string|max:255',
+        'card_preferences' => 'nullable|array',
     ]);
  
     if ($validator->fails()) {
@@ -5164,6 +5165,7 @@ public function getMyReview(Request $request)
                 'social_tiktok' => $request->social_tiktok,
                 'social_youtube' => $request->social_youtube,
                 'social_website' => $request->social_website,
+                'card_preferences' => $request->card_preferences,
             ]
         );
  

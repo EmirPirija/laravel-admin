@@ -153,6 +153,15 @@ class SellerSettingsController extends Controller
                 ]);
             }
 
+            if ($request->has('card_preferences')) {
+                $cp = $request->input('card_preferences');
+                if (is_string($cp)) {
+                    $decoded = json_decode($cp, true);
+                    $request->merge(['card_preferences' => json_last_error() === JSON_ERROR_NONE ? $decoded : null]);
+                }
+            }
+            
+
             // 4) Validacija
             $validator = Validator::make($request->all(), [
                 'avatar_id' => ['nullable', 'string', 'max:50', Rule::in(self::AVATAR_IDS)],
@@ -190,6 +199,8 @@ class SellerSettingsController extends Controller
                 'social_tiktok' => 'nullable|url|max:255',
                 'social_youtube' => 'nullable|url|max:255',
                 'social_website' => 'nullable|url|max:255',
+
+                'card_preferences' => 'nullable|array',
             ]);
 
             if ($validator->fails()) {
@@ -243,6 +254,7 @@ class SellerSettingsController extends Controller
                 'social_tiktok',
                 'social_youtube',
                 'social_website',
+                'card_preferences',
             ]);
 
             // 7) Avatar fallback

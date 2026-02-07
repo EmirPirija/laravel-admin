@@ -38,9 +38,10 @@ class SellerSetting extends Model
         'social_website',
         'avatar_id',
         'vacation_start_date',
-'vacation_end_date',
-'vacation_auto_activate',
+        'vacation_end_date',
+        'vacation_auto_activate',
 
+        'card_preferences',
     ];
 
     protected $casts = [
@@ -56,9 +57,10 @@ class SellerSetting extends Model
         'business_hours' => 'array',
         'avatar_id' => 'string',
         'vacation_start_date' => 'date',
-'vacation_end_date' => 'date',
-'vacation_auto_activate' => 'boolean',
+        'vacation_end_date' => 'date',
+        'vacation_auto_activate' => 'boolean',
 
+        'card_preferences' => 'array',
     ];
 
     /**
