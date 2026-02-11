@@ -44,6 +44,8 @@ class Item extends Model {
         'scheduled_at', 
         'region_code',
         'is_on_sale',
+        'available_now',
+        'exchange_possible',
         'old_price',
         'price_history',
         'video',
@@ -61,6 +63,8 @@ class Item extends Model {
      */
     protected $casts = [
         'is_on_sale' => 'boolean',
+        'available_now' => 'boolean',
+        'exchange_possible' => 'boolean',
         'old_price' => 'decimal:2',
         'price_history' => 'array',
         'expiry_date' => 'datetime',

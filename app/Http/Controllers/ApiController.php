@@ -434,6 +434,17 @@ class ApiController extends Controller
             ],
             'region_code' => 'nullable|string',
             'show_only_to_premium' => 'nullable|boolean',
+            'available_now' => 'nullable|boolean',
+            'is_available' => 'nullable|boolean',
+            'is_avaible' => 'nullable|boolean',
+            'isAvailable' => 'nullable|boolean',
+            'exchange_possible' => 'nullable|boolean',
+            'is_exchange' => 'nullable|boolean',
+            'is_exchange_possible' => 'nullable|boolean',
+            'allow_exchange' => 'nullable|boolean',
+            'exchange' => 'nullable|boolean',
+            'zamjena' => 'nullable|boolean',
+            'zamena' => 'nullable|boolean',
         ]);
 
         // Zakazana objava - MORA biti prije kreiranje itema
@@ -548,6 +559,32 @@ class ApiController extends Controller
             ? $request->input('old_price')
             : null;
         $data['price_history'] = json_encode([]);
+        $availableNowInput = $request->input(
+            'available_now',
+            $request->input(
+                'is_available',
+                $request->input('is_avaible', $request->input('isAvailable'))
+            )
+        );
+        $data['available_now'] = filter_var($availableNowInput ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $exchangeInput = $request->input(
+            'exchange_possible',
+            $request->input(
+                'is_exchange',
+                $request->input(
+                    'is_exchange_possible',
+                    $request->input(
+                        'allow_exchange',
+                        $request->input(
+                            'exchange',
+                            $request->input('zamjena', $request->input('zamena'))
+                        )
+                    )
+                )
+            )
+        );
+        $data['exchange_possible'] = filter_var($exchangeInput ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
         $tempMainImageId = $request->input('temp_main_image_id');
@@ -1490,6 +1527,17 @@ public function getItem(Request $request)
             'show_only_to_premium' => 'nullable|boolean',
             'video_link' => 'nullable|url',
             'video' => 'nullable|mimetypes:video/mp4,video/quicktime,video/webm|max:51200',
+            'available_now' => 'nullable|boolean',
+            'is_available' => 'nullable|boolean',
+            'is_avaible' => 'nullable|boolean',
+            'isAvailable' => 'nullable|boolean',
+            'exchange_possible' => 'nullable|boolean',
+            'is_exchange' => 'nullable|boolean',
+            'is_exchange_possible' => 'nullable|boolean',
+            'allow_exchange' => 'nullable|boolean',
+            'exchange' => 'nullable|boolean',
+            'zamjena' => 'nullable|boolean',
+            'zamena' => 'nullable|boolean',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
@@ -1550,6 +1598,66 @@ public function getItem(Request $request)
                 $data['show_only_to_premium'] = $request->boolean('show_only_to_premium') ? 1 : 0;
             } else {
                 $data['show_only_to_premium'] = $item->show_only_to_premium;
+            }
+            $availableKeys = ['available_now', 'is_available', 'is_avaible', 'isAvailable'];
+            $hasAvailableInput = false;
+            foreach ($availableKeys as $flagKey) {
+                if ($request->has($flagKey)) {
+                    $hasAvailableInput = true;
+                    break;
+                }
+            }
+
+            if ($hasAvailableInput) {
+                $availableNowInput = $request->input(
+                    'available_now',
+                    $request->input(
+                        'is_available',
+                        $request->input('is_avaible', $request->input('isAvailable'))
+                    )
+                );
+                $data['available_now'] = filter_var($availableNowInput ?? false, FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $data['available_now'] = $item->available_now;
+            }
+
+            $exchangeKeys = [
+                'exchange_possible',
+                'is_exchange',
+                'is_exchange_possible',
+                'allow_exchange',
+                'exchange',
+                'zamjena',
+                'zamena',
+            ];
+            $hasExchangeInput = false;
+            foreach ($exchangeKeys as $flagKey) {
+                if ($request->has($flagKey)) {
+                    $hasExchangeInput = true;
+                    break;
+                }
+            }
+
+            if ($hasExchangeInput) {
+                $exchangeInput = $request->input(
+                    'exchange_possible',
+                    $request->input(
+                        'is_exchange',
+                        $request->input(
+                            'is_exchange_possible',
+                            $request->input(
+                                'allow_exchange',
+                                $request->input(
+                                    'exchange',
+                                    $request->input('zamjena', $request->input('zamena'))
+                                )
+                            )
+                        )
+                    )
+                );
+                $data['exchange_possible'] = filter_var($exchangeInput ?? false, FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $data['exchange_possible'] = $item->exchange_possible;
             }
             // Video handling:
             // - If a new video file is uploaded, store it and clear any video_link
