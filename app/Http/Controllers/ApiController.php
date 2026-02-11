@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ItemCollection;
 use App\Models\Area;
+use App\Events\UserRealtimeNotification;
 use App\Models\SellerSetting;
 use App\Jobs\NotifyFollowersInstant;
 use App\Models\UserMembership;
@@ -3769,6 +3770,34 @@ if ((int)$user->id === $sellerIdForAvg) {
             \Log::error('WebSocket broadcast failed: ' . $e->getMessage());
         }
 
+        try {
+            event(new UserRealtimeNotification(
+                (int) $receiver_id,
+                'chat',
+                'new_message',
+                'Nova poruka',
+                $displayMessage,
+                [
+                    'id' => $chat->id,
+                    'type' => 'chat',
+                    'chat_id' => $itemOffer->id,
+                    'item_offer_id' => $itemOffer->id,
+                    'sender_id' => $chat->sender_id,
+                    'message' => $chat->message,
+                    'message_type' => $chat->message_type,
+                    'message_type_temp' => $chat->message_type,
+                    'file' => $messageData['file'],
+                    'audio' => $messageData['audio'],
+                    'created_at' => $messageData['created_at'],
+                    'updated_at' => optional($chat->updated_at)->toISOString(),
+                    'user_type' => $userType,
+                    'unread_count' => $unreadMessagesCount,
+                ]
+            ));
+        } catch (\Exception $e) {
+            \Log::error('Realtime user notification failed: ' . $e->getMessage());
+        }
+
         $notification = NotificationService::sendFcmNotification(
             $receiverFCMTokens,
             'Message',
@@ -3822,7 +3851,10 @@ if ((int)$user->id === $sellerIdForAvg) {
                 'item_offer_amount' => $itemOffer->amount,
                 'type' => 'text',
                 'message_type_temp' => 'text',
-                'unread_count' => Chat::where('item_offer_id', $itemOffer->id)->where('is_read', 0)->count(),
+                'unread_count' => Chat::where('item_offer_id', $itemOffer->id)
+                    ->where('sender_id', '!=', $buyerId)
+                    ->where('status', '!=', 'seen')
+                    ->count(),
             ];
 
             // ne diramo message_type, ali ako postoji u modelu i smeta, možeš unset kao gore
@@ -3833,6 +3865,39 @@ if ((int)$user->id === $sellerIdForAvg) {
                 'chat',
                 $autoFcmMsg
             );
+
+            try {
+                $buyerUnreadCount = Chat::where('item_offer_id', $itemOffer->id)
+                    ->where('sender_id', '!=', $buyerId)
+                    ->where('status', '!=', 'seen')
+                    ->count();
+
+                event(new UserRealtimeNotification(
+                    (int) $buyerId,
+                    'chat',
+                    'auto_reply',
+                    'Nova poruka',
+                    $autoReplyChat->message,
+                    [
+                        'id' => $autoReplyChat->id,
+                        'type' => 'chat',
+                        'chat_id' => $itemOffer->id,
+                        'item_offer_id' => $itemOffer->id,
+                        'sender_id' => $autoReplyChat->sender_id,
+                        'message' => $autoReplyChat->message,
+                        'message_type' => $autoReplyChat->message_type,
+                        'message_type_temp' => $autoReplyChat->message_type,
+                        'file' => null,
+                        'audio' => null,
+                        'created_at' => $autoReplyChat->created_at->toISOString(),
+                        'updated_at' => optional($autoReplyChat->updated_at)->toISOString(),
+                        'user_type' => 'Seller',
+                        'unread_count' => $buyerUnreadCount,
+                    ]
+                ));
+            } catch (\Exception $e) {
+                \Log::error('Realtime auto-reply notification failed: ' . $e->getMessage());
+            }
         }
 
         // Response (tvoj + dodao auto_reply ako postoji)

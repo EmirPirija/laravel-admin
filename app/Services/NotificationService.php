@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\UserRealtimeNotification;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserFcmToken;
@@ -83,12 +84,15 @@ class NotificationService {
                 return ['error' => true, 'message' => 'Curl failed: ' . curl_error($ch)];
             }
             curl_close($ch);
+
+            self::broadcastRealtimeToAllUsers($type, $title, $message, $customBodyFields);
+
             return ['error' => false, 'message' => "Bulk notification sent via topic", 'data' => $result];
         }
 
         // ✅ Case 2: Send individually (like existing code)
         $deviceInfo = UserFcmToken::with('user')
-            ->select(['platform_type', 'fcm_token'])
+            ->select(['user_id', 'platform_type', 'fcm_token'])
             ->whereIn('fcm_token', $registrationIDs)
             ->whereHas('user', fn($q) => $q->where('notification', 1))
             ->get();
@@ -139,11 +143,117 @@ class NotificationService {
             curl_close($ch);
         }
 
+        $recipientUserIds = $deviceInfo->pluck('user_id')
+            ->filter(fn($id) => !empty($id))
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        self::broadcastRealtimeToUsers($recipientUserIds, $type, $title, $message, $customBodyFields);
+
         return ['error' => false, 'message' => "Individual notifications sent", 'data' => $result];
     } catch (Throwable $th) {
         throw new RuntimeException($th);
     }
 }
+
+    private static function broadcastRealtimeToAllUsers(
+        string $type,
+        ?string $title,
+        ?string $message,
+        array $customBodyFields = []
+    ): void {
+        try {
+            User::query()
+                ->where('notification', 1)
+                ->select('id')
+                ->chunkById(500, function ($users) use ($type, $title, $message, $customBodyFields) {
+                    foreach ($users as $user) {
+                        self::dispatchRealtimeNotification((int) $user->id, $type, $title, $message, $customBodyFields);
+                    }
+                });
+        } catch (\Throwable $e) {
+            Log::warning('Realtime broadcast (all users) failed', [
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private static function broadcastRealtimeToUsers(
+        array $userIds,
+        string $type,
+        ?string $title,
+        ?string $message,
+        array $customBodyFields = []
+    ): void {
+        $userIds = collect($userIds)
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($userIds)) {
+            return;
+        }
+
+        try {
+            User::query()
+                ->whereIn('id', $userIds)
+                ->where('notification', 1)
+                ->select('id')
+                ->chunkById(500, function ($users) use ($type, $title, $message, $customBodyFields) {
+                    foreach ($users as $user) {
+                        self::dispatchRealtimeNotification((int) $user->id, $type, $title, $message, $customBodyFields);
+                    }
+                });
+        } catch (\Throwable $e) {
+            Log::warning('Realtime broadcast (selected users) failed', [
+                'type' => $type,
+                'users_count' => count($userIds),
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private static function dispatchRealtimeNotification(
+        int $userId,
+        string $type,
+        ?string $title,
+        ?string $message,
+        array $customBodyFields = []
+    ): void {
+        $payload = [
+            ...$customBodyFields,
+            'type' => (string) ($customBodyFields['type'] ?? $type),
+        ];
+
+        event(new UserRealtimeNotification(
+            $userId,
+            self::resolveCategory($type),
+            (string) ($payload['type'] ?? 'notification'),
+            (string) ($title ?: 'Obavijest'),
+            (string) ($message ?: ''),
+            $payload
+        ));
+    }
+
+    private static function resolveCategory(string $type): string
+    {
+        $normalized = strtolower((string) $type);
+
+        if (in_array($normalized, ['chat', 'new_message', 'message', 'offer', 'counter_offer', 'seen', 'message_seen'], true)) {
+            return 'chat';
+        }
+
+        if (in_array($normalized, ['system', 'maintenance', 'alert'], true)) {
+            return 'system';
+        }
+
+        return 'notification';
+    }
 
     public static function getAccessToken() {
         try {
