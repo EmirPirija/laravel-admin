@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RootCategoryIconService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -42,6 +43,11 @@ class Category extends Model {
     }
 
     public function getImageAttribute($image) {
+        $rootIconUrl = RootCategoryIconService::resolveRootIconUrl($this);
+        if (!empty($rootIconUrl)) {
+            return $rootIconUrl;
+        }
+
         if (!empty($image)) {
             return url(Storage::url($image));
         }

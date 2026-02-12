@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="umjetnost-i-dekoracija">
+  <defs>
+    <linearGradient id="grad" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" />
+      <stop offset="1" stop-color="#14b8a6" />
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#grad)" />
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#cffafe" stroke-opacity="0.7" stroke-width="2" />
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 40a22 22 0 1 0 22 22c0-4-3-7-7-7h-4a6 6 0 0 1-6-6v-2a7 7 0 0 0-5-7z" /><circle cx="49" cy="62" r="2" /><circle cx="56" cy="52" r="2" /><circle cx="70" cy="50" r="2" />
+  </g>
+</svg>
