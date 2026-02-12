@@ -31,14 +31,49 @@ class RootCategoryIconService
 
     public static function resolveRootIconUrl(Category $category): ?string
     {
-        if (! empty($category->parent_category_id)) {
+        $attributes = $category->getAttributes();
+
+        // If parent is not selected in query, skip root override
+        // to avoid assigning root icons to non-root categories.
+        if (! array_key_exists('parent_category_id', $attributes)) {
             return null;
         }
 
-        $slug = (string) ($category->slug ?? '');
+        if (! empty($attributes['parent_category_id'])) {
+            return null;
+        }
+
+        $slug = (string) ($attributes['slug'] ?? '');
         $relativePath = self::ROOT_ICON_MAP[$slug] ?? self::DEFAULT_ROOT_ICON;
 
         return url($relativePath);
     }
-}
 
+    public static function normalizeLegacyImageValue(?string $image): ?string
+    {
+        if (empty($image)) {
+            return $image;
+        }
+
+        $normalized = trim((string) $image);
+
+        // Legacy values can be saved as:
+        // https://domain/storage/https://domain/storage/path/file.svg
+        // We keep the innermost URL, which is the valid one.
+        while (true) {
+            $storageHttpPos = stripos($normalized, '/storage/http');
+            if ($storageHttpPos === false) {
+                break;
+            }
+
+            $innerHttpPos = stripos($normalized, 'http', $storageHttpPos + 9);
+            if ($innerHttpPos === false) {
+                break;
+            }
+
+            $normalized = substr($normalized, $innerHttpPos);
+        }
+
+        return $normalized;
+    }
+}

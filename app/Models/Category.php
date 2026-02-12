@@ -48,7 +48,17 @@ class Category extends Model {
             return $rootIconUrl;
         }
 
+        $image = RootCategoryIconService::normalizeLegacyImageValue($image);
+
         if (!empty($image)) {
+            if (filter_var($image, FILTER_VALIDATE_URL)) {
+                return $image;
+            }
+
+            if (str_starts_with($image, '/')) {
+                return url($image);
+            }
+
             return url(Storage::url($image));
         }
         return $image;
