@@ -48,6 +48,10 @@ class ItemCollection extends ResourceCollection {
                     }
                 }
                 $response[$key]['published_at'] = $publishedAt?->toIso8601String();
+                // Keep API backward compatible for clients still reading created_at as publish date.
+                if ($publishedAt) {
+                    $response[$key]['created_at'] = $publishedAt->toIso8601String();
+                }
  
                 // 🔥 AKCIJA/SALE POLJA
                 $response[$key]['is_on_sale'] = (bool) $collection->is_on_sale;
