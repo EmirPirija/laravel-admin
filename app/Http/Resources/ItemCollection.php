@@ -4,6 +4,7 @@ namespace App\Http\Resources;
  
 use App\Models\City;
 use App\Models\Language;
+use Carbon\Carbon;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -35,6 +36,18 @@ class ItemCollection extends ResourceCollection {
  
                 // Base response
                 $response[$key] = $collection->toArray();
+
+                $publishedAt = !empty($collection->created_at) ? Carbon::parse($collection->created_at) : null;
+                if ($collection->relationLoaded('translations') && !empty($collection->translations)) {
+                    foreach ($collection->translations as $translation) {
+                        if (empty($translation?->created_at)) continue;
+                        $translationCreatedAt = Carbon::parse($translation->created_at);
+                        if (!$publishedAt || $translationCreatedAt->lt($publishedAt)) {
+                            $publishedAt = $translationCreatedAt;
+                        }
+                    }
+                }
+                $response[$key]['published_at'] = $publishedAt?->toIso8601String();
  
                 // 🔥 AKCIJA/SALE POLJA
                 $response[$key]['is_on_sale'] = (bool) $collection->is_on_sale;
