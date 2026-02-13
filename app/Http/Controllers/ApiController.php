@@ -4861,17 +4861,11 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
     try {
         $free_ad_listing = Setting::where('name', 'free_ad_listing')->value('value') ?? 0;
 
-        // Validation rules
         $rules = [
             'item_id' => 'nullable|exists:items,id',
-            'item_ids' => 'nullable|string', // accept comma-separated string
+            'item_ids' => 'nullable|string',
+            'package_id' => 'nullable|exists:packages,id',
         ];
-
-        if ($free_ad_listing == 0) {
-            $rules['package_id'] = 'required|exists:packages,id';
-        } else {
-            $rules['package_id'] = 'nullable|exists:packages,id';
-        }
 
         $validator = Validator::make($request->all(), $rules);
 
@@ -4879,7 +4873,6 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
             return ResponseService::validationError($validator->errors()->first());
         }
 
-        // Normalize input to array
         $itemIds = [];
 
         if ($request->filled('item_id')) {
@@ -4887,12 +4880,12 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
         }
 
         if ($request->filled('item_ids')) {
-            // Convert comma-separated string into array
             $ids = explode(',', $request->item_ids);
-            $ids = array_map('trim', $ids);       // remove spaces
-            $ids = array_filter($ids, 'strlen');  // remove empty values
+            $ids = array_map('trim', $ids);
+            $ids = array_filter($ids, 'strlen');
             $itemIds = array_merge($itemIds, $ids);
         }
+        $itemIds = array_values(array_unique($itemIds));
 
         if (empty($itemIds)) {
             return ResponseService::validationError(__('Please provide item_id or item_ids'));
@@ -4902,46 +4895,98 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
         $package = null;
         $userPackage = null;
 
-        // Fetch package if provided
         if ($request->filled('package_id')) {
             $package = Package::where('id', $request->package_id)->firstOrFail();
-
             $userPackage = UserPurchasedPackage::onlyActive()
                 ->where([
                     'user_id' => $user->id,
                     'package_id' => $package->id,
                 ])->first();
-
             if (! $userPackage) {
                 return ResponseService::errorResponse(__('You have not purchased this package'));
             }
         }
 
         $currentDate = Carbon::now();
+        $renewCooldownDays = 15;
         $results = [];
 
         foreach ($itemIds as $itemId) {
-            $item = Item::find($itemId);
+            $item = Item::where('id', $itemId)
+                ->where('user_id', $user->id)
+                ->first();
 
-            if (!$item) {
+            if (! $item) {
                 $results[$itemId] = [
                     'status' => 'failed',
-                    'message' => __('Item not found'),
+                    'message' => __('Item not found or you are not the owner'),
                 ];
                 continue;
             }
 
             $rawStatus = $item->getAttributes()['status'];
+            $expiryDate = $item->expiry_date ? Carbon::parse($item->expiry_date) : null;
+            $isExpired = $expiryDate !== null && $expiryDate->lte($currentDate);
 
-            if (Carbon::parse($item->expiry_date)->gt($currentDate)) {
+            // Active (non-expired) renew = bump position every 15 days for non-featured ads.
+            if (! $isExpired) {
+                $isFeatured = FeaturedItems::onlyActive()
+                    ->where('item_id', $item->id)
+                    ->exists();
+
+                if ($isFeatured) {
+                    $results[$itemId] = [
+                        'status' => 'failed',
+                        'message' => __('Izdvojeni oglas je već prioritetan. Obnova pozicije je dostupna samo za ne-izdvojene oglase.'),
+                    ];
+                    continue;
+                }
+
+                $lastRenewedAt = $item->last_renewed_at ?? $item->created_at;
+                $nextAllowedAt = Carbon::parse($lastRenewedAt)->addDays($renewCooldownDays);
+
+                if ($currentDate->lt($nextAllowedAt)) {
+                    $results[$itemId] = [
+                        'status' => 'failed',
+                        'message' => __('Oglas možeš obnoviti svakih :days dana. Sljedeća obnova: :date', [
+                            'days' => $renewCooldownDays,
+                            'date' => $nextAllowedAt->format('d.m.Y H:i'),
+                        ]),
+                    ];
+                    continue;
+                }
+
+                $item->last_renewed_at = $currentDate;
+                $item->save();
+
+                $results[$itemId] = [
+                    'status' => 'success',
+                    'message' => __('Oglas je podignut među ne-istaknute oglase.'),
+                    'item' => $item->fresh(),
+                    'renewal_type' => 'position',
+                    'next_renewal_at' => $currentDate->copy()->addDays($renewCooldownDays)->toDateTimeString(),
+                ];
+                continue;
+            }
+
+            // Expired renew = extend expiry period.
+            if ($free_ad_listing == 0 && ! $package) {
                 $results[$itemId] = [
                     'status' => 'failed',
-                    'message' => __('Advertisement has not expired yet, so it cannot be renewed'),
+                    'message' => __('Odaberite paket za obnovu isteklog oglasa.'),
                 ];
                 continue;
             }
 
             if ($package) {
+                if ($userPackage->total_limit !== null && (int) $userPackage->used_limit >= (int) $userPackage->total_limit) {
+                    $results[$itemId] = [
+                        'status' => 'failed',
+                        'message' => __('Dostigli ste limit odabranog paketa za obnovu oglasa.'),
+                    ];
+                    continue;
+                }
+
                 if ($package->duration === 'unlimited') {
                     $item->expiry_date = null;
                 } else {
@@ -4954,31 +4999,31 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
                 $item->expiry_date = $currentDate->copy()->addDays(30);
             }
 
+            $item->last_renewed_at = $currentDate;
             $item->status = $rawStatus;
             $item->save();
 
             $results[$itemId] = [
                 'status' => 'success',
-                'item' => $item,
+                'message' => __('Advertisement renewed successfully'),
+                'item' => $item->fresh(),
+                'renewal_type' => 'expiry',
             ];
         }
 
-        // Return single item response if only one item was renewed
         if (count($itemIds) === 1) {
             $itemId = $itemIds[0];
             if ($results[$itemId]['status'] === 'success') {
                 return ResponseService::successResponse(
-                    __('Advertisement renewed successfully'),
+                    $results[$itemId]['message'] ?? __('Advertisement renewed successfully'),
                     $results[$itemId]['item']
                 );
-            } else {
-                return ResponseService::errorResponse($results[$itemId]['message']);
             }
+
+            return ResponseService::errorResponse($results[$itemId]['message']);
         }
 
-        // Return multiple items response
         return ResponseService::successResponse(__('Items processed successfully'), $results);
-
     } catch (Throwable $th) {
         ResponseService::logErrorResponse($th, 'API Controller -> renewItem');
 
