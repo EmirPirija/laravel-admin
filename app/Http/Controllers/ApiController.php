@@ -4946,7 +4946,7 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
 
                 $lastRenewedAt = $hasLastRenewedColumn
                     ? ($item->last_renewed_at ?? $item->created_at)
-                    : $item->created_at;
+                    : ($item->updated_at ?? $item->created_at);
                 $nextAllowedAt = Carbon::parse($lastRenewedAt)->addDays($renewCooldownDays);
 
                 if ($currentDate->lt($nextAllowedAt)) {
@@ -4962,9 +4962,6 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
 
                 if ($hasLastRenewedColumn) {
                     $item->last_renewed_at = $currentDate;
-                } else {
-                    // Fallback for older schemas: bump creation time to keep renew-position behavior.
-                    $item->created_at = $currentDate;
                 }
                 $item->save();
 
