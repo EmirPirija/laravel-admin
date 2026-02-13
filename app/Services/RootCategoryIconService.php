@@ -10,8 +10,8 @@ class RootCategoryIconService
      * Unified icon set for root categories by slug.
      */
     private const ROOT_ICON_MAP = [
-        'vozila' => 'category-icons/root/vozila.svg',
-        'nekretnine' => 'category-icons/root/nekretnine.svg',
+        // 'vozila' => 'category-icons/root/vozila.svg',
+        // 'nekretnine' => 'category-icons/root/nekretnine.svg',
         'mobiteli-i-oprema' => 'category-icons/root/mobiteli-i-oprema.svg',
         'racunari-i-oprema' => 'category-icons/root/racunari-i-oprema.svg',
         'tehnika' => 'category-icons/root/tehnika.svg',
