@@ -61,6 +61,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Unique;
 use Stichoza\GoogleTranslate\GoogleTranslate;
@@ -4908,6 +4909,7 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
         }
 
         $currentDate = Carbon::now();
+        $hasLastRenewedColumn = Schema::hasColumn('items', 'last_renewed_at');
         $renewCooldownDays = 15;
         $results = [];
 
@@ -4942,7 +4944,9 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
                     continue;
                 }
 
-                $lastRenewedAt = $item->last_renewed_at ?? $item->created_at;
+                $lastRenewedAt = $hasLastRenewedColumn
+                    ? ($item->last_renewed_at ?? $item->created_at)
+                    : $item->created_at;
                 $nextAllowedAt = Carbon::parse($lastRenewedAt)->addDays($renewCooldownDays);
 
                 if ($currentDate->lt($nextAllowedAt)) {
@@ -4956,7 +4960,12 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
                     continue;
                 }
 
-                $item->last_renewed_at = $currentDate;
+                if ($hasLastRenewedColumn) {
+                    $item->last_renewed_at = $currentDate;
+                } else {
+                    // Fallback for older schemas: bump creation time to keep renew-position behavior.
+                    $item->created_at = $currentDate;
+                }
                 $item->save();
 
                 $results[$itemId] = [
@@ -4999,7 +5008,9 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
                 $item->expiry_date = $currentDate->copy()->addDays(30);
             }
 
-            $item->last_renewed_at = $currentDate;
+            if ($hasLastRenewedColumn) {
+                $item->last_renewed_at = $currentDate;
+            }
             $item->status = $rawStatus;
             $item->save();
 
