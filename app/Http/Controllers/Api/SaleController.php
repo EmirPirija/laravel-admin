@@ -39,7 +39,7 @@ class SaleController extends Controller
             }
  
             $quantitySold = $request->quantity_sold ?? 1;
-            $unitPrice = $item->price ?? 0;
+            $unitPrice = $item->price_per_unit ?? $item->price ?? 0;
             $totalPrice = $request->sale_price ?? ($unitPrice * $quantitySold);
  
             // Provjeri zalihu ako postoji

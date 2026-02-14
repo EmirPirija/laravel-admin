@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\SavedUserController;
 use App\Http\Controllers\Api\SavedUserListController;
 use App\Http\Controllers\Api\SavedUserListItemController;
 use App\Http\Controllers\Api\FollowPreferenceController;
+use App\Http\Controllers\Api\BulkAdController;
+use App\Http\Controllers\Api\ShopOperationsController;
 
 
 
@@ -72,9 +74,11 @@ Route::post('item-statistics/track-search-click', [ItemStatisticsController::cla
         Route::get('connected-accounts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getConnectedAccounts']);
         Route::get('connect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'connectAccount']);
         Route::post('disconnect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'disconnectAccount']);
+        Route::post('sync/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'syncAccount']);
         Route::post('schedule-post', [\App\Http\Controllers\Api\SocialMediaController::class, 'schedulePost']);
         Route::get('scheduled-posts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getScheduledPosts']);
         Route::post('scheduled-posts/{id}/cancel', [\App\Http\Controllers\Api\SocialMediaController::class, 'cancelScheduledPost']);
+        Route::post('scheduled-posts/{id}/retry', [\App\Http\Controllers\Api\SocialMediaController::class, 'retryScheduledPost']);
     });
 
 // ============================================
@@ -147,11 +151,17 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
     Route::get('item-buyer-list', [ApiController::class, 'getItemBuyerList']);
 
     Route::post('renew-item', [ApiController::class, 'renewItem']);
+    Route::post('my-ads/bulk-action', [BulkAdController::class, 'apply']);
 
     Route::post('item-sale', [SaleController::class, 'recordSale']);
     Route::post('item-reserve', [SaleController::class, 'handleReservation']);
     Route::get('my-purchases', [SaleController::class, 'myPurchases']);
     Route::get('my-sales', [SaleController::class, 'mySales']);
+    Route::get('shop/inventory-alerts', [ShopOperationsController::class, 'inventoryAlerts']);
+    Route::post('shop/update-inventory', [ShopOperationsController::class, 'updateInventory']);
+    Route::get('shop/domain', [ShopOperationsController::class, 'getDomainSettings']);
+    Route::post('shop/domain', [ShopOperationsController::class, 'updateDomain']);
+    Route::post('shop/domain/verify', [ShopOperationsController::class, 'verifyDomain']);
 
         // Pitanja
         Route::post('add-question', [ItemQuestionController::class, 'addQuestion']);
@@ -213,6 +223,8 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
     Route::post('chat/unmute/{id}', [ChatController::class, 'unmuteChat']);
 
     Route::get('item-statistics/seller/overview', [ItemStatisticsController::class, 'getSellerOverview']);
+    Route::get('item-statistics/seller/sla', [ItemStatisticsController::class, 'getSellerSla']);
+    Route::get('item-statistics/seller/boost-roi', [ItemStatisticsController::class, 'getSellerBoostRoi']);
     Route::get('item-statistics/{itemId}', [ItemStatisticsController::class, 'getStatistics']);
     Route::get('item-statistics/{itemId}/quick', [ItemStatisticsController::class, 'getQuickStats']);
 
@@ -223,6 +235,8 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
         Route::get('/user-badges', [GamificationController::class, 'getUserBadges']);
         Route::get('/user-points', [GamificationController::class, 'getUserPoints']);
         Route::get('/leaderboard', [GamificationController::class, 'getLeaderboard']);
+        Route::get('/overview', [GamificationController::class, 'getOverview']);
+        Route::get('/avatar-options', [GamificationController::class, 'getAvatarOptions']);
         Route::get('/badges', [GamificationController::class, 'getAllBadges']);
         Route::get('/points-history', [GamificationController::class, 'getPointsHistory']);
         Route::post('/admin/award-badge', [GamificationController::class, 'manuallyAwardBadge']);

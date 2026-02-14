@@ -446,6 +446,11 @@ class ApiController extends Controller
             'exchange' => 'nullable|boolean',
             'zamjena' => 'nullable|boolean',
             'zamena' => 'nullable|boolean',
+            'publish_to_instagram' => 'nullable|boolean',
+            'instagram_source_url' => 'nullable|url|max:1000',
+            'price_per_unit' => 'nullable|numeric|min:0',
+            'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
+            'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
         ]);
 
         // Zakazana objava - MORA biti prije kreiranje itema
@@ -587,6 +592,24 @@ class ApiController extends Controller
         );
         $data['exchange_possible'] = filter_var($exchangeInput ?? false, FILTER_VALIDATE_BOOLEAN);
 
+        $data['publish_to_instagram'] = filter_var(
+            $request->input('publish_to_instagram', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        $data['instagram_source_url'] = $request->filled('instagram_source_url')
+            ? trim((string) $request->input('instagram_source_url'))
+            : null;
+
+        $data['price_per_unit'] = $request->filled('price_per_unit')
+            ? (float) $request->input('price_per_unit')
+            : null;
+        $data['minimum_order_quantity'] = $request->filled('minimum_order_quantity')
+            ? (int) $request->input('minimum_order_quantity')
+            : 1;
+        $data['stock_alert_threshold'] = $request->filled('stock_alert_threshold')
+            ? (int) $request->input('stock_alert_threshold')
+            : null;
+
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
         $tempMainImageId = $request->input('temp_main_image_id');
         $tempImageIds = $request->input('temp_image_ids'); // fallback (ako šalješ sve slike u jednom nizu)
@@ -636,6 +659,16 @@ class ApiController extends Controller
         if ($request->has('inventory_count') && $request->inventory_count !== null) {
             $item->inventory_count = (int) $request->inventory_count;
         }
+        if ($item->inventory_count !== null && (int) $item->inventory_count <= 0) {
+            $continueSelling = (bool) optional($user->sellerSettings)->continue_selling_out_of_stock;
+            if (! $continueSelling) {
+                $item->status = 'sold out';
+            }
+        }
+        if ($item->inventory_count !== null && (int) $item->inventory_count > 0 && $item->status === 'sold out') {
+            $item->status = 'approved';
+        }
+        $item->save();
         
 
         // 🔹 Translations za item
@@ -1539,6 +1572,11 @@ public function getItem(Request $request)
             'exchange' => 'nullable|boolean',
             'zamjena' => 'nullable|boolean',
             'zamena' => 'nullable|boolean',
+            'publish_to_instagram' => 'nullable|boolean',
+            'instagram_source_url' => 'nullable|url|max:1000',
+            'price_per_unit' => 'nullable|numeric|min:0',
+            'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
+            'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
@@ -1576,6 +1614,27 @@ public function getItem(Request $request)
             $data = $request->except(['video', 'image', 'gallery_images', 'custom_field_files']);
             $data['slug'] = $uniqueSlug;
             $data['status'] = $status;
+            if ($request->has('publish_to_instagram')) {
+                $data['publish_to_instagram'] = $request->boolean('publish_to_instagram');
+            }
+            if ($request->has('instagram_source_url')) {
+                $data['instagram_source_url'] = $request->filled('instagram_source_url')
+                    ? trim((string) $request->input('instagram_source_url'))
+                    : null;
+            }
+            if ($request->has('price_per_unit')) {
+                $data['price_per_unit'] = $request->filled('price_per_unit')
+                    ? (float) $request->input('price_per_unit')
+                    : null;
+            }
+            if ($request->has('minimum_order_quantity')) {
+                $data['minimum_order_quantity'] = max(1, (int) $request->input('minimum_order_quantity'));
+            }
+            if ($request->has('stock_alert_threshold')) {
+                $data['stock_alert_threshold'] = $request->filled('stock_alert_threshold')
+                    ? (int) $request->input('stock_alert_threshold')
+                    : null;
+            }
             // image: upload file OR temp_main_image_id
             $tempMainImageId = $request->input('temp_main_image_id');
             if (!empty($tempMainImageId) && !$request->hasFile('image')) {
@@ -1701,6 +1760,17 @@ public function getItem(Request $request)
                     unset($data['video_link']);
                 }
                 unset($data['video_thumbnail'], $data['video_duration']);
+            }
+            if ($item->inventory_count !== null && (int) $item->inventory_count <= 0) {
+                $continueSelling = (bool) optional($item->user?->sellerSettings)->continue_selling_out_of_stock;
+                if (! $continueSelling) {
+                    $data['status'] = 'sold out';
+                }
+            } elseif ($item->inventory_count !== null && (int) $item->inventory_count > 0) {
+                $rawStatus = strtolower((string) ($item->getAttributes()['status'] ?? $item->status));
+                if ($rawStatus === 'sold out') {
+                    $data['status'] = 'approved';
+                }
             }
 
             $item->update($data);

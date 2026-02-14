@@ -40,6 +40,14 @@ class SellerSetting extends Model
         'vacation_start_date',
         'vacation_end_date',
         'vacation_auto_activate',
+        'continue_selling_out_of_stock',
+        'low_stock_threshold',
+        'storefront_domain',
+        'storefront_domain_status',
+        'storefront_domain_verified_at',
+        'storefront_domain_error',
+        'storefront_domain_ssl_enabled',
+        'storefront_domain_cname_target',
 
         'card_preferences',
     ];
@@ -59,6 +67,10 @@ class SellerSetting extends Model
         'vacation_start_date' => 'date',
         'vacation_end_date' => 'date',
         'vacation_auto_activate' => 'boolean',
+        'continue_selling_out_of_stock' => 'boolean',
+        'low_stock_threshold' => 'integer',
+        'storefront_domain_verified_at' => 'datetime',
+        'storefront_domain_ssl_enabled' => 'boolean',
 
         'card_preferences' => 'array',
     ];

@@ -47,6 +47,8 @@ class SellerSettingsController extends Controller
                     'vacation_start_date' => null,
                     'vacation_end_date' => null,
                     'vacation_auto_activate' => false,
+                    'continue_selling_out_of_stock' => false,
+                    'low_stock_threshold' => 3,
 
                     // ove tekstualne/socijalne ostavi null po defaultu (frontend će prikazati "")
                     'business_description' => null,
@@ -178,6 +180,8 @@ class SellerSettingsController extends Controller
                 'business_hours' => 'nullable|array',
                 'response_time' => 'nullable|in:auto,instant,few_hours,same_day,few_days',
                 'accepts_offers' => 'sometimes|boolean',
+                'continue_selling_out_of_stock' => 'sometimes|boolean',
+                'low_stock_threshold' => 'nullable|integer|min:1|max:1000',
 
                 'auto_reply_enabled' => 'sometimes|boolean',
                 'auto_reply_message' => 'nullable|string|max:300',
@@ -233,6 +237,8 @@ class SellerSettingsController extends Controller
                 'business_hours',
                 'response_time',
                 'accepts_offers',
+                'continue_selling_out_of_stock',
+                'low_stock_threshold',
 
                 'auto_reply_enabled',
                 'auto_reply_message',

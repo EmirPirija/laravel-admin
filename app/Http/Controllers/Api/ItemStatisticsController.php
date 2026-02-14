@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
  
 use App\Http\Controllers\Controller;
+use App\Models\FeaturedItems;
 use App\Models\Item;
 use App\Models\ItemStatistic;
 use App\Models\ItemSearchImpression;
@@ -13,6 +14,7 @@ use App\Models\UserMembership;
 use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use Throwable;
@@ -342,6 +344,234 @@ class ItemStatisticsController extends Controller
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'ItemStatisticsController -> getSellerOverview');
             return ResponseService::errorResponse('Greška pri dohvatanju seller statistike');
+        }
+    }
+
+    /**
+     * Dohvati SLA metriku prodavača (prosječno vrijeme odgovora)
+     * GET /api/item-statistics/seller/sla
+     */
+    public function getSellerSla(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'fast_threshold' => 'nullable|integer|min:1|max:240',
+                'reliable_threshold' => 'nullable|integer|min:2|max:1440',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $user = Auth::user();
+            if (! $user) {
+                return ResponseService::errorResponse('Nemate pristup', null, 401);
+            }
+
+            $fastThreshold = (int) ($request->input('fast_threshold', 15));
+            $reliableThreshold = (int) ($request->input('reliable_threshold', 60));
+            if ($reliableThreshold <= $fastThreshold) {
+                $reliableThreshold = $fastThreshold + 1;
+            }
+
+            $avgMinutes = $user->response_time_avg !== null ? (int) $user->response_time_avg : null;
+            $tier = 'no_data';
+            $label = 'Nema dovoljno podataka';
+            $tooltip = 'Metrika će biti prikazana nakon što prikupimo dovoljno odgovora na poruke.';
+
+            if ($avgMinutes !== null) {
+                if ($avgMinutes < $fastThreshold) {
+                    $tier = 'fast';
+                    $label = 'Brz prodavač';
+                    $tooltip = 'Prosječno odgovorite za manje od ' . $fastThreshold . ' minuta.';
+                } elseif ($avgMinutes < $reliableThreshold) {
+                    $tier = 'reliable';
+                    $label = 'Pouzdan prodavač';
+                    $tooltip = 'Odgovarate stabilno unutar očekivanog vremena.';
+                } else {
+                    $tier = 'slow';
+                    $label = 'Sporiji odgovor';
+                    $tooltip = 'Vrijeme odgovora je iznad preporučenog praga.';
+                }
+            }
+
+            return ResponseService::successResponse('SLA metrika uspješno dohvaćena', [
+                'avg_response_minutes' => $avgMinutes,
+                'formatted' => $avgMinutes !== null
+                    ? 'U prosjeku odgovarate za ' . number_format($avgMinutes, 0) . ' min'
+                    : 'U prosjeku odgovarate: nema dovoljno podataka',
+                'badge' => [
+                    'tier' => $tier,
+                    'label' => $label,
+                    'tooltip' => $tooltip,
+                ],
+                'thresholds' => [
+                    'fast' => $fastThreshold,
+                    'reliable' => $reliableThreshold,
+                ],
+                'has_data' => $avgMinutes !== null,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemStatisticsController -> getSellerSla');
+            return ResponseService::errorResponse('Greška pri dohvatu SLA metrike');
+        }
+    }
+
+    /**
+     * Boost ROI pregled (boost vs organik)
+     * GET /api/item-statistics/seller/boost-roi?period=30
+     */
+    public function getSellerBoostRoi(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'period' => 'nullable|integer|min:7|max:365',
+                'category_id' => 'nullable|integer|exists:categories,id',
+                'top' => 'nullable|integer|min:1|max:20',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $user = Auth::user();
+            if (! $user) {
+                return ResponseService::errorResponse('Nemate pristup', null, 401);
+            }
+
+            $period = (int) ($request->input('period', 30));
+            $top = (int) ($request->input('top', 5));
+            $today = Carbon::today();
+            $startDate = $today->copy()->subDays($period - 1);
+
+            $itemsQuery = Item::withTrashed()->where('user_id', $user->id);
+            if ($request->filled('category_id')) {
+                $itemsQuery->where('category_id', (int) $request->input('category_id'));
+            }
+
+            $items = $itemsQuery->select(['id', 'name', 'slug'])->get();
+            if ($items->isEmpty()) {
+                return ResponseService::successResponse('Boost ROI pregled', [
+                    'period' => $period,
+                    'summary' => [
+                        'total_contacts' => 0,
+                        'boost_contacts' => 0,
+                        'organic_contacts' => 0,
+                        'additional_contacts' => 0,
+                        'boost_cost' => 0.0,
+                        'cost_per_contact' => null,
+                    ],
+                    'trend' => [],
+                    'top_ads' => [],
+                ]);
+            }
+
+            $itemIds = $items->pluck('id')->all();
+            $itemsById = $items->keyBy('id');
+            $contactExpr = 'phone_clicks + whatsapp_clicks + viber_clicks + email_clicks + messages_started';
+
+            $dailyRows = ItemStatistic::whereIn('item_id', $itemIds)
+                ->whereBetween('date', [$startDate, $today])
+                ->selectRaw('
+                    date,
+                    SUM(' . $contactExpr . ') as total_contacts,
+                    SUM(CASE WHEN was_featured = 1 THEN ' . $contactExpr . ' ELSE 0 END) as boost_contacts,
+                    SUM(CASE WHEN was_featured = 0 THEN ' . $contactExpr . ' ELSE 0 END) as organic_contacts,
+                    SUM(CASE WHEN was_featured = 1 THEN views ELSE 0 END) as boost_views
+                ')
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            $trend = $dailyRows->map(function ($row) {
+                return [
+                    'date' => Carbon::parse($row->date)->toDateString(),
+                    'boost_contacts' => (int) ($row->boost_contacts ?? 0),
+                    'organic_contacts' => (int) ($row->organic_contacts ?? 0),
+                    'total_contacts' => (int) ($row->total_contacts ?? 0),
+                ];
+            })->values()->all();
+
+            $boostContacts = (int) $dailyRows->sum('boost_contacts');
+            $organicContacts = (int) $dailyRows->sum('organic_contacts');
+            $totalContacts = $boostContacts + $organicContacts;
+
+            $featuredDays = (int) $dailyRows->filter(fn($row) => (int) ($row->boost_views ?? 0) > 0)->count();
+            $organicDays = max(1, $period - $featuredDays);
+
+            $avgOrganicContactsPerDay = $organicDays > 0 ? ($organicContacts / $organicDays) : 0;
+            $expectedOrganicDuringBoost = $avgOrganicContactsPerDay * max(1, $featuredDays);
+            $additionalContacts = (int) max(0, round($boostContacts - $expectedOrganicDuringBoost));
+
+            $boostCost = (float) FeaturedItems::query()
+                ->join('packages', 'packages.id', '=', 'featured_items.package_id')
+                ->whereIn('featured_items.item_id', $itemIds)
+                ->whereDate('featured_items.start_date', '<=', $today)
+                ->where(function ($q) use ($startDate) {
+                    $q->whereNull('featured_items.end_date')
+                        ->orWhereDate('featured_items.end_date', '>=', $startDate);
+                })
+                ->sum(DB::raw('COALESCE(packages.final_price, packages.price, 0)'));
+
+            $costPerContact = $additionalContacts > 0
+                ? round($boostCost / $additionalContacts, 2)
+                : null;
+
+            $topRows = ItemStatistic::whereIn('item_id', $itemIds)
+                ->whereBetween('date', [$startDate, $today])
+                ->selectRaw('
+                    item_id,
+                    SUM(views) as views,
+                    SUM(CASE WHEN was_featured = 1 THEN ' . $contactExpr . ' ELSE 0 END) as boost_contacts,
+                    SUM(CASE WHEN was_featured = 0 THEN ' . $contactExpr . ' ELSE 0 END) as organic_contacts
+                ')
+                ->groupBy('item_id')
+                ->get()
+                ->map(function ($row) use ($itemsById) {
+                    /** @var Item|null $item */
+                    $item = $itemsById->get($row->item_id);
+                    if (! $item) {
+                        return null;
+                    }
+
+                    $boost = (int) ($row->boost_contacts ?? 0);
+                    $organic = (int) ($row->organic_contacts ?? 0);
+                    $additional = max(0, $boost - $organic);
+                    $views = (int) ($row->views ?? 0);
+
+                    return [
+                        'item_id' => (int) $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                        'views' => $views,
+                        'boost_contacts' => $boost,
+                        'organic_contacts' => $organic,
+                        'additional_contacts' => $additional,
+                        'contact_rate' => $views > 0 ? round((($boost + $organic) / $views) * 100, 2) : 0.0,
+                    ];
+                })
+                ->filter()
+                ->sortByDesc('additional_contacts')
+                ->take($top)
+                ->values()
+                ->all();
+
+            return ResponseService::successResponse('Boost ROI pregled uspješno dohvaćen', [
+                'period' => $period,
+                'summary' => [
+                    'total_contacts' => $totalContacts,
+                    'boost_contacts' => $boostContacts,
+                    'organic_contacts' => $organicContacts,
+                    'additional_contacts' => $additionalContacts,
+                    'boost_cost' => round($boostCost, 2),
+                    'cost_per_contact' => $costPerContact,
+                ],
+                'trend' => $trend,
+                'top_ads' => $topRows,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemStatisticsController -> getSellerBoostRoi');
+            return ResponseService::errorResponse('Greška pri dohvatu Boost ROI pregleda');
         }
     }
  

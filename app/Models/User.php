@@ -254,6 +254,21 @@ public function membershipTransactions()
     return $this->hasMany(MembershipTransaction::class);
 }
 
+public function sellerSettings()
+{
+    return $this->hasOne(SellerSetting::class);
+}
+
+public function socialAccounts()
+{
+    return $this->hasMany(SocialAccount::class);
+}
+
+public function scheduledPosts()
+{
+    return $this->hasMany(ScheduledPost::class);
+}
+
 // Helper metoda da vidiš tier
 public function getTier()
 {
