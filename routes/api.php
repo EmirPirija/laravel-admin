@@ -45,6 +45,7 @@ Route::post('item-statistics/track-time', [ItemStatisticsController::class, 'tra
 Route::post('item-statistics/track-favorite', [ItemStatisticsController::class, 'trackFavorite']);
 Route::post('item-statistics/track-search-impressions', [ItemStatisticsController::class, 'trackBatchSearchImpressions']);
 Route::post('item-statistics/track-search-click', [ItemStatisticsController::class, 'trackSearchClick']);
+Route::get('social/callback/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'handleCallback']);
 
 
     // ============================================
@@ -72,7 +73,7 @@ Route::post('item-statistics/track-search-click', [ItemStatisticsController::cla
     // ============================================
     Route::prefix('social')->group(function () {
         Route::get('connected-accounts', [\App\Http\Controllers\Api\SocialMediaController::class, 'getConnectedAccounts']);
-        Route::get('connect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'connectAccount']);
+        Route::match(['get', 'post'], 'connect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'connectAccount']);
         Route::post('disconnect/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'disconnectAccount']);
         Route::post('sync/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'syncAccount']);
         Route::post('schedule-post', [\App\Http\Controllers\Api\SocialMediaController::class, 'schedulePost']);
