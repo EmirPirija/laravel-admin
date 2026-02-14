@@ -118,7 +118,7 @@
                                             <input type="file"
                                                    class="form-control bulk-cat-image"
                                                    name="categories[{{ $cat->id }}][image]"
-                                                   accept=".jpg,.jpeg,.png">
+                                                   accept=".jpg,.jpeg,.png,.webp,.svg">
                                             <div class="mt-2">
                                                 <img class="img w-25 bulk-cat-preview"
                                                      src="{{ empty($cat->image) ? asset('assets/img_placeholder.jpeg') : $cat->image }}"

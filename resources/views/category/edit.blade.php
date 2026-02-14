@@ -92,7 +92,7 @@
                                                     <div class="col-md-12 form-group mandatory">
                                                         <label for="Field Name" class="mandatory form-label">{{ __('Image') }}</label>
                                                         <div class="cs_field_img">
-                                                            <input type="file" name="image" class="image" style="display: none" accept=" .jpg, .jpeg, .png, .svg">
+                                                            <input type="file" name="image" class="image" style="display: none" accept=".jpg,.jpeg,.png,.webp,.svg">
                                                             <img src="{{ empty($category_data->image) ? asset('assets/img_placeholder.jpeg') : $category_data->image }}" alt="" class="img preview-image" id="">
                                                             <div class='img_input'>{{__("Browse File")}}</div>
                                                         </div>

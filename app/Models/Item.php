@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
  
 class Item extends Model {
@@ -79,9 +80,15 @@ class Item extends Model {
         'translated_description', 
         'discount_percentage',
         'savings',
+        'is_feature',
+        'next_position_renew_at',
+        'can_position_renew',
     ];
  
     protected $with = ['translations'];
+
+    private const POSITION_RENEW_COOLDOWN_DAYS = 15;
+    protected static ?bool $hasLastRenewedAtColumnCache = null;
     
 
     // Accessors
@@ -254,6 +261,88 @@ public function getVideoThumbnailAttribute($value): ?string
         }
         
         return $value ?: "review"; // Fallback na 'review' ako je prazan
+    }
+
+    public function getIsFeatureAttribute(): bool
+    {
+        if (array_key_exists('is_feature', $this->attributes)) {
+            return (bool) $this->attributes['is_feature'];
+        }
+
+        if (array_key_exists('featured_items_count', $this->attributes)) {
+            return (int) $this->attributes['featured_items_count'] > 0;
+        }
+
+        if ($this->relationLoaded('featured_items')) {
+            return $this->featured_items->isNotEmpty();
+        }
+
+        return false;
+    }
+
+    public function getNextPositionRenewAtAttribute(): ?string
+    {
+        $status = strtolower((string) ($this->status ?? ''));
+        if (!in_array($status, ['approved', 'featured'], true)) {
+            return null;
+        }
+
+        $expiryDate = $this->expiry_date ? Carbon::parse($this->expiry_date) : null;
+        if ($expiryDate && $expiryDate->lte(Carbon::now())) {
+            return null;
+        }
+
+        $baseline = $this->resolvePositionRenewBaseline();
+        if (!$baseline) {
+            return null;
+        }
+
+        return $baseline->copy()
+            ->addDays(self::POSITION_RENEW_COOLDOWN_DAYS)
+            ->toDateTimeString();
+    }
+
+    public function getCanPositionRenewAttribute(): bool
+    {
+        if ($this->is_feature) {
+            return false;
+        }
+
+        $next = $this->next_position_renew_at;
+        if (empty($next)) {
+            return false;
+        }
+
+        $nextAt = Carbon::parse($next);
+        return Carbon::now()->gte($nextAt);
+    }
+
+    private function resolvePositionRenewBaseline(): ?Carbon
+    {
+        $hasLastRenewedColumn = self::hasLastRenewedAtColumn();
+
+        $candidate = $hasLastRenewedColumn
+            ? ($this->getAttribute('last_renewed_at') ?? $this->getAttribute('created_at'))
+            : ($this->getAttribute('updated_at') ?? $this->getAttribute('created_at'));
+
+        if (empty($candidate)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($candidate);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private static function hasLastRenewedAtColumn(): bool
+    {
+        if (self::$hasLastRenewedAtColumnCache === null) {
+            self::$hasLastRenewedAtColumnCache = Schema::hasColumn('items', 'last_renewed_at');
+        }
+
+        return self::$hasLastRenewedAtColumnCache;
     }
  
     public function translations()
