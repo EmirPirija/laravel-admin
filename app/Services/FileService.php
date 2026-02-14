@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class FileService {
     /**
@@ -17,36 +18,40 @@ class FileService {
      * @return string
      */
     public static function compressAndUpload($requestFile, $folder)
-        {
-            $file_name = uniqid('', true) . time() . '.' . $requestFile->getClientOriginalExtension();
+    {
+        $file_name = uniqid('', true) . time() . '.' . $requestFile->getClientOriginalExtension();
+        $path = $folder . '/' . $file_name;
+        $disk = Storage::disk(config('filesystems.default'));
+        $extension = strtolower((string) $requestFile->getClientOriginalExtension());
 
-            if (in_array(strtolower($requestFile->getClientOriginalExtension()), ['jpg', 'jpeg', 'png'])) {
+        // Prefer compressed upload for raster images; fall back to raw upload if compression fails.
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            try {
+                $image = Image::make($requestFile)
+                    ->orientate()
+                    ->encode(null, 60);
 
-                try {
-                    $image = Image::make($requestFile)
-                        ->orientate()
-                        ->encode(null, 60);
-
-                    Storage::disk(config('filesystems.default'))
-                        ->put($folder . '/' . $file_name, $image);
-
-                } catch (\Exception $e) {
-                    Log::error('Image upload failed: ' . $e->getMessage());
-                    return false; // return if fails
+                $stored = $disk->put($path, (string) $image);
+                if ($stored !== true) {
+                    throw new RuntimeException('Compressed image write failed');
                 }
-
-            } else {
-                try {
-                    Storage::disk(config('filesystems.default'))
-                        ->putFileAs($folder, $requestFile, $file_name);
-                } catch (\Exception $e) {
-                    Log::error('S3 upload failed: ' . $e->getMessage());
-                    return false; // return if fails
-                }
+                return $path;
+            } catch (Throwable $e) {
+                Log::warning('Image compression failed, falling back to direct upload: ' . $e->getMessage());
             }
-
-            return $folder . '/' . $file_name;
         }
+
+        try {
+            $storedPath = $disk->putFileAs($folder, $requestFile, $file_name);
+            if ($storedPath === false || empty($storedPath)) {
+                throw new RuntimeException('Direct image upload returned empty path');
+            }
+            return $storedPath;
+        } catch (Throwable $e) {
+            Log::error('Image upload failed: ' . $e->getMessage());
+            throw new RuntimeException('Image upload failed');
+        }
+    }
 
 
 
@@ -79,10 +84,12 @@ class FileService {
      * @return string
      */
     public static function compressAndReplace($requestFile, $folder, $deleteRawOriginalImage) {
-        if (!empty($deleteRawOriginalImage)) {
+        // Upload first; remove old file only after successful new upload.
+        $newPath = self::compressAndUpload($requestFile, $folder);
+        if (!empty($deleteRawOriginalImage) && !empty($newPath)) {
             self::delete($deleteRawOriginalImage);
         }
-        return self::compressAndUpload($requestFile, $folder);
+        return $newPath;
     }
 
 

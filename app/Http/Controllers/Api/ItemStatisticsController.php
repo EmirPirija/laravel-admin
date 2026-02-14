@@ -14,7 +14,6 @@ use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Throwable;
  
@@ -170,6 +169,179 @@ class ItemStatisticsController extends Controller
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'ItemStatisticsController -> getQuickStats');
             return ResponseService::errorResponse('Greška');
+        }
+    }
+
+    /**
+     * Dohvati agregiranu statistiku za prodavača (svi njegovi oglasi)
+     * GET /api/item-statistics/seller/overview?period=30&top=8
+     */
+    public function getSellerOverview(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'period' => 'nullable|integer|min:1|max:365',
+                'top' => 'nullable|integer|min:1|max:20',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $period = (int) ($request->period ?? 30);
+            $top = (int) ($request->top ?? 8);
+            $userId = Auth::id();
+
+            $items = Item::withTrashed()
+                ->select(['id', 'name', 'slug', 'video', 'video_link'])
+                ->where('user_id', $userId)
+                ->get();
+
+            if ($items->isEmpty()) {
+                return ResponseService::successResponse('Seller overview fetched', $this->emptySellerOverview($period));
+            }
+
+            $itemIds = $items->pluck('id')->all();
+            $itemsById = $items->keyBy('id');
+
+            $today = Carbon::today();
+            $startDate = $today->copy()->subDays($period - 1);
+            $prevStartDate = $startDate->copy()->subDays($period);
+            $prevEndDate = $startDate->copy()->subDay();
+
+            $periodStats = $this->aggregateSellerStats($itemIds, $startDate, $today);
+            $prevStats = $this->aggregateSellerStats($itemIds, $prevStartDate, $prevEndDate);
+
+            $contacts = $periodStats['phone_clicks']
+                + $periodStats['whatsapp_clicks']
+                + $periodStats['viber_clicks']
+                + $periodStats['email_clicks'];
+            $prevContacts = $prevStats['phone_clicks']
+                + $prevStats['whatsapp_clicks']
+                + $prevStats['viber_clicks']
+                + $prevStats['email_clicks'];
+
+            $searchCtr = $periodStats['search_impressions'] > 0
+                ? round(($periodStats['search_clicks'] / $periodStats['search_impressions']) * 100, 2)
+                : 0.0;
+            $reelCompletionRate = $periodStats['video_plays'] > 0
+                ? round(($periodStats['video_completions'] / $periodStats['video_plays']) * 100, 2)
+                : 0.0;
+            $adsWithVideo = $items->filter(fn(Item $item) => $this->itemHasVideo($item))->count();
+
+            $summary = [
+                'views' => $periodStats['views'],
+                'contacts' => $contacts,
+                'messages' => $periodStats['messages_started'],
+                'favorites' => $periodStats['favorites_added'],
+                'shares' => $periodStats['shares_total'],
+                'video_plays' => $periodStats['video_plays'],
+                'reel_completion_rate' => $reelCompletionRate,
+                'search_ctr' => $searchCtr,
+                'ads_with_video' => $adsWithVideo,
+            ];
+
+            $trends = [
+                'views_vs_prev_period' => $this->calculateTrend($periodStats['views'], $prevStats['views']),
+                'contacts_vs_prev_period' => $this->calculateTrend(
+                    $contacts + $periodStats['messages_started'],
+                    $prevContacts + $prevStats['messages_started']
+                ),
+                'reel_plays_vs_prev_period' => $this->calculateTrend($periodStats['video_plays'], $prevStats['video_plays']),
+            ];
+
+            $topStats = ItemStatistic::whereIn('item_id', $itemIds)
+                ->whereBetween('date', [$startDate, $today])
+                ->selectRaw('
+                    item_id,
+                    SUM(views) as views,
+                    SUM(messages_started) as messages_started,
+                    SUM(phone_clicks + whatsapp_clicks + viber_clicks + email_clicks) as contacts,
+                    SUM(video_plays) as video_plays,
+                    SUM(video_completions) as video_completions
+                ')
+                ->groupBy('item_id')
+                ->orderByDesc('views')
+                ->limit(max($top * 3, $top))
+                ->get();
+
+            $topAds = $topStats
+                ->take($top)
+                ->map(function ($row) use ($itemsById) {
+                    /** @var Item|null $item */
+                    $item = $itemsById->get($row->item_id);
+                    if (!$item) {
+                        return null;
+                    }
+
+                    $views = (int) ($row->views ?? 0);
+                    $contacts = (int) ($row->contacts ?? 0);
+                    $messages = (int) ($row->messages_started ?? 0);
+                    $contactRate = $views > 0 ? round((($contacts + $messages) / $views) * 100, 2) : 0.0;
+
+                    return [
+                        'item_id' => (int) $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                        'has_video' => $this->itemHasVideo($item),
+                        'video_source' => $this->resolveVideoSource($item),
+                        'stats' => [
+                            'views' => $views,
+                            'contacts' => $contacts,
+                            'messages' => $messages,
+                            'contact_rate' => $contactRate,
+                        ],
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->toArray();
+
+            $reelTop = $topStats
+                ->filter(function ($row) use ($itemsById) {
+                    $item = $itemsById->get($row->item_id);
+                    return $item && $this->itemHasVideo($item) && (int) ($row->video_plays ?? 0) > 0;
+                })
+                ->sortByDesc('video_plays')
+                ->take(5)
+                ->map(function ($row) use ($itemsById) {
+                    /** @var Item $item */
+                    $item = $itemsById->get($row->item_id);
+                    $plays = (int) ($row->video_plays ?? 0);
+                    $completionRate = $plays > 0 ? round(((int) ($row->video_completions ?? 0) / $plays) * 100, 2) : 0.0;
+
+                    return [
+                        'item_id' => (int) $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                        'plays' => $plays,
+                        'completion_rate' => $completionRate,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            $sources = $this->buildSellerSources($periodStats);
+            $devices = $this->buildSellerDevices($periodStats);
+            $quickActions = $this->buildSellerQuickActions($summary);
+
+            return ResponseService::successResponse('Seller overview fetched', [
+                'period' => $period,
+                'summary' => $summary,
+                'trends' => $trends,
+                'quick_actions' => $quickActions,
+                'top_ads' => $topAds,
+                'reels' => [
+                    'total_reels' => $adsWithVideo,
+                    'completion_rate' => $reelCompletionRate,
+                    'top_reels' => $reelTop,
+                ],
+                'sources' => $sources,
+                'devices' => $devices,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemStatisticsController -> getSellerOverview');
+            return ResponseService::errorResponse('Greška pri dohvatanju seller statistike');
         }
     }
  
@@ -570,6 +742,324 @@ class ItemStatisticsController extends Controller
         if ($tierId === 2) return 'pro';
  
         return 'free';
+    }
+
+    private function emptySellerOverview(int $period): array
+    {
+        return [
+            'period' => $period,
+            'summary' => [
+                'views' => 0,
+                'contacts' => 0,
+                'messages' => 0,
+                'favorites' => 0,
+                'shares' => 0,
+                'video_plays' => 0,
+                'reel_completion_rate' => 0.0,
+                'search_ctr' => 0.0,
+                'ads_with_video' => 0,
+            ],
+            'trends' => [
+                'views_vs_prev_period' => 0.0,
+                'contacts_vs_prev_period' => 0.0,
+                'reel_plays_vs_prev_period' => 0.0,
+            ],
+            'quick_actions' => [],
+            'top_ads' => [],
+            'reels' => [
+                'total_reels' => 0,
+                'completion_rate' => 0.0,
+                'top_reels' => [],
+            ],
+            'sources' => [
+                'internal' => [],
+                'external' => [],
+                'total' => 0,
+            ],
+            'devices' => [
+                'mobile' => ['value' => 0, 'percent' => 0.0],
+                'desktop' => ['value' => 0, 'percent' => 0.0],
+                'tablet' => ['value' => 0, 'percent' => 0.0],
+            ],
+        ];
+    }
+
+    private function aggregateSellerStats(array $itemIds, Carbon $startDate, Carbon $endDate): array
+    {
+        $defaults = [
+            'views' => 0,
+            'messages_started' => 0,
+            'phone_clicks' => 0,
+            'whatsapp_clicks' => 0,
+            'viber_clicks' => 0,
+            'email_clicks' => 0,
+            'favorites_added' => 0,
+            'shares_total' => 0,
+            'video_plays' => 0,
+            'video_completions' => 0,
+            'search_impressions' => 0,
+            'search_clicks' => 0,
+            'source_internal_search' => 0,
+            'source_category_browse' => 0,
+            'source_featured_section' => 0,
+            'source_similar_items' => 0,
+            'source_seller_profile' => 0,
+            'source_favorites' => 0,
+            'source_notifications' => 0,
+            'source_chat' => 0,
+            'source_direct' => 0,
+            'source_google_organic' => 0,
+            'source_google_ads' => 0,
+            'source_facebook' => 0,
+            'source_instagram' => 0,
+            'source_viber' => 0,
+            'source_whatsapp' => 0,
+            'source_twitter' => 0,
+            'source_tiktok' => 0,
+            'source_youtube' => 0,
+            'source_linkedin' => 0,
+            'source_other_external' => 0,
+            'source_email_campaign' => 0,
+            'source_push_notification' => 0,
+            'device_mobile' => 0,
+            'device_desktop' => 0,
+            'device_tablet' => 0,
+            'device_app_ios' => 0,
+            'device_app_android' => 0,
+        ];
+
+        if (empty($itemIds) || $startDate->gt($endDate)) {
+            return $defaults;
+        }
+
+        $stats = ItemStatistic::whereIn('item_id', $itemIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->selectRaw('
+                COALESCE(SUM(views), 0) as views,
+                COALESCE(SUM(messages_started), 0) as messages_started,
+                COALESCE(SUM(phone_clicks), 0) as phone_clicks,
+                COALESCE(SUM(whatsapp_clicks), 0) as whatsapp_clicks,
+                COALESCE(SUM(viber_clicks), 0) as viber_clicks,
+                COALESCE(SUM(email_clicks), 0) as email_clicks,
+                COALESCE(SUM(favorites_added), 0) as favorites_added,
+                COALESCE(SUM(shares_total), 0) as shares_total,
+                COALESCE(SUM(video_plays), 0) as video_plays,
+                COALESCE(SUM(video_completions), 0) as video_completions,
+                COALESCE(SUM(search_impressions), 0) as search_impressions,
+                COALESCE(SUM(search_clicks), 0) as search_clicks,
+                COALESCE(SUM(source_internal_search), 0) as source_internal_search,
+                COALESCE(SUM(source_category_browse), 0) as source_category_browse,
+                COALESCE(SUM(source_featured_section), 0) as source_featured_section,
+                COALESCE(SUM(source_similar_items), 0) as source_similar_items,
+                COALESCE(SUM(source_seller_profile), 0) as source_seller_profile,
+                COALESCE(SUM(source_favorites), 0) as source_favorites,
+                COALESCE(SUM(source_notifications), 0) as source_notifications,
+                COALESCE(SUM(source_chat), 0) as source_chat,
+                COALESCE(SUM(source_direct), 0) as source_direct,
+                COALESCE(SUM(source_google_organic), 0) as source_google_organic,
+                COALESCE(SUM(source_google_ads), 0) as source_google_ads,
+                COALESCE(SUM(source_facebook), 0) as source_facebook,
+                COALESCE(SUM(source_instagram), 0) as source_instagram,
+                COALESCE(SUM(source_viber), 0) as source_viber,
+                COALESCE(SUM(source_whatsapp), 0) as source_whatsapp,
+                COALESCE(SUM(source_twitter), 0) as source_twitter,
+                COALESCE(SUM(source_tiktok), 0) as source_tiktok,
+                COALESCE(SUM(source_youtube), 0) as source_youtube,
+                COALESCE(SUM(source_linkedin), 0) as source_linkedin,
+                COALESCE(SUM(source_other_external), 0) as source_other_external,
+                COALESCE(SUM(source_email_campaign), 0) as source_email_campaign,
+                COALESCE(SUM(source_push_notification), 0) as source_push_notification,
+                COALESCE(SUM(device_mobile), 0) as device_mobile,
+                COALESCE(SUM(device_desktop), 0) as device_desktop,
+                COALESCE(SUM(device_tablet), 0) as device_tablet,
+                COALESCE(SUM(device_app_ios), 0) as device_app_ios,
+                COALESCE(SUM(device_app_android), 0) as device_app_android
+            ')
+            ->first();
+
+        if (!$stats) {
+            return $defaults;
+        }
+
+        foreach ($defaults as $key => $value) {
+            $defaults[$key] = (int) ($stats->{$key} ?? 0);
+        }
+
+        return $defaults;
+    }
+
+    private function calculateTrend(int $current, int $previous): float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    private function itemHasVideo(Item $item): bool
+    {
+        return !empty($item->getRawOriginal('video')) || !empty($item->getRawOriginal('video_link'));
+    }
+
+    private function resolveVideoSource(Item $item): ?string
+    {
+        if (!empty($item->getRawOriginal('video'))) {
+            return 'upload';
+        }
+
+        $videoLink = (string) ($item->getRawOriginal('video_link') ?? '');
+        if ($videoLink === '') {
+            return null;
+        }
+
+        $normalized = strtolower($videoLink);
+        if (str_contains($normalized, 'youtube.com') || str_contains($normalized, 'youtu.be')) {
+            return 'youtube';
+        }
+
+        return 'external';
+    }
+
+    private function buildSellerSources(array $stats): array
+    {
+        $internal = [
+            'Pretraga' => (int) ($stats['source_internal_search'] ?? 0),
+            'Kategorije' => (int) ($stats['source_category_browse'] ?? 0),
+            'Istaknuto' => (int) ($stats['source_featured_section'] ?? 0),
+            'Slični oglasi' => (int) ($stats['source_similar_items'] ?? 0),
+            'Profil prodavača' => (int) ($stats['source_seller_profile'] ?? 0),
+            'Favoriti' => (int) ($stats['source_favorites'] ?? 0),
+            'Notifikacije' => (int) ($stats['source_notifications'] ?? 0),
+            'Chat' => (int) ($stats['source_chat'] ?? 0),
+            'Direktno' => (int) ($stats['source_direct'] ?? 0),
+            'Push' => (int) ($stats['source_push_notification'] ?? 0),
+            'Email kampanja' => (int) ($stats['source_email_campaign'] ?? 0),
+        ];
+
+        $external = [
+            'Google organic' => (int) ($stats['source_google_organic'] ?? 0),
+            'Google Ads' => (int) ($stats['source_google_ads'] ?? 0),
+            'Facebook' => (int) ($stats['source_facebook'] ?? 0),
+            'Instagram' => (int) ($stats['source_instagram'] ?? 0),
+            'Viber' => (int) ($stats['source_viber'] ?? 0),
+            'WhatsApp' => (int) ($stats['source_whatsapp'] ?? 0),
+            'Twitter/X' => (int) ($stats['source_twitter'] ?? 0),
+            'TikTok' => (int) ($stats['source_tiktok'] ?? 0),
+            'YouTube' => (int) ($stats['source_youtube'] ?? 0),
+            'LinkedIn' => (int) ($stats['source_linkedin'] ?? 0),
+            'Ostalo' => (int) ($stats['source_other_external'] ?? 0),
+        ];
+
+        $total = array_sum($internal) + array_sum($external);
+
+        $mapRows = static function (array $rows) use ($total): array {
+            $prepared = [];
+            foreach ($rows as $name => $value) {
+                if ($value <= 0) {
+                    continue;
+                }
+
+                $prepared[] = [
+                    'name' => $name,
+                    'value' => (int) $value,
+                    'percent' => $total > 0 ? round(($value / $total) * 100, 1) : 0.0,
+                ];
+            }
+
+            usort($prepared, static fn($a, $b) => $b['value'] <=> $a['value']);
+            return $prepared;
+        };
+
+        return [
+            'internal' => $mapRows($internal),
+            'external' => $mapRows($external),
+            'total' => $total,
+        ];
+    }
+
+    private function buildSellerDevices(array $stats): array
+    {
+        $mobile = (int) ($stats['device_mobile'] ?? 0)
+            + (int) ($stats['device_app_ios'] ?? 0)
+            + (int) ($stats['device_app_android'] ?? 0);
+        $desktop = (int) ($stats['device_desktop'] ?? 0);
+        $tablet = (int) ($stats['device_tablet'] ?? 0);
+
+        $total = $mobile + $desktop + $tablet;
+
+        $percent = static fn(int $value) => $total > 0 ? round(($value / $total) * 100, 1) : 0.0;
+
+        return [
+            'mobile' => ['value' => $mobile, 'percent' => $percent($mobile)],
+            'desktop' => ['value' => $desktop, 'percent' => $percent($desktop)],
+            'tablet' => ['value' => $tablet, 'percent' => $percent($tablet)],
+        ];
+    }
+
+    private function buildSellerQuickActions(array $summary): array
+    {
+        $actions = [];
+        $views = (int) ($summary['views'] ?? 0);
+        $contactsAndMessages = (int) ($summary['contacts'] ?? 0) + (int) ($summary['messages'] ?? 0);
+        $contactRate = $views > 0 ? ($contactsAndMessages / $views) * 100 : 0.0;
+        $searchCtr = (float) ($summary['search_ctr'] ?? 0.0);
+        $completion = (float) ($summary['reel_completion_rate'] ?? 0.0);
+        $adsWithVideo = (int) ($summary['ads_with_video'] ?? 0);
+
+        if ($views >= 100 && $searchCtr < 2.0) {
+            $actions[] = [
+                'id' => 'improve-search-ctr',
+                'title' => 'Pojačaj CTR iz pretrage',
+                'description' => 'Naslov i prva fotografija oglasa vjerovatno ne privlače dovoljno klikova u rezultatima pretrage.',
+                'priority' => 'high',
+            ];
+        }
+
+        if ($views >= 60 && $contactRate < 1.5) {
+            $actions[] = [
+                'id' => 'increase-contact-rate',
+                'title' => 'Povećaj stopu kontakata',
+                'description' => 'Dodaj jasniji CTA i kompletiraj ključne detalje oglasa da korisnici lakše pošalju poruku ili poziv.',
+                'priority' => 'medium',
+            ];
+        }
+
+        if ($adsWithVideo === 0) {
+            $actions[] = [
+                'id' => 'add-video',
+                'title' => 'Dodaj video na top oglase',
+                'description' => 'Oglasi sa videom obično zadržavaju pažnju duže i povećavaju vjerovatnoću kontakta.',
+                'priority' => 'medium',
+            ];
+        } elseif ($completion > 0 && $completion < 35) {
+            $actions[] = [
+                'id' => 'shorten-video',
+                'title' => 'Optimizuj video trajanje',
+                'description' => 'Zadržavanje je nisko, probaj kraći video i pokaži najbitnije informacije u prvim sekundama.',
+                'priority' => 'low',
+            ];
+        }
+
+        if ((int) ($summary['favorites'] ?? 0) === 0 && $views >= 120) {
+            $actions[] = [
+                'id' => 'boost-favorites',
+                'title' => 'Povećaj broj favorita',
+                'description' => 'Razmisli o korekciji cijene ili jasnijem opisu vrijednosti oglasa da korisnici češće sačuvaju oglas.',
+                'priority' => 'low',
+            ];
+        }
+
+        if (empty($actions)) {
+            $actions[] = [
+                'id' => 'keep-momentum',
+                'title' => 'Zadrži trenutni momentum',
+                'description' => 'Performanse su stabilne. Nastavi osvježavati oglase i prati metrike po periodima.',
+                'priority' => 'low',
+            ];
+        }
+
+        return array_slice($actions, 0, 4);
     }
  
     /**

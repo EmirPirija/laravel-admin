@@ -53,7 +53,7 @@ class CategoryController extends Controller {
 
         $rules = [
             "name.$defaultLangId" => 'required|string|max:30',
-            'image'              => 'required|mimes:jpg,jpeg,png|max:7168',
+            'image'              => 'required|mimes:jpg,jpeg,png,webp,svg|max:7168',
             'parent_category_id' => 'nullable|integer',
             "description.$defaultLangId" => 'nullable|string',
             'slug' => [
@@ -577,7 +577,7 @@ public function bulkUpdate(Request $request)
             // Build validation rules per category
             $rules = [
                 "categories.$id.name.$defaultLangId" => 'required|string|max:30',
-                "categories.$id.image" => 'nullable|mimes:jpg,jpeg,png|max:7168',
+                "categories.$id.image" => 'nullable|mimes:jpg,jpeg,png,webp,svg|max:7168',
                 "categories.$id.parent_category_id" => 'nullable|integer',
                 "categories.$id.description.$defaultLangId" => 'nullable|string',
                 "categories.$id.slug" => ['nullable','regex:/^[a-zA-Z0-9\-_]+$/'],
@@ -702,7 +702,7 @@ public function bulkUpdate(Request $request)
 
             $rules = [
                 "name.$defaultLangId" => 'required|string|max:30',
-                'image'           => 'nullable|mimes:jpg,jpeg,png|max:7168',
+                'image'           => 'nullable|mimes:jpg,jpeg,png,webp,svg|max:7168',
                 'parent_category_id' => 'nullable|integer',
                 "description.$defaultLangId" => 'nullable|string',
                 'slug' => [

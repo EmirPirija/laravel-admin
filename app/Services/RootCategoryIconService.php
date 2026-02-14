@@ -43,6 +43,13 @@ class RootCategoryIconService
             return null;
         }
 
+        // If category already has its own uploaded image, do not override it
+        // with unified root icons.
+        $rawImage = self::normalizeLegacyImageValue($attributes['image'] ?? null);
+        if (is_string($rawImage) && trim($rawImage) !== '') {
+            return null;
+        }
+
         $slug = (string) ($attributes['slug'] ?? '');
         $relativePath = self::ROOT_ICON_MAP[$slug] ?? self::DEFAULT_ROOT_ICON;
 

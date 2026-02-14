@@ -212,6 +212,7 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
     Route::post('chat/mute/{id}', [ChatController::class, 'muteChat']);
     Route::post('chat/unmute/{id}', [ChatController::class, 'unmuteChat']);
 
+    Route::get('item-statistics/seller/overview', [ItemStatisticsController::class, 'getSellerOverview']);
     Route::get('item-statistics/{itemId}', [ItemStatisticsController::class, 'getStatistics']);
     Route::get('item-statistics/{itemId}/quick', [ItemStatisticsController::class, 'getQuickStats']);
 
