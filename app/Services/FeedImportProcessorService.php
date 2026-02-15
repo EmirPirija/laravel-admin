@@ -1675,8 +1675,35 @@ class FeedImportProcessorService
 
     private function looksLikeXml(string $content): bool
     {
-        $content = ltrim($content);
-        return str_starts_with($content, '<');
+        $trimmed = Str::lower(ltrim($content));
+        if ($trimmed === '') {
+            return false;
+        }
+
+        if (str_starts_with($trimmed, '<!doctype html') || str_starts_with($trimmed, '<html')) {
+            return false;
+        }
+
+        if (str_starts_with($trimmed, '<?xml')) {
+            return true;
+        }
+
+        $xmlRoots = [
+            '<rss',
+            '<feed',
+            '<urlset',
+            '<sitemapindex',
+            '<channel',
+            '<atom:feed',
+        ];
+
+        foreach ($xmlRoots as $root) {
+            if (str_starts_with($trimmed, $root)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isHtmlLikeSource(string $contentType, string $body, string $feedFormat): bool
