@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InstagramImport;
 use App\Models\Item;
 use App\Models\SocialAccount;
+use App\Services\FeedImportProcessorService;
 use App\Services\ResponseService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
@@ -167,6 +168,9 @@ class InstagramController extends Controller
 
             $import = InstagramImport::create($importPayload);
 
+            // Obradi odmah kako status ne bi ostao na "čekanju" bez razloga.
+            $import = app(FeedImportProcessorService::class)->processImport($import, $urls);
+
             return ResponseService::successResponse('Feed import je uspješno evidentiran', [
                 'import' => [
                     'id' => $import->id,
@@ -204,6 +208,8 @@ class InstagramController extends Controller
             if (! $user) {
                 return ResponseService::errorResponse('Neautorizovan pristup', null, 401);
             }
+
+            $this->processQueuedImportsForUser((int) $user->id);
 
             $perPage = (int) ($request->input('per_page', 20));
             $rows = InstagramImport::where('user_id', $user->id)
@@ -356,6 +362,33 @@ class InstagramController extends Controller
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'InstagramController -> getSyncStatus');
             return ResponseService::errorResponse('Greška pri dohvatu sync statusa');
+        }
+    }
+
+    private function processQueuedImportsForUser(int $userId): void
+    {
+        if (! Schema::hasColumn('instagram_imports', 'status')) {
+            return;
+        }
+
+        $pendingImports = InstagramImport::where('user_id', $userId)
+            ->whereIn('status', ['queued', 'processing'])
+            ->orderBy('id')
+            ->limit(5)
+            ->get();
+
+        if ($pendingImports->isEmpty()) {
+            return;
+        }
+
+        $processor = app(FeedImportProcessorService::class);
+
+        foreach ($pendingImports as $import) {
+            try {
+                $processor->processImport($import);
+            } catch (Throwable $th) {
+                ResponseService::logErrorResponse($th, 'InstagramController -> processQueuedImportsForUser');
+            }
         }
     }
 
