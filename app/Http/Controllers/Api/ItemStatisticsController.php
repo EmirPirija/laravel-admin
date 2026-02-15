@@ -919,14 +919,56 @@ class ItemStatisticsController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'impression_id' => 'required|integer|exists:item_search_impressions,id',
+                'impression_id' => 'nullable|integer|exists:item_search_impressions,id',
+                'item_id' => 'required_without:impression_id|integer|exists:items,id',
+                'search_id' => 'nullable|string|max:120',
+                'search_query' => 'nullable|string|max:200',
+                'page' => 'nullable|integer|min:1',
+                'position' => 'nullable|integer|min:1',
+                'visitor_id' => 'nullable|string|max:255',
             ]);
  
             if ($validator->fails()) {
                 return ResponseService::validationError($validator->errors()->first());
             }
- 
-            $impression = ItemSearchImpression::find($request->impression_id);
+
+            $impression = null;
+
+            if ($request->filled('impression_id')) {
+                $impression = ItemSearchImpression::find($request->impression_id);
+            } else {
+                $itemId = (int) $request->item_id;
+                $searchQuery = trim((string) ($request->search_query ?? ''));
+                $page = (int) ($request->page ?? 1);
+                $position = max(1, (int) ($request->position ?? 1));
+                $visitorId = $request->visitor_id ?: ($request->anonymous_id ?: ($request->session_id ?: $request->ip()));
+
+                $query = ItemSearchImpression::query()
+                    ->where('item_id', $itemId)
+                    ->where('visitor_id', $visitorId)
+                    ->where('page', $page);
+
+                if ($searchQuery !== '') {
+                    $query->where('search_query', $searchQuery);
+                }
+
+                $impression = $query->orderByDesc('id')->first();
+
+                if (!$impression) {
+                    $impression = ItemSearchImpression::create([
+                        'item_id' => $itemId,
+                        'search_query' => $searchQuery !== '' ? $searchQuery : null,
+                        'page' => $page,
+                        'position' => $position,
+                        'visitor_id' => $visitorId,
+                        'clicked' => false,
+                    ]);
+
+                    ItemStatistic::incrementStat($itemId, 'search_impressions');
+                    ItemStatistic::updateAverage($itemId, 'search_position_avg', $position);
+                }
+            }
+
             if ($impression && !$impression->clicked) {
                 $impression->update(['clicked' => true, 'clicked_at' => now()]);
                 ItemStatistic::incrementStat($impression->item_id, 'search_clicks');
