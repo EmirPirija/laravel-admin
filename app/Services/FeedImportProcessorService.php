@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Symfony\Component\DomCrawler\Crawler;
 use Throwable;
 
 class FeedImportProcessorService
@@ -106,9 +107,15 @@ class FeedImportProcessorService
         try {
             $response = $this->fetchUrl($url);
             $result['http_status'] = $response->status();
+            $body = (string) $response->body();
 
             if ($response->status() === 404 || $response->serverError()) {
                 $result['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
+                return $result;
+            }
+
+            if ($this->looksLikeAccessProtectionPage($body)) {
+                $result['message'] = 'Udaljeni sajt je blokirao automatski pristup (Cloudflare/anti-bot). Koristi API/CSV/XML feed ili omogući pristup serveru admin.lmx.ba.';
                 return $result;
             }
 
@@ -120,7 +127,7 @@ class FeedImportProcessorService
             } else {
                 $entries = $this->extractEntriesFromResponse(
                     $url,
-                    (string) $response->body(),
+                    $body,
                     (string) $response->header('Content-Type', ''),
                     (string) ($import->feed_format ?? 'api')
                 );
@@ -381,7 +388,7 @@ class FeedImportProcessorService
                 continue;
             }
 
-            $entries[] = [
+            $entry = [
                 'title' => $this->firstNonEmpty($node, ['title', 'name', 'product_name', 'label', 'headline']),
                 'description' => $this->firstNonEmpty($node, ['description', 'desc', 'details', 'summary', 'body']),
                 'price' => $this->firstNonEmpty($node, ['price', 'amount', 'regular_price', 'sale_price', 'unit_price']),
@@ -392,6 +399,9 @@ class FeedImportProcessorService
                 'specs' => $node['attributes'] ?? $node['specs'] ?? $node['properties'] ?? null,
                 'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url']),
             ];
+
+            $entry = $this->mergeEntryWithKeywordFields($entry, $this->extractKeywordFieldsFromNode($node));
+            $entries[] = $entry;
         }
 
         return array_values($entries);
@@ -423,6 +433,10 @@ class FeedImportProcessorService
                 'specs' => $this->xmlNodeValues($node, ['specification', 'attribute', 'feature']),
                 'source_url' => $this->xmlNodeValue($node, ['url', 'link', 'product_url', 'loc']),
             ];
+            $entry = $this->mergeEntryWithKeywordFields(
+                $entry,
+                $this->extractKeywordFieldsFromText((string) $node->asXML())
+            );
             $entries[] = $entry;
         }
 
@@ -444,6 +458,10 @@ class FeedImportProcessorService
     {
         $jsonLdEntries = $this->entriesFromJsonLdHtml($html, $sourceUrl);
         if (count($jsonLdEntries) > 0) {
+            $globalKeywordFields = $this->extractKeywordFieldsFromHtml($html);
+            $jsonLdEntries = array_map(function (array $entry) use ($globalKeywordFields) {
+                return $this->mergeEntryWithKeywordFields($entry, $globalKeywordFields);
+            }, $jsonLdEntries);
             return $jsonLdEntries;
         }
 
@@ -706,7 +724,7 @@ class FeedImportProcessorService
             // fallback is handled below
         }
 
-        return [
+        $entry = [
             'title' => $title ?: $this->titleFromUrl($sourceUrl),
             'description' => $description ?: ('Automatski uvezeno sa: ' . $sourceUrl),
             'price' => $price,
@@ -717,6 +735,8 @@ class FeedImportProcessorService
             'specs' => $specs,
             'source_url' => $sourceUrl,
         ];
+
+        return $this->mergeEntryWithKeywordFields($entry, $this->extractKeywordFieldsFromHtml($html));
     }
 
     private function extractVisiblePriceFromHtml(string $html): ?string
@@ -779,6 +799,452 @@ class FeedImportProcessorService
         }
 
         return array_values(array_unique(array_filter($specs)));
+    }
+
+    private function extractKeywordFieldsFromNode(array $node): array
+    {
+        $pairs = [];
+        $this->collectPairsFromArray($node, '', $pairs);
+
+        $fields = $this->extractKeywordFieldsFromPairs($pairs);
+        $jsonText = json_encode($node, JSON_UNESCAPED_UNICODE);
+        if (is_string($jsonText) && $jsonText !== '') {
+            $fields = $this->mergeKeywordFieldSets($fields, $this->extractKeywordFieldsFromText($jsonText));
+        }
+
+        return $fields;
+    }
+
+    private function extractKeywordFieldsFromHtml(string $html): array
+    {
+        $pairs = [];
+
+        try {
+            $crawler = new Crawler($html);
+
+            $crawler->filter('table tr')->each(function (Crawler $row) use (&$pairs) {
+                $cells = $row->filter('th,td');
+                if ($cells->count() < 2) {
+                    return;
+                }
+
+                $key = trim($cells->eq(0)->text(''));
+                $value = trim($cells->eq(1)->text(''));
+                if ($key !== '' && $value !== '') {
+                    $pairs[] = ['key' => $key, 'value' => $value];
+                }
+            });
+
+            $crawler->filter('dt')->each(function (Crawler $dt) use (&$pairs) {
+                $key = trim($dt->text(''));
+                if ($key === '') {
+                    return;
+                }
+
+                $dd = $dt->nextAll()->first();
+                $value = trim($dd->text(''));
+                if ($value !== '') {
+                    $pairs[] = ['key' => $key, 'value' => $value];
+                }
+            });
+
+            $crawler->filter('[itemprop]')->each(function (Crawler $node) use (&$pairs) {
+                $itemprop = trim((string) $node->attr('itemprop'));
+                if ($itemprop === '') {
+                    return;
+                }
+
+                $value = trim((string) ($node->attr('content') ?: $node->text('')));
+                if ($value === '') {
+                    return;
+                }
+
+                $pairs[] = ['key' => $itemprop, 'value' => $value];
+            });
+
+            $crawler->filter('li')->each(function (Crawler $li) use (&$pairs) {
+                $line = trim($li->text(''));
+                if ($line === '') {
+                    return;
+                }
+
+                if (preg_match('/^([^:]{2,80})\s*:\s*(.{1,220})$/u', $line, $matches) === 1) {
+                    $pairs[] = [
+                        'key' => trim((string) $matches[1]),
+                        'value' => trim((string) $matches[2]),
+                    ];
+                }
+            });
+        } catch (Throwable) {
+            // Fallback via plain text parsing below.
+        }
+
+        $fieldsFromPairs = $this->extractKeywordFieldsFromPairs($pairs);
+
+        $plainText = trim((string) preg_replace('/\s+/', ' ', strip_tags($html)));
+        $fieldsFromText = $this->extractKeywordFieldsFromText($plainText);
+
+        return $this->mergeKeywordFieldSets($fieldsFromPairs, $fieldsFromText);
+    }
+
+    private function extractKeywordFieldsFromText(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return [];
+        }
+
+        $pairs = [];
+
+        if (preg_match_all('/([A-Za-zČĆŽŠĐčćžšđ0-9 _\\/-]{2,80})\s*[:\-]\s*([^\r\n]{1,240})/u', $text, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $key = trim((string) ($match[1] ?? ''));
+                $value = trim((string) ($match[2] ?? ''));
+                if ($key !== '' && $value !== '') {
+                    $pairs[] = ['key' => $key, 'value' => $value];
+                }
+            }
+        }
+
+        $fields = $this->extractKeywordFieldsFromPairs($pairs);
+
+        if (empty($fields['price'])) {
+            $price = $this->extractVisiblePriceFromHtml($text);
+            if ($price) {
+                $fields['price'] = $price;
+            }
+        }
+
+        return $fields;
+    }
+
+    private function extractKeywordFieldsFromPairs(array $pairs): array
+    {
+        $fields = [
+            'title' => null,
+            'description' => null,
+            'price' => null,
+            'old_price' => null,
+            'image' => null,
+            'images' => [],
+            'video' => null,
+            'source_url' => null,
+            'specs' => [],
+        ];
+
+        foreach ($pairs as $pair) {
+            $key = trim((string) ($pair['key'] ?? ''));
+            $value = trim((string) ($pair['value'] ?? ''));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+
+            $field = $this->detectFieldByKeyword($key);
+
+            if ($field === 'price' || $field === 'old_price') {
+                if (! $fields[$field]) {
+                    $fields[$field] = $value;
+                }
+                continue;
+            }
+
+            if ($field === 'title') {
+                if (! $fields['title'] || strlen($value) > strlen((string) $fields['title'])) {
+                    $fields['title'] = $value;
+                }
+                continue;
+            }
+
+            if ($field === 'description') {
+                if (! $fields['description'] || strlen($value) > strlen((string) $fields['description'])) {
+                    $fields['description'] = $value;
+                }
+                continue;
+            }
+
+            if ($field === 'source_url') {
+                $url = $this->toValidUrl($value);
+                if ($url) {
+                    $fields['source_url'] = $url;
+                }
+                continue;
+            }
+
+            if ($field === 'image') {
+                $url = $this->toValidUrl($value);
+                if ($url) {
+                    if (! $fields['image']) {
+                        $fields['image'] = $url;
+                    }
+                    $fields['images'][] = $url;
+                }
+                continue;
+            }
+
+            if ($field === 'video') {
+                $url = $this->toValidUrl($value);
+                if ($url) {
+                    $fields['video'] = $url;
+                }
+                continue;
+            }
+
+            if (strlen($value) <= 180) {
+                $fields['specs'][] = $key . ': ' . $value;
+            }
+        }
+
+        $fields['images'] = $this->normalizeImageUrls($fields['images']);
+        $fields['specs'] = array_values(array_unique(array_slice(array_filter($fields['specs']), 0, 16)));
+
+        return $fields;
+    }
+
+    private function collectPairsFromArray($data, string $prefix, array &$pairs, int $depth = 0): void
+    {
+        if ($depth > 6 || ! is_array($data)) {
+            return;
+        }
+
+        if (array_is_list($data)) {
+            foreach ($data as $item) {
+                if (is_array($item)) {
+                    $this->collectPairsFromArray($item, $prefix, $pairs, $depth + 1);
+                } elseif (is_scalar($item) && $prefix !== '') {
+                    $pairs[] = ['key' => $prefix, 'value' => trim((string) $item)];
+                }
+            }
+            return;
+        }
+
+        foreach ($data as $key => $value) {
+            $keyString = trim((string) $key);
+            if ($keyString === '') {
+                continue;
+            }
+
+            $path = $prefix === '' ? $keyString : ($prefix . '.' . $keyString);
+
+            if (is_array($value)) {
+                $this->collectPairsFromArray($value, $path, $pairs, $depth + 1);
+                continue;
+            }
+
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $valueString = trim((string) $value);
+            if ($valueString === '') {
+                continue;
+            }
+
+            $pairs[] = ['key' => $path, 'value' => $valueString];
+        }
+    }
+
+    private function detectFieldByKeyword(string $key): ?string
+    {
+        $normalized = $this->normalizeKeyword($key);
+        if ($normalized === '') {
+            return null;
+        }
+
+        foreach ($this->keywordAliases() as $field => $aliases) {
+            foreach ($aliases as $alias) {
+                if ($this->keywordMatches($normalized, $this->normalizeKeyword($alias))) {
+                    return $field;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function keywordAliases(): array
+    {
+        return [
+            'title' => ['title', 'name', 'naziv', 'ime', 'product_name', 'product name', 'item_name', 'model'],
+            'description' => ['description', 'opis', 'summary', 'details', 'detalji', 'content', 'tekst'],
+            'price' => ['price', 'cijena', 'cena', 'amount', 'cost', 'akcijska_cijena', 'sale_price', 'current_price'],
+            'old_price' => ['old_price', 'stara_cijena', 'stara cena', 'regular_price', 'original_price', 'list_price', 'compare_price'],
+            'image' => ['image', 'slika', 'photo', 'thumbnail', 'cover', 'gallery_image', 'image_url'],
+            'video' => ['video', 'video_url', 'video_link', 'youtube', 'vimeo', 'tiktok', 'trailer'],
+            'source_url' => ['url', 'link', 'permalink', 'product_url', 'source_url', 'item_url', 'loc'],
+        ];
+    }
+
+    private function keywordMatches(string $key, string $alias): bool
+    {
+        if ($key === '' || $alias === '') {
+            return false;
+        }
+
+        if (str_contains($key, $alias) || str_contains($alias, $key)) {
+            return true;
+        }
+
+        $tokens = preg_split('/\s+/', $key) ?: [];
+        $aliasTokens = preg_split('/\s+/', $alias) ?: [];
+
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            if (strlen($token) < 3) {
+                continue;
+            }
+
+            foreach ($aliasTokens as $aliasToken) {
+                $aliasToken = trim($aliasToken);
+                if (strlen($aliasToken) < 3) {
+                    continue;
+                }
+
+                if ($token === $aliasToken) {
+                    return true;
+                }
+
+                $distance = levenshtein($token, $aliasToken);
+                if ($distance <= 1 || ($distance <= 2 && strlen($aliasToken) >= 7)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeKeyword(string $value): string
+    {
+        $normalized = Str::lower(Str::ascii($value));
+        $normalized = preg_replace('/[^a-z0-9]+/', ' ', $normalized) ?? '';
+        return trim($normalized);
+    }
+
+    private function mergeEntryWithKeywordFields(array $entry, array $keywordFields): array
+    {
+        $entry['title'] = $this->pickBetterScalar(
+            $entry['title'] ?? null,
+            $keywordFields['title'] ?? null,
+            true
+        );
+        $entry['description'] = $this->pickBetterScalar(
+            $entry['description'] ?? null,
+            $keywordFields['description'] ?? null,
+            false
+        );
+        $entry['price'] = $entry['price'] ?? ($keywordFields['price'] ?? null);
+        $entry['old_price'] = $entry['old_price'] ?? ($keywordFields['old_price'] ?? null);
+        $entry['image'] = $entry['image'] ?? ($keywordFields['image'] ?? null);
+        $entry['video'] = $entry['video'] ?? ($keywordFields['video'] ?? null);
+        $entry['source_url'] = $entry['source_url'] ?? ($keywordFields['source_url'] ?? null);
+
+        $entryImages = $this->normalizeImageUrls($entry['images'] ?? []);
+        $keywordImages = $this->normalizeImageUrls($keywordFields['images'] ?? []);
+        $entry['images'] = array_values(array_unique(array_merge($entryImages, $keywordImages)));
+        if (! $entry['image'] && count($entry['images']) > 0) {
+            $entry['image'] = $entry['images'][0];
+        }
+
+        $entrySpecs = $this->normalizeSpecs($entry['specs'] ?? []);
+        $keywordSpecs = $this->normalizeSpecs($keywordFields['specs'] ?? []);
+        $entry['specs'] = array_values(array_unique(array_merge($entrySpecs, $keywordSpecs)));
+
+        return $entry;
+    }
+
+    private function mergeKeywordFieldSets(array $base, array $extra): array
+    {
+        $merged = $base;
+
+        foreach (['title', 'description', 'price', 'old_price', 'image', 'video', 'source_url'] as $key) {
+            if (empty($merged[$key]) && ! empty($extra[$key])) {
+                $merged[$key] = $extra[$key];
+            }
+        }
+
+        $merged['images'] = array_values(array_unique(array_merge(
+            $this->normalizeImageUrls($merged['images'] ?? []),
+            $this->normalizeImageUrls($extra['images'] ?? [])
+        )));
+
+        $merged['specs'] = array_values(array_unique(array_merge(
+            $this->normalizeSpecs($merged['specs'] ?? []),
+            $this->normalizeSpecs($extra['specs'] ?? [])
+        )));
+
+        return $merged;
+    }
+
+    private function pickBetterScalar($current, $candidate, bool $isTitle): ?string
+    {
+        $current = is_scalar($current) ? trim((string) $current) : '';
+        $candidate = is_scalar($candidate) ? trim((string) $candidate) : '';
+
+        if ($candidate === '') {
+            return $current !== '' ? $current : null;
+        }
+
+        if ($current === '') {
+            return $candidate;
+        }
+
+        if ($isTitle && $this->looksGenericBlockedTitle($current) && ! $this->looksGenericBlockedTitle($candidate)) {
+            return $candidate;
+        }
+
+        if (strlen($candidate) > strlen($current)) {
+            return $candidate;
+        }
+
+        return $current;
+    }
+
+    private function looksGenericBlockedTitle(string $title): bool
+    {
+        $normalized = $this->normalizeKeyword($title);
+        $signals = [
+            'attention required',
+            'cloudflare',
+            'access denied',
+            'forbidden',
+            'blocked',
+        ];
+
+        foreach ($signals as $signal) {
+            if (str_contains($normalized, $signal)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function looksLikeAccessProtectionPage(string $body): bool
+    {
+        $normalized = $this->normalizeKeyword(substr(strip_tags($body), 0, 15000));
+        if ($normalized === '') {
+            return false;
+        }
+
+        $signals = [
+            'cloudflare ray id',
+            'sorry you have been blocked',
+            'attention required',
+            'access denied',
+            'enable cookies',
+            'challenge platform',
+            'just a moment',
+            'security service to protect itself',
+        ];
+
+        $hits = 0;
+        foreach ($signals as $signal) {
+            if (str_contains($normalized, $signal)) {
+                $hits++;
+            }
+        }
+
+        return $hits >= 2;
     }
 
     private function findMetaContent(\DOMXPath $xpath, array $keys): ?string
