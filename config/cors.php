@@ -1,11 +1,18 @@
 <?php
 
+$appCorsEnabled = filter_var(env('CORS_APP_LAYER_ENABLED', false), FILTER_VALIDATE_BOOL);
+
 return [
-    'paths' => [
-        'api/*',
-        'sanctum/csrf-cookie',
-        'broadcasting/auth',
-    ],
+    // U productionu CORS najčešće radi na Nginx sloju. Ako oba sloja dodaju header,
+    // browser odbija odgovor zbog duplog Access-Control-Allow-Origin.
+    // Laravel CORS ostaje opcionalan preko env varijable.
+    'paths' => $appCorsEnabled
+        ? [
+            'api/*',
+            'sanctum/csrf-cookie',
+            'broadcasting/auth',
+        ]
+        : [],
     'allowed_methods' => ['*'],
     'allowed_origins' => [
         'https://lmx.ba',
