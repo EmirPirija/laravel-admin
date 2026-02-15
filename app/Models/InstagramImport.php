@@ -16,6 +16,19 @@ class InstagramImport extends Model
         'products_imported',
         'products_failed',
         'category_id',
+        'source_url',
+        'source_urls_json',
+        'feed_format',
+        'status',
+        'message',
+        'meta',
+        'processed_at',
+    ];
+
+    protected $casts = [
+        'source_urls_json' => 'array',
+        'meta' => 'array',
+        'processed_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

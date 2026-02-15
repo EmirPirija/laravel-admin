@@ -7,6 +7,7 @@ use App\Models\InstagramImport;
 use App\Models\Item;
 use App\Models\SocialAccount;
 use App\Services\ResponseService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -98,6 +99,8 @@ class InstagramController extends Controller
                 'source_url' => 'nullable|url|max:1000',
                 'source_urls' => 'nullable',
                 'category_id' => 'nullable|integer|exists:categories,id',
+                'format' => 'nullable|in:api,csv,xml',
+                'feed_file' => 'nullable|file|max:15360|mimes:csv,txt,xml',
             ]);
 
             if ($validator->fails()) {
@@ -109,23 +112,60 @@ class InstagramController extends Controller
                 return ResponseService::errorResponse('Neautorizovan pristup', null, 401);
             }
 
+            $sourceUrl = $request->filled('source_url')
+                ? trim((string) $request->input('source_url'))
+                : null;
+
             $urls = $this->normalizeUrls($request->input('source_urls'));
-            if ($request->filled('source_url')) {
-                $urls[] = trim((string) $request->input('source_url'));
+            if (! empty($sourceUrl)) {
+                $urls[] = $sourceUrl;
             }
+
+            $uploadedFile = $request->file('feed_file');
+            $format = $this->resolveImportFormat($request->input('format'), $uploadedFile);
+
+            if ($uploadedFile instanceof UploadedFile) {
+                $urls = array_merge($urls, $this->extractUrlsFromUpload($uploadedFile, $format));
+            }
+
             $urls = array_values(array_unique(array_filter($urls)));
 
             if (count($urls) === 0) {
-                return ResponseService::validationError('Pošaljite barem jedan važeći URL za uvoz');
+                return ResponseService::validationError('Pošaljite barem jedan važeći URL ili feed datoteku sa URL-ovima');
             }
 
-            $import = InstagramImport::create([
+            $importPayload = [
                 'user_id' => $user->id,
                 'products_requested' => count($urls),
                 'products_imported' => 0,
                 'products_failed' => 0,
                 'category_id' => $request->input('category_id'),
-            ]);
+            ];
+
+            if (Schema::hasColumn('instagram_imports', 'source_url')) {
+                $importPayload['source_url'] = $sourceUrl ?: ($urls[0] ?? null);
+            }
+            if (Schema::hasColumn('instagram_imports', 'source_urls_json')) {
+                $importPayload['source_urls_json'] = $urls;
+            }
+            if (Schema::hasColumn('instagram_imports', 'feed_format')) {
+                $importPayload['feed_format'] = $format;
+            }
+            if (Schema::hasColumn('instagram_imports', 'status')) {
+                $importPayload['status'] = 'queued';
+            }
+            if (Schema::hasColumn('instagram_imports', 'message')) {
+                $importPayload['message'] = 'Feed import je zaprimljen i čeka obradu.';
+            }
+            if (Schema::hasColumn('instagram_imports', 'meta')) {
+                $importPayload['meta'] = [
+                    'file_name' => $uploadedFile?->getClientOriginalName(),
+                    'file_mime' => $uploadedFile?->getMimeType(),
+                    'source_urls_count' => count($urls),
+                ];
+            }
+
+            $import = InstagramImport::create($importPayload);
 
             return ResponseService::successResponse('Instagram import je uspješno evidentiran', [
                 'import' => [
@@ -134,6 +174,10 @@ class InstagramController extends Controller
                     'products_imported' => $import->products_imported,
                     'products_failed' => $import->products_failed,
                     'category_id' => $import->category_id,
+                    'status' => $import->status ?? 'queued',
+                    'source_url' => $import->source_url ?? ($sourceUrl ?: ($urls[0] ?? null)),
+                    'format' => $import->feed_format ?? $format,
+                    'message' => $import->message ?? null,
                     'created_at' => optional($import->created_at)->toIso8601String(),
                 ],
                 'queued_urls' => $urls,
@@ -168,17 +212,34 @@ class InstagramController extends Controller
                 ->paginate($perPage);
 
             $history = collect($rows->items())->map(function (InstagramImport $import) {
+                $status = (string) ($import->status ?? 'completed');
+                $sourceUrl = $import->source_url ?? null;
+
+                if (empty($sourceUrl) && is_array($import->source_urls_json) && count($import->source_urls_json) > 0) {
+                    $sourceUrl = $import->source_urls_json[0];
+                }
+
                 return [
                     'id' => $import->id,
                     'products_requested' => (int) $import->products_requested,
                     'products_imported' => (int) $import->products_imported,
                     'products_failed' => (int) $import->products_failed,
+                    'requested_count' => (int) $import->products_requested,
+                    'imported_count' => (int) $import->products_imported,
+                    'failed_count' => (int) $import->products_failed,
+                    'status' => $status,
+                    'source_url' => $sourceUrl,
+                    'feed_format' => $import->feed_format ?? 'api',
+                    'message' => $import->message,
+                    'meta' => $import->meta,
                     'category_id' => $import->category_id,
                     'category' => $import->category ? [
                         'id' => $import->category->id,
                         'name' => $import->category->name,
                         'slug' => $import->category->slug,
                     ] : null,
+                    'started_at' => optional($import->created_at)->toIso8601String(),
+                    'processed_at' => optional($import->processed_at)->toIso8601String(),
                     'created_at' => optional($import->created_at)->toIso8601String(),
                 ];
             })->values()->all();
@@ -318,6 +379,88 @@ class InstagramController extends Controller
             ->filter(fn($url) => filter_var($url, FILTER_VALIDATE_URL))
             ->values()
             ->all();
+    }
+
+    private function resolveImportFormat(?string $format, ?UploadedFile $file = null): string
+    {
+        $normalized = Str::lower(trim((string) $format));
+        if (in_array($normalized, ['api', 'csv', 'xml'], true)) {
+            return $normalized;
+        }
+
+        if ($file instanceof UploadedFile) {
+            $extension = Str::lower((string) $file->getClientOriginalExtension());
+            if ($extension === 'xml') {
+                return 'xml';
+            }
+            if (in_array($extension, ['csv', 'txt'], true)) {
+                return 'csv';
+            }
+        }
+
+        return 'api';
+    }
+
+    private function extractUrlsFromUpload(UploadedFile $file, string $format): array
+    {
+        $content = (string) @file_get_contents($file->getRealPath());
+        if ($content === '') {
+            return [];
+        }
+
+        if ($format === 'xml') {
+            return $this->extractUrlsFromXml($content);
+        }
+
+        return $this->extractUrlsFromCsv($content);
+    }
+
+    private function extractUrlsFromCsv(string $content): array
+    {
+        $rows = preg_split('/\r\n|\r|\n/', $content) ?: [];
+        $rows = array_values(array_filter(array_map(static fn($row) => trim((string) $row), $rows)));
+        if (count($rows) === 0) {
+            return [];
+        }
+
+        $urls = [];
+        foreach ($rows as $row) {
+            $cells = preg_split('/[,;\t|]/', $row) ?: [];
+            foreach ($cells as $cell) {
+                $candidate = trim((string) $cell, " \t\n\r\0\x0B\"'");
+                if (filter_var($candidate, FILTER_VALIDATE_URL)) {
+                    $urls[] = $candidate;
+                }
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    private function extractUrlsFromXml(string $content): array
+    {
+        $previous = libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($content);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        if ($xml === false) {
+            return [];
+        }
+
+        $nodes = ['loc', 'link', 'url', 'source_url', 'product_url', 'item_url'];
+        $urls = [];
+        foreach ($nodes as $nodeName) {
+            $results = $xml->xpath(sprintf('//*[local-name()="%s"]', $nodeName)) ?: [];
+            foreach ($results as $node) {
+                $candidate = trim((string) $node);
+                if (filter_var($candidate, FILTER_VALIDATE_URL)) {
+                    $urls[] = $candidate;
+                }
+            }
+        }
+
+        return array_values(array_unique($urls));
     }
 
     private function buildSyncPayload(Item $item, ?SocialAccount $account = null): array
