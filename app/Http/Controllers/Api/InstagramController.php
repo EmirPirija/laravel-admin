@@ -79,7 +79,7 @@ class InstagramController extends Controller
                 ];
             })->values()->all();
 
-            return ResponseService::successResponse('Instagram proizvodi su uspješno dohvaćeni', [
+            return ResponseService::successResponse('Feed proizvodi su uspješno dohvaćeni', [
                 'data' => $items,
                 'current_page' => $rows->currentPage(),
                 'last_page' => $rows->lastPage(),
@@ -167,7 +167,7 @@ class InstagramController extends Controller
 
             $import = InstagramImport::create($importPayload);
 
-            return ResponseService::successResponse('Instagram import je uspješno evidentiran', [
+            return ResponseService::successResponse('Feed import je uspješno evidentiran', [
                 'import' => [
                     'id' => $import->id,
                     'products_requested' => $import->products_requested,
@@ -184,7 +184,7 @@ class InstagramController extends Controller
             ]);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'InstagramController -> importProducts');
-            return ResponseService::errorResponse('Greška pri uvozu Instagram proizvoda');
+            return ResponseService::errorResponse('Greška pri uvozu feed proizvoda');
         }
     }
 
@@ -244,7 +244,7 @@ class InstagramController extends Controller
                 ];
             })->values()->all();
 
-            return ResponseService::successResponse('Historija importa uspješno dohvaćena', [
+            return ResponseService::successResponse('Historija feed importa uspješno dohvaćena', [
                 'data' => $history,
                 'current_page' => $rows->currentPage(),
                 'last_page' => $rows->lastPage(),
@@ -253,7 +253,7 @@ class InstagramController extends Controller
             ]);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'InstagramController -> getImportHistory');
-            return ResponseService::errorResponse('Greška pri dohvatu historije importa');
+            return ResponseService::errorResponse('Greška pri dohvatu historije feed importa');
         }
     }
 
