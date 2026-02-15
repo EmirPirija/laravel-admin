@@ -451,6 +451,7 @@ class ApiController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
             'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
+            'seller_product_code' => 'nullable|string|max:100',
         ]);
 
         // Zakazana objava - MORA biti prije kreiranje itema
@@ -608,6 +609,9 @@ class ApiController extends Controller
             : 1;
         $data['stock_alert_threshold'] = $request->filled('stock_alert_threshold')
             ? (int) $request->input('stock_alert_threshold')
+            : null;
+        $data['seller_product_code'] = $request->filled('seller_product_code')
+            ? trim((string) $request->input('seller_product_code'))
             : null;
 
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
@@ -1577,6 +1581,7 @@ public function getItem(Request $request)
             'price_per_unit' => 'nullable|numeric|min:0',
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
             'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
+            'seller_product_code' => 'nullable|string|max:100',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
@@ -1633,6 +1638,11 @@ public function getItem(Request $request)
             if ($request->has('stock_alert_threshold')) {
                 $data['stock_alert_threshold'] = $request->filled('stock_alert_threshold')
                     ? (int) $request->input('stock_alert_threshold')
+                    : null;
+            }
+            if ($request->has('seller_product_code')) {
+                $data['seller_product_code'] = $request->filled('seller_product_code')
+                    ? trim((string) $request->input('seller_product_code'))
                     : null;
             }
             // image: upload file OR temp_main_image_id

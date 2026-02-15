@@ -53,6 +53,7 @@ class Item extends Model {
         'price_per_unit',
         'minimum_order_quantity',
         'stock_alert_threshold',
+        'seller_product_code',
         'price_history',
         'video',
         'video_thumbnail',
