@@ -16,6 +16,9 @@ class ItemImages extends Model {
 
     public function getImageAttribute($image) {
         if (!empty($image)) {
+            if (filter_var($image, FILTER_VALIDATE_URL)) {
+                return $image;
+            }
             return url(Storage::url($image));
         }
         return $image;

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\InstagramImport;
 use App\Models\Item;
+use App\Models\ItemImages;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -188,12 +189,27 @@ class FeedImportProcessorService
             $description = 'Automatski uvezeno sa feed URL-a: ' . $sourceUrl;
         }
 
+        $specs = $this->normalizeSpecs($entry['specs'] ?? null);
+        if (count($specs) > 0) {
+            $description .= "\n\nSpecifikacije:\n- " . implode("\n- ", $specs);
+        }
+
         $price = $this->normalizePrice($entry['price'] ?? null);
+        $oldPrice = $this->normalizePrice($entry['old_price'] ?? null);
+
+        if (($price === null || $price <= 0) && $oldPrice !== null && $oldPrice > 0) {
+            $price = $oldPrice;
+            $oldPrice = null;
+        }
+
         if ($price === null || $price < 0) {
             $price = 0.0;
         }
 
-        $image = $this->resolveImageValue($entry['image'] ?? null);
+        $galleryCandidates = $this->normalizeImageUrls($entry['images'] ?? null);
+        $image = $this->resolveImageValue($entry['image'] ?? ($galleryCandidates[0] ?? null));
+        $videoLink = $this->toValidUrl($entry['video'] ?? ($entry['video_url'] ?? ($entry['video_link'] ?? null)));
+
         $contact = trim((string) ($user->mobile ?: $user->email ?: 'N/A'));
 
         $address = $sourceUrl;
@@ -235,8 +251,17 @@ class FeedImportProcessorService
             if (Schema::hasColumn('items', 'publish_to_instagram')) {
                 $existing->publish_to_instagram = false;
             }
+            if (Schema::hasColumn('items', 'video_link') && $videoLink) {
+                $existing->video_link = $videoLink;
+            }
             if (Schema::hasColumn('items', 'instagram_source_url')) {
                 $existing->instagram_source_url = $sourceUrl;
+            }
+            if (Schema::hasColumn('items', 'is_on_sale')) {
+                $existing->is_on_sale = $oldPrice !== null && $oldPrice > $price;
+            }
+            if (Schema::hasColumn('items', 'old_price')) {
+                $existing->old_price = ($oldPrice !== null && $oldPrice > $price) ? $oldPrice : null;
             }
             if (Schema::hasColumn('items', 'instagram_product_id') && empty($existing->instagram_product_id)) {
                 $existing->instagram_product_id = 'ig_' . Str::lower(Str::substr(sha1($sourceUrl . '|' . $existing->id), 0, 16));
@@ -246,6 +271,7 @@ class FeedImportProcessorService
             }
 
             $existing->save();
+            $this->syncGalleryImages($existing, $galleryCandidates);
             return $existing;
         }
 
@@ -278,8 +304,17 @@ class FeedImportProcessorService
         if (Schema::hasColumn('items', 'publish_to_instagram')) {
             $data['publish_to_instagram'] = false;
         }
+        if (Schema::hasColumn('items', 'video_link') && $videoLink) {
+            $data['video_link'] = $videoLink;
+        }
         if (Schema::hasColumn('items', 'instagram_source_url')) {
             $data['instagram_source_url'] = $sourceUrl;
+        }
+        if (Schema::hasColumn('items', 'is_on_sale')) {
+            $data['is_on_sale'] = $oldPrice !== null && $oldPrice > $price;
+        }
+        if (Schema::hasColumn('items', 'old_price')) {
+            $data['old_price'] = ($oldPrice !== null && $oldPrice > $price) ? $oldPrice : null;
         }
         if (Schema::hasColumn('items', 'price_per_unit')) {
             $data['price_per_unit'] = $price;
@@ -301,6 +336,8 @@ class FeedImportProcessorService
         }
         $item->save();
 
+        $this->syncGalleryImages($item, $galleryCandidates);
+
         return $item;
     }
 
@@ -320,7 +357,7 @@ class FeedImportProcessorService
             return $this->entriesFromXmlPayload($body, $url);
         }
 
-        return [$this->entryFromHtml($body, $url)];
+        return $this->entriesFromHtml($body, $url);
     }
 
     private function entriesFromJsonPayload($payload, string $fallbackUrl): array
@@ -348,12 +385,16 @@ class FeedImportProcessorService
                 'title' => $this->firstNonEmpty($node, ['title', 'name', 'product_name', 'label', 'headline']),
                 'description' => $this->firstNonEmpty($node, ['description', 'desc', 'details', 'summary', 'body']),
                 'price' => $this->firstNonEmpty($node, ['price', 'amount', 'regular_price', 'sale_price', 'unit_price']),
+                'old_price' => $this->firstNonEmpty($node, ['old_price', 'list_price', 'compare_at_price', 'original_price', 'regular_price']),
                 'image' => $this->extractImageFromNode($node),
-                'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url']) ?: $fallbackUrl,
+                'images' => $node['images'] ?? $node['gallery'] ?? null,
+                'video' => $this->firstNonEmpty($node, ['video', 'video_url', 'video_link', 'trailer']),
+                'specs' => $node['attributes'] ?? $node['specs'] ?? $node['properties'] ?? null,
+                'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url']),
             ];
         }
 
-        return array_values(array_filter($entries, static fn (array $entry) => ! empty($entry['source_url'])));
+        return array_values($entries);
     }
 
     private function entriesFromXmlPayload(string $content, string $fallbackUrl): array
@@ -375,8 +416,12 @@ class FeedImportProcessorService
                 'title' => $this->xmlNodeValue($node, ['title', 'name']),
                 'description' => $this->xmlNodeValue($node, ['description', 'summary']),
                 'price' => $this->xmlNodeValue($node, ['price', 'amount']),
+                'old_price' => $this->xmlNodeValue($node, ['old_price', 'regular_price', 'list_price']),
                 'image' => $this->xmlNodeValue($node, ['image', 'image_link', 'thumbnail']),
-                'source_url' => $this->xmlNodeValue($node, ['url', 'link', 'product_url', 'loc']) ?: $fallbackUrl,
+                'images' => $this->xmlNodeValues($node, ['image', 'image_link', 'thumbnail', 'gallery_image']),
+                'video' => $this->xmlNodeValue($node, ['video', 'video_url', 'video_link']),
+                'specs' => $this->xmlNodeValues($node, ['specification', 'attribute', 'feature']),
+                'source_url' => $this->xmlNodeValue($node, ['url', 'link', 'product_url', 'loc']),
             ];
             $entries[] = $entry;
         }
@@ -395,12 +440,190 @@ class FeedImportProcessorService
         return $entries;
     }
 
+    private function entriesFromHtml(string $html, string $sourceUrl): array
+    {
+        $jsonLdEntries = $this->entriesFromJsonLdHtml($html, $sourceUrl);
+        if (count($jsonLdEntries) > 0) {
+            return $jsonLdEntries;
+        }
+
+        return [$this->entryFromHtml($html, $sourceUrl)];
+    }
+
+    private function entriesFromJsonLdHtml(string $html, string $sourceUrl): array
+    {
+        $entries = [];
+
+        try {
+            $previous = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument();
+            $payload = function_exists('mb_convert_encoding')
+                ? mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8')
+                : $html;
+            $dom->loadHTML($payload);
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            $xpath = new \DOMXPath($dom);
+            $scripts = $xpath->query('//script[@type="application/ld+json"]');
+            if (! $scripts) {
+                return [];
+            }
+
+            foreach ($scripts as $scriptNode) {
+                $rawJson = trim((string) $scriptNode->textContent);
+                if ($rawJson === '') {
+                    continue;
+                }
+
+                $decoded = json_decode($rawJson, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    continue;
+                }
+
+                $productNodes = [];
+                $this->collectJsonLdProductNodes($decoded, $productNodes);
+
+                foreach ($productNodes as $productNode) {
+                    $entry = $this->buildEntryFromJsonLdProductNode($productNode, $sourceUrl);
+                    if (! empty($entry['title']) || ! empty($entry['price']) || ! empty($entry['image'])) {
+                        $entries[] = $entry;
+                    }
+                }
+            }
+        } catch (Throwable) {
+            return [];
+        }
+
+        return $entries;
+    }
+
+    private function collectJsonLdProductNodes($node, array &$products): void
+    {
+        if (! is_array($node)) {
+            return;
+        }
+
+        if (array_is_list($node)) {
+            foreach ($node as $child) {
+                $this->collectJsonLdProductNodes($child, $products);
+            }
+            return;
+        }
+
+        $type = $node['@type'] ?? null;
+        $types = is_array($type) ? $type : [$type];
+        foreach ($types as $candidateType) {
+            if (is_string($candidateType) && stripos($candidateType, 'product') !== false) {
+                $products[] = $node;
+                break;
+            }
+        }
+
+        foreach ($node as $child) {
+            if (is_array($child)) {
+                $this->collectJsonLdProductNodes($child, $products);
+            }
+        }
+    }
+
+    private function buildEntryFromJsonLdProductNode(array $node, string $sourceUrl): array
+    {
+        $offerData = is_array($node['offers'] ?? null) ? $node['offers'] : [];
+
+        $price = $this->recursiveFindScalar($offerData, ['price', 'lowPrice', 'highPrice']);
+        if ($price === null) {
+            $price = $this->recursiveFindScalar($node, ['price']);
+        }
+
+        $oldPrice = $this->recursiveFindScalar($offerData, [
+            'priceBeforeDiscount',
+            'listPrice',
+            'regularPrice',
+            'msrp',
+            'highPrice',
+        ]);
+
+        $imageList = $this->normalizeImageUrls($node['image'] ?? ($node['images'] ?? null));
+        $videoUrl = $this->recursiveFindScalar($node, ['contentUrl', 'embedUrl', 'video', 'videoUrl', 'video_url']);
+
+        $specs = [];
+        $brand = $this->recursiveFindScalar($node['brand'] ?? [], ['name']) ?: $this->recursiveFindScalar($node, ['brand']);
+        if ($brand) {
+            $specs[] = 'Brend: ' . $brand;
+        }
+        $sku = $this->recursiveFindScalar($node, ['sku', 'mpn', 'gtin', 'gtin13', 'gtin12']);
+        if ($sku) {
+            $specs[] = 'Šifra: ' . $sku;
+        }
+
+        if (is_array($node['additionalProperty'] ?? null)) {
+            foreach ($node['additionalProperty'] as $property) {
+                if (! is_array($property)) {
+                    continue;
+                }
+                $name = trim((string) ($property['name'] ?? ''));
+                $value = trim((string) ($property['value'] ?? ($property['valueReference'] ?? '')));
+                if ($name !== '' && $value !== '') {
+                    $specs[] = $name . ': ' . $value;
+                }
+            }
+        }
+
+        return [
+            'title' => $this->firstNonEmpty($node, ['name', 'title', 'headline']) ?: $this->titleFromUrl($sourceUrl),
+            'description' => $this->firstNonEmpty($node, ['description', 'summary']) ?: ('Automatski uvezeno sa: ' . $sourceUrl),
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $imageList[0] ?? null,
+            'images' => $imageList,
+            'video' => $this->toValidUrl($videoUrl),
+            'specs' => $specs,
+            'source_url' => $this->firstValidUrl($node, ['url']),
+        ];
+    }
+
+    private function recursiveFindScalar($node, array $keys): ?string
+    {
+        if (! is_array($node)) {
+            if (is_scalar($node)) {
+                $value = trim((string) $node);
+                return $value !== '' ? $value : null;
+            }
+            return null;
+        }
+
+        if (! array_is_list($node)) {
+            foreach ($keys as $key) {
+                if (array_key_exists($key, $node) && is_scalar($node[$key])) {
+                    $value = trim((string) $node[$key]);
+                    if ($value !== '') {
+                        return $value;
+                    }
+                }
+            }
+        }
+
+        foreach ($node as $child) {
+            $value = $this->recursiveFindScalar($child, $keys);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     private function entryFromHtml(string $html, string $sourceUrl): array
     {
         $title = null;
         $description = null;
         $price = null;
+        $oldPrice = null;
         $image = null;
+        $images = [];
+        $video = null;
+        $specs = [];
 
         try {
             $previous = libxml_use_internal_errors(true);
@@ -433,21 +656,52 @@ class FeedImportProcessorService
                 'twitter:description',
             ]);
 
-            $image = $this->findMetaContent($xpath, [
-                'og:image',
-                'twitter:image',
-                'image',
-            ]);
+            if (! $description) {
+                $firstParagraph = $xpath->query('//p[string-length(normalize-space(.)) > 40]');
+                if ($firstParagraph && $firstParagraph->length > 0) {
+                    $description = trim((string) $firstParagraph->item(0)?->textContent);
+                }
+            }
+
+            $images = $this->findMetaContents($xpath, ['og:image', 'twitter:image', 'image']);
+            $image = $images[0] ?? null;
+
+            if (! $image) {
+                $imgNodes = $xpath->query('//img[@src]');
+                if ($imgNodes) {
+                    foreach ($imgNodes as $imgNode) {
+                        $src = $this->toValidUrl($imgNode->attributes?->getNamedItem('src')?->nodeValue);
+                        if ($src) {
+                            $images[] = $src;
+                        }
+                    }
+                    $images = array_values(array_unique($images));
+                    $image = $images[0] ?? null;
+                }
+            }
+
+            $video = $this->findMetaContent($xpath, ['og:video', 'og:video:url', 'twitter:player']);
 
             $priceRaw = $this->findMetaContent($xpath, [
                 'product:price:amount',
                 'og:price:amount',
                 'price',
             ]);
+            $oldPrice = $this->findMetaContent($xpath, [
+                'product:price:regular_amount',
+                'product:price:original_amount',
+                'og:price:standard_amount',
+            ]);
+
+            if (! $priceRaw) {
+                $priceRaw = $this->extractVisiblePriceFromHtml($html);
+            }
 
             if ($priceRaw) {
                 $price = $priceRaw;
             }
+
+            $specs = $this->extractSpecsFromDom($xpath);
         } catch (Throwable) {
             // fallback is handled below
         }
@@ -456,9 +710,75 @@ class FeedImportProcessorService
             'title' => $title ?: $this->titleFromUrl($sourceUrl),
             'description' => $description ?: ('Automatski uvezeno sa: ' . $sourceUrl),
             'price' => $price,
+            'old_price' => $oldPrice,
             'image' => $image,
+            'images' => $images,
+            'video' => $this->toValidUrl($video),
+            'specs' => $specs,
             'source_url' => $sourceUrl,
         ];
+    }
+
+    private function extractVisiblePriceFromHtml(string $html): ?string
+    {
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($html)) ?? '');
+        if ($plain === '') {
+            return null;
+        }
+
+        $patterns = [
+            '/(?:KM|BAM|EUR|€|\$)\s*([0-9][0-9\.\,\s]{0,14})/iu',
+            '/([0-9][0-9\.\,\s]{0,14})\s*(?:KM|BAM|EUR|€|\$)/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $plain, $matches) === 1 && ! empty($matches[1])) {
+                return trim((string) $matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractSpecsFromDom(\DOMXPath $xpath): array
+    {
+        $specs = [];
+
+        $tableRows = $xpath->query('//table//tr');
+        if ($tableRows) {
+            foreach ($tableRows as $row) {
+                $cells = $xpath->query('./th|./td', $row);
+                if (! $cells || $cells->length < 2) {
+                    continue;
+                }
+
+                $label = trim((string) $cells->item(0)?->textContent);
+                $value = trim((string) $cells->item(1)?->textContent);
+                if ($label !== '' && $value !== '') {
+                    $specs[] = $label . ': ' . $value;
+                }
+                if (count($specs) >= 12) {
+                    break;
+                }
+            }
+        }
+
+        if (count($specs) < 12) {
+            $listItems = $xpath->query('//*[contains(translate(@class,"SPECATTRIB","specattrib"),"spec") or contains(translate(@class,"SPECATTRIB","specattrib"),"attrib")]//li');
+            if ($listItems) {
+                foreach ($listItems as $li) {
+                    $line = trim((string) $li->textContent);
+                    if ($line !== '') {
+                        $specs[] = $line;
+                    }
+                    if (count($specs) >= 12) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($specs)));
     }
 
     private function findMetaContent(\DOMXPath $xpath, array $keys): ?string
@@ -477,6 +797,27 @@ class FeedImportProcessorService
         }
 
         return null;
+    }
+
+    private function findMetaContents(\DOMXPath $xpath, array $keys): array
+    {
+        $values = [];
+        foreach ($keys as $key) {
+            $query = sprintf('//meta[@property="%1$s"]/@content | //meta[@name="%1$s"]/@content', $key);
+            $nodes = $xpath->query($query);
+            if (! $nodes || $nodes->length === 0) {
+                continue;
+            }
+
+            foreach ($nodes as $node) {
+                $value = $this->toValidUrl(trim((string) $node->nodeValue));
+                if ($value) {
+                    $values[] = $value;
+                }
+            }
+        }
+
+        return array_values(array_unique($values));
     }
 
     private function fetchUrl(string $url)
@@ -814,6 +1155,147 @@ class FeedImportProcessorService
         return max(0, (float) $clean);
     }
 
+    private function normalizeSpecs($specs): array
+    {
+        if (is_null($specs)) {
+            return [];
+        }
+
+        $lines = [];
+
+        if (is_string($specs)) {
+            $parts = preg_split('/\r\n|\r|\n|[;,]/', $specs) ?: [];
+            foreach ($parts as $part) {
+                $line = trim((string) $part);
+                if ($line !== '') {
+                    $lines[] = $line;
+                }
+            }
+            return array_values(array_unique(array_slice($lines, 0, 12)));
+        }
+
+        if (is_array($specs)) {
+            foreach ($specs as $key => $value) {
+                if (is_array($value)) {
+                    if (array_key_exists('name', $value) && array_key_exists('value', $value)) {
+                        $name = trim((string) $value['name']);
+                        $val = trim((string) $value['value']);
+                        if ($name !== '' && $val !== '') {
+                            $lines[] = $name . ': ' . $val;
+                        }
+                        continue;
+                    }
+                    foreach ($value as $nested) {
+                        if (is_scalar($nested)) {
+                            $line = trim((string) $nested);
+                            if ($line !== '') {
+                                $lines[] = $line;
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if (is_string($key) && is_scalar($value)) {
+                    $label = trim($key);
+                    $val = trim((string) $value);
+                    if ($label !== '' && $val !== '') {
+                        $lines[] = $label . ': ' . $val;
+                    }
+                    continue;
+                }
+
+                if (is_scalar($value)) {
+                    $line = trim((string) $value);
+                    if ($line !== '') {
+                        $lines[] = $line;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_slice($lines, 0, 12)));
+    }
+
+    private function normalizeImageUrls($images): array
+    {
+        $urls = [];
+
+        if (is_null($images)) {
+            return [];
+        }
+
+        if (is_string($images)) {
+            $url = $this->toValidUrl($images);
+            return $url ? [$url] : [];
+        }
+
+        if (! is_array($images)) {
+            return [];
+        }
+
+        foreach ($images as $image) {
+            if (is_array($image)) {
+                foreach (['url', 'src', 'image', 'image_url'] as $key) {
+                    if (array_key_exists($key, $image)) {
+                        $candidate = $this->toValidUrl($image[$key]);
+                        if ($candidate) {
+                            $urls[] = $candidate;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            $candidate = $this->toValidUrl($image);
+            if ($candidate) {
+                $urls[] = $candidate;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    private function syncGalleryImages(Item $item, array $imageUrls): void
+    {
+        if (count($imageUrls) === 0) {
+            return;
+        }
+
+        $imageUrls = array_values(array_unique(array_filter(array_map(function ($url) {
+            return $this->toValidUrl($url);
+        }, $imageUrls))));
+
+        if (count($imageUrls) === 0) {
+            return;
+        }
+
+        $existingRaw = ItemImages::where('item_id', $item->id)
+            ->pluck('image')
+            ->map(static fn ($value) => trim((string) $value))
+            ->filter(static fn ($value) => $value !== '')
+            ->values()
+            ->all();
+
+        $toInsert = [];
+        foreach (array_slice($imageUrls, 0, 12) as $url) {
+            if (in_array($url, $existingRaw, true)) {
+                continue;
+            }
+
+            $toInsert[] = [
+                'item_id' => $item->id,
+                'image' => $url,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (count($toInsert) > 0) {
+            ItemImages::insert($toInsert);
+        }
+    }
+
     private function resolveImageValue($candidate): string
     {
         $url = $this->toValidUrl($candidate);
@@ -900,5 +1382,21 @@ class FeedImportProcessorService
         }
 
         return null;
+    }
+
+    private function xmlNodeValues(\SimpleXMLElement $node, array $names): array
+    {
+        $values = [];
+        foreach ($names as $name) {
+            $result = $node->xpath('.//*[local-name()="' . $name . '"]') ?: [];
+            foreach ($result as $candidate) {
+                $value = trim((string) $candidate);
+                if ($value !== '') {
+                    $values[] = $value;
+                }
+            }
+        }
+
+        return array_values(array_unique($values));
     }
 }
