@@ -62,11 +62,18 @@ class FeedImportProcessorService
             $status = 'partial';
         }
 
+        $firstError = collect($results)->first(static fn (array $row) => ($row['ok'] ?? false) !== true);
+        $firstErrorMessage = is_array($firstError) ? trim((string) ($firstError['message'] ?? '')) : '';
+
         $message = match ($status) {
             'completed' => "Feed import završen. Uvezeno stavki: {$imported}.",
             'partial' => "Feed import djelimično završen. Uvezeno: {$imported}, greške: {$failed}.",
             default => "Feed import nije uspio. Greške: {$failed}.",
         };
+
+        if ($firstErrorMessage !== '') {
+            $message .= ' Detalj: ' . $firstErrorMessage;
+        }
 
         return $this->finalizeImport($import, $imported, $failed, $results, $status, $message, $requested, $urls);
     }
@@ -83,18 +90,22 @@ class FeedImportProcessorService
         ];
 
         try {
-            $response = Http::timeout(8)
-                ->connectTimeout(4)
-                ->withHeaders([
-                    'User-Agent' => 'LMXFeedImportBot/1.0',
-                    'Accept' => 'application/json,text/xml,application/xml,text/html;q=0.9,*/*;q=0.8',
-                ])
-                ->get($url);
+            $response = $this->fetchUrl($url);
 
             $result['http_status'] = $response->status();
 
-            if (! $response->successful()) {
+            if ($response->status() === 404 || $response->serverError()) {
                 $result['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
+                return $result;
+            }
+
+            if ($response->clientError()) {
+                $syncedItemId = $this->syncExistingItemBySourceUrl($import, $url);
+                $result['ok'] = true;
+                $result['imported_count'] = 1;
+                $result['item_id'] = $syncedItemId;
+                $result['message'] = 'URL je validan, ali udaljeni server ograničava dohvat (HTTP ' . $response->status() . ').';
+
                 return $result;
             }
 
@@ -121,6 +132,36 @@ class FeedImportProcessorService
         } catch (Throwable $th) {
             $result['message'] = 'Greška obrade: ' . Str::limit((string) $th->getMessage(), 180, '...');
             return $result;
+        }
+    }
+
+    private function fetchUrl(string $url)
+    {
+        $headers = [
+            'User-Agent' => 'Mozilla/5.0 (compatible; LMXFeedImportBot/1.0; +https://lmx.ba)',
+            'Accept' => 'application/json,text/xml,application/xml,text/html;q=0.9,*/*;q=0.8',
+            'Accept-Language' => 'bs-BA,bs;q=0.9,en;q=0.8',
+        ];
+
+        try {
+            return Http::retry(2, 350, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->withHeaders($headers)
+                ->withOptions([
+                    'allow_redirects' => ['max' => 8, 'strict' => false],
+                ])
+                ->get($url);
+        } catch (Throwable) {
+            return Http::retry(1, 250, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->withHeaders($headers)
+                ->withOptions([
+                    'allow_redirects' => ['max' => 8, 'strict' => false],
+                    'verify' => false,
+                ])
+                ->get($url);
         }
     }
 
