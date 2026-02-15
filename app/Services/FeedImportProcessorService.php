@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\CustomField;
 use App\Models\InstagramImport;
 use App\Models\Item;
+use App\Models\ItemCustomFieldValue;
 use App\Models\ItemImages;
 use App\Models\Setting;
 use App\Models\User;
@@ -25,6 +27,7 @@ class FeedImportProcessorService
     private static ?float $cachedLatitude = null;
     private static ?float $cachedLongitude = null;
     private static ?int $cachedFallbackCategoryId = null;
+    private static array $cachedCategoryFields = [];
 
     /**
      * Process queued/created feed import and persist summary status.
@@ -108,6 +111,8 @@ class FeedImportProcessorService
             $response = $this->fetchUrl($url);
             $result['http_status'] = $response->status();
             $body = (string) $response->body();
+            $contentType = (string) $response->header('Content-Type', '');
+            $feedFormat = (string) ($import->feed_format ?? 'api');
 
             if ($response->status() === 404 || $response->serverError()) {
                 $result['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
@@ -119,32 +124,33 @@ class FeedImportProcessorService
                 return $result;
             }
 
-            $entries = [];
-
-            if ($response->clientError()) {
-                // URL je validan, ali server ograničava scraping/API poziv.
-                $entries[] = $this->buildFallbackEntryFromUrl($url);
-            } else {
-                $entries = $this->extractEntriesFromResponse(
-                    $url,
-                    $body,
-                    (string) $response->header('Content-Type', ''),
-                    (string) ($import->feed_format ?? 'api')
-                );
-            }
+            $entries = $this->extractEntriesFromResponse(
+                $url,
+                $body,
+                $contentType,
+                $feedFormat
+            );
 
             if (count($entries) === 0) {
-                $entries[] = $this->buildFallbackEntryFromUrl($url);
+                $result['message'] = 'Nije pronađen nijedan proizvod u dostavljenom izvoru.';
+                return $result;
             }
 
             $itemIds = [];
+            $skippedInsufficient = 0;
             foreach ($entries as $index => $entry) {
-                $entryUrl = $this->toValidUrl($entry['source_url'] ?? null);
+                $entryUrl = $this->toValidUrl($entry['source_url'] ?? null, $url);
                 if (! $entryUrl) {
                     $entryKey = trim((string) ($entry['title'] ?? '')) . '|' . trim((string) ($entry['price'] ?? ''));
                     $entryHash = substr(sha1($entryKey ?: ('row-' . $index)), 0, 10);
                     $entryUrl = rtrim($url, '/') . '#feed-' . ($index + 1) . '-' . $entryHash;
                 }
+
+                if (! $this->isEntryMeaningful($entry, $entryUrl)) {
+                    $skippedInsufficient++;
+                    continue;
+                }
+
                 $item = $this->upsertItemFromEntry($import, $entry, $entryUrl);
 
                 if (! $item) {
@@ -156,6 +162,16 @@ class FeedImportProcessorService
 
             $itemIds = array_values(array_unique($itemIds));
             if (count($itemIds) === 0) {
+                if ($response->clientError()) {
+                    $result['message'] = 'Udaljeni server vraća HTTP ' . $response->status() . ' i nema dovoljno javnih podataka za kreiranje oglasa.';
+                    return $result;
+                }
+
+                if ($skippedInsufficient > 0 && $this->isHtmlLikeSource($contentType, $body, $feedFormat)) {
+                    $result['message'] = 'Stranica je učitana, ali nema dovoljno pouzdanih podataka za oglas (naslov/opis/cijena/slike/specifikacije).';
+                    return $result;
+                }
+
                 $result['message'] = 'Feed je obrađen, ali nijedan oglas nije kreiran (nedovoljno podataka).';
                 return $result;
             }
@@ -163,9 +179,7 @@ class FeedImportProcessorService
             $result['ok'] = true;
             $result['imported_count'] = count($itemIds);
             $result['item_ids'] = $itemIds;
-            $result['message'] = $response->clientError()
-                ? 'Oglas je kreiran iz fallback podataka jer udaljeni server ograničava dohvat.'
-                : 'Uspješno obrađeno i kreirani/ažurirani oglasi.';
+            $result['message'] = 'Uspješno obrađeno i kreirani/ažurirani oglasi.';
 
             return $result;
         } catch (Throwable $th) {
@@ -213,9 +227,9 @@ class FeedImportProcessorService
             $price = 0.0;
         }
 
-        $galleryCandidates = $this->normalizeImageUrls($entry['images'] ?? null);
+        $galleryCandidates = $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl);
         $image = $this->resolveImageValue($entry['image'] ?? ($galleryCandidates[0] ?? null));
-        $videoLink = $this->toValidUrl($entry['video'] ?? ($entry['video_url'] ?? ($entry['video_link'] ?? null)));
+        $videoLink = $this->toValidUrl($entry['video'] ?? ($entry['video_url'] ?? ($entry['video_link'] ?? null)), $sourceUrl);
 
         $contact = trim((string) ($user->mobile ?: $user->email ?: 'N/A'));
 
@@ -279,6 +293,7 @@ class FeedImportProcessorService
 
             $existing->save();
             $this->syncGalleryImages($existing, $galleryCandidates);
+            $this->syncCustomFieldValuesFromEntry($existing, $categoryId, $entry, $description);
             return $existing;
         }
 
@@ -344,6 +359,7 @@ class FeedImportProcessorService
         $item->save();
 
         $this->syncGalleryImages($item, $galleryCandidates);
+        $this->syncCustomFieldValuesFromEntry($item, $categoryId, $entry, $description);
 
         return $item;
     }
@@ -377,7 +393,7 @@ class FeedImportProcessorService
         $entries = [];
         foreach ($nodes as $node) {
             if (is_string($node)) {
-                $url = $this->toValidUrl($node);
+                $url = $this->toValidUrl($node, $fallbackUrl);
                 if ($url) {
                     $entries[] = $this->buildFallbackEntryFromUrl($url);
                 }
@@ -393,11 +409,11 @@ class FeedImportProcessorService
                 'description' => $this->firstNonEmpty($node, ['description', 'desc', 'details', 'summary', 'body']),
                 'price' => $this->firstNonEmpty($node, ['price', 'amount', 'regular_price', 'sale_price', 'unit_price']),
                 'old_price' => $this->firstNonEmpty($node, ['old_price', 'list_price', 'compare_at_price', 'original_price', 'regular_price']),
-                'image' => $this->extractImageFromNode($node),
+                'image' => $this->extractImageFromNode($node, $fallbackUrl),
                 'images' => $node['images'] ?? $node['gallery'] ?? null,
                 'video' => $this->firstNonEmpty($node, ['video', 'video_url', 'video_link', 'trailer']),
                 'specs' => $node['attributes'] ?? $node['specs'] ?? $node['properties'] ?? null,
-                'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url']),
+                'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url'], $fallbackUrl),
             ];
 
             $entry = $this->mergeEntryWithKeywordFields($entry, $this->extractKeywordFieldsFromNode($node));
@@ -465,6 +481,15 @@ class FeedImportProcessorService
             return $jsonLdEntries;
         }
 
+        $embeddedEntries = $this->entriesFromEmbeddedJsonScripts($html, $sourceUrl);
+        if (count($embeddedEntries) > 0) {
+            $globalKeywordFields = $this->extractKeywordFieldsFromHtml($html);
+            $embeddedEntries = array_map(function (array $entry) use ($globalKeywordFields) {
+                return $this->mergeEntryWithKeywordFields($entry, $globalKeywordFields);
+            }, $embeddedEntries);
+            return $embeddedEntries;
+        }
+
         return [$this->entryFromHtml($html, $sourceUrl)];
     }
 
@@ -516,6 +541,216 @@ class FeedImportProcessorService
         return $entries;
     }
 
+    private function entriesFromEmbeddedJsonScripts(string $html, string $sourceUrl): array
+    {
+        $entries = [];
+
+        try {
+            $previous = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument();
+            $payload = function_exists('mb_convert_encoding')
+                ? mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8')
+                : $html;
+            $dom->loadHTML($payload);
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            $xpath = new \DOMXPath($dom);
+            $scripts = $xpath->query('//script[not(@src)]');
+            if (! $scripts) {
+                return [];
+            }
+
+            foreach ($scripts as $scriptNode) {
+                $scriptBody = trim((string) $scriptNode->textContent);
+                if ($scriptBody === '' || strlen($scriptBody) < 8) {
+                    continue;
+                }
+
+                $type = Str::lower(trim((string) ($scriptNode->attributes?->getNamedItem('type')?->nodeValue ?? '')));
+                $jsonCandidates = $this->extractEmbeddedJsonCandidates($scriptBody, $type);
+                if (count($jsonCandidates) === 0) {
+                    continue;
+                }
+
+                foreach ($jsonCandidates as $jsonCandidate) {
+                    $decoded = json_decode($jsonCandidate, true);
+                    if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                        continue;
+                    }
+
+                    $payloadEntries = $this->entriesFromJsonPayload($decoded, $sourceUrl);
+                    foreach ($payloadEntries as $payloadEntry) {
+                        if (! is_array($payloadEntry)) {
+                            continue;
+                        }
+
+                        $entries[] = $payloadEntry;
+                    }
+                }
+            }
+        } catch (Throwable) {
+            return [];
+        }
+
+        if (count($entries) === 0) {
+            return [];
+        }
+
+        $dedup = [];
+        $result = [];
+        foreach ($entries as $entry) {
+            $hash = sha1(
+                trim((string) ($entry['source_url'] ?? '')) . '|' .
+                trim((string) ($entry['title'] ?? '')) . '|' .
+                trim((string) ($entry['price'] ?? ''))
+            );
+
+            if (isset($dedup[$hash])) {
+                continue;
+            }
+
+            $dedup[$hash] = true;
+            $result[] = $entry;
+        }
+
+        return $result;
+    }
+
+    private function extractEmbeddedJsonCandidates(string $scriptBody, string $scriptType = ''): array
+    {
+        $candidates = [];
+        $trimmed = trim($scriptBody);
+
+        if (str_contains($scriptType, 'json') && $this->looksLikeJson($trimmed)) {
+            $candidates[] = $trimmed;
+        }
+
+        if ($this->looksLikeJson($trimmed)) {
+            $candidates[] = $trimmed;
+        }
+
+        $assignmentPattern = '/(?:window\.)?(?:__NEXT_DATA__|__INITIAL_STATE__|__PRELOADED_STATE__|__NUXT__|INITIAL_STATE|PRELOADED_STATE)\s*=\s*/i';
+        if (preg_match_all($assignmentPattern, $scriptBody, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $match) {
+                $offset = (int) $match[1] + strlen((string) $match[0]);
+                $json = $this->extractBalancedJsonFragment($scriptBody, $offset);
+                if ($json !== null) {
+                    $candidates[] = $json;
+                }
+            }
+        }
+
+        $keywordPattern = '/"(?:products|product|items|offers|itemListElement)"\s*:/i';
+        if (preg_match_all($keywordPattern, $scriptBody, $keywordMatches, PREG_OFFSET_CAPTURE)) {
+            foreach ($keywordMatches[0] as $match) {
+                $keywordOffset = (int) $match[1];
+                $prefix = substr($scriptBody, 0, $keywordOffset);
+                $objStart = strrpos($prefix, '{');
+                if ($objStart === false) {
+                    continue;
+                }
+
+                $json = $this->extractBalancedJsonFragment($scriptBody, $objStart);
+                if ($json !== null) {
+                    $candidates[] = $json;
+                }
+            }
+        }
+
+        $unique = [];
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $hash = sha1($candidate);
+            if (isset($unique[$hash])) {
+                continue;
+            }
+
+            $decoded = json_decode($candidate, true);
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                continue;
+            }
+
+            $unique[$hash] = $candidate;
+        }
+
+        return array_values($unique);
+    }
+
+    private function extractBalancedJsonFragment(string $text, int $offset): ?string
+    {
+        $length = strlen($text);
+        if ($offset < 0 || $offset >= $length) {
+            return null;
+        }
+
+        $start = $offset;
+        while ($start < $length && ! in_array($text[$start], ['{', '['], true)) {
+            $start++;
+        }
+
+        if ($start >= $length) {
+            return null;
+        }
+
+        $stack = [];
+        $inString = false;
+        $escaped = false;
+
+        for ($i = $start; $i < $length; $i++) {
+            $char = $text[$i];
+
+            if ($inString) {
+                if ($escaped) {
+                    $escaped = false;
+                    continue;
+                }
+
+                if ($char === '\\') {
+                    $escaped = true;
+                    continue;
+                }
+
+                if ($char === '"') {
+                    $inString = false;
+                }
+
+                continue;
+            }
+
+            if ($char === '"') {
+                $inString = true;
+                continue;
+            }
+
+            if ($char === '{' || $char === '[') {
+                $stack[] = $char;
+                continue;
+            }
+
+            if ($char === '}' || $char === ']') {
+                $last = array_pop($stack);
+                if ($last === null) {
+                    return null;
+                }
+
+                if (($last === '{' && $char !== '}') || ($last === '[' && $char !== ']')) {
+                    return null;
+                }
+
+                if (count($stack) === 0) {
+                    return substr($text, $start, ($i - $start) + 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function collectJsonLdProductNodes($node, array &$products): void
     {
         if (! is_array($node)) {
@@ -562,7 +797,7 @@ class FeedImportProcessorService
             'highPrice',
         ]);
 
-        $imageList = $this->normalizeImageUrls($node['image'] ?? ($node['images'] ?? null));
+        $imageList = $this->normalizeImageUrls($node['image'] ?? ($node['images'] ?? null), $sourceUrl);
         $videoUrl = $this->recursiveFindScalar($node, ['contentUrl', 'embedUrl', 'video', 'videoUrl', 'video_url']);
 
         $specs = [];
@@ -595,9 +830,9 @@ class FeedImportProcessorService
             'old_price' => $oldPrice,
             'image' => $imageList[0] ?? null,
             'images' => $imageList,
-            'video' => $this->toValidUrl($videoUrl),
+            'video' => $this->toValidUrl($videoUrl, $sourceUrl),
             'specs' => $specs,
-            'source_url' => $this->firstValidUrl($node, ['url']),
+            'source_url' => $this->firstValidUrl($node, ['url'], $sourceUrl),
         ];
     }
 
@@ -681,14 +916,14 @@ class FeedImportProcessorService
                 }
             }
 
-            $images = $this->findMetaContents($xpath, ['og:image', 'twitter:image', 'image']);
+            $images = $this->findMetaContents($xpath, ['og:image', 'twitter:image', 'image'], $sourceUrl);
             $image = $images[0] ?? null;
 
             if (! $image) {
                 $imgNodes = $xpath->query('//img[@src]');
                 if ($imgNodes) {
                     foreach ($imgNodes as $imgNode) {
-                        $src = $this->toValidUrl($imgNode->attributes?->getNamedItem('src')?->nodeValue);
+                        $src = $this->toValidUrl($imgNode->attributes?->getNamedItem('src')?->nodeValue, $sourceUrl);
                         if ($src) {
                             $images[] = $src;
                         }
@@ -731,7 +966,7 @@ class FeedImportProcessorService
             'old_price' => $oldPrice,
             'image' => $image,
             'images' => $images,
-            'video' => $this->toValidUrl($video),
+            'video' => $this->toValidUrl($video, $sourceUrl),
             'specs' => $specs,
             'source_url' => $sourceUrl,
         ];
@@ -1265,7 +1500,7 @@ class FeedImportProcessorService
         return null;
     }
 
-    private function findMetaContents(\DOMXPath $xpath, array $keys): array
+    private function findMetaContents(\DOMXPath $xpath, array $keys, ?string $baseUrl = null): array
     {
         $values = [];
         foreach ($keys as $key) {
@@ -1276,7 +1511,7 @@ class FeedImportProcessorService
             }
 
             foreach ($nodes as $node) {
-                $value = $this->toValidUrl(trim((string) $node->nodeValue));
+                $value = $this->toValidUrl(trim((string) $node->nodeValue), $baseUrl);
                 if ($value) {
                     $values[] = $value;
                 }
@@ -1444,6 +1679,56 @@ class FeedImportProcessorService
         return str_starts_with($content, '<');
     }
 
+    private function isHtmlLikeSource(string $contentType, string $body, string $feedFormat): bool
+    {
+        $type = Str::lower($contentType);
+        $format = Str::lower(trim($feedFormat));
+
+        if (str_contains($type, 'html')) {
+            return true;
+        }
+
+        if ($format === 'api' || $format === '') {
+            if ($this->looksLikeJson($body) || $this->looksLikeXml($body)) {
+                return false;
+            }
+
+            $trimmed = ltrim($body);
+            return str_starts_with($trimmed, '<!doctype') || str_starts_with($trimmed, '<html') || str_contains($trimmed, '<body');
+        }
+
+        return false;
+    }
+
+    private function isEntryMeaningful(array $entry, string $sourceUrl): bool
+    {
+        $title = trim((string) ($entry['title'] ?? ''));
+        $description = trim((string) ($entry['description'] ?? ''));
+        $price = $this->normalizePrice($entry['price'] ?? null);
+        $oldPrice = $this->normalizePrice($entry['old_price'] ?? null);
+        $image = $this->toValidUrl($entry['image'] ?? null, $sourceUrl);
+        $images = $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl);
+        $video = $this->toValidUrl($entry['video'] ?? null, $sourceUrl);
+        $specs = $this->normalizeSpecs($entry['specs'] ?? null);
+
+        $defaultTitle = $this->titleFromUrl($sourceUrl);
+        $isGeneratedTitle = $title !== '' && $this->normalizeKeyword($title) === $this->normalizeKeyword($defaultTitle);
+        $hasUsefulTitle = $title !== '' && ! $this->looksGenericBlockedTitle($title) && ! $isGeneratedTitle && strlen($title) >= 6;
+
+        $defaultDescriptionPrefix = 'automatski uvezeno sa';
+        $normalizedDescription = $this->normalizeKeyword($description);
+        $hasUsefulDescription = $description !== '' &&
+            ! str_starts_with($normalizedDescription, $defaultDescriptionPrefix) &&
+            strlen($description) >= 20;
+
+        $hasPrice = $price !== null || $oldPrice !== null;
+        $hasImage = $image !== null || count($images) > 0;
+        $hasVideo = $video !== null;
+        $hasSpecs = count($specs) > 0;
+
+        return $hasUsefulTitle || $hasUsefulDescription || $hasPrice || $hasImage || $hasVideo || $hasSpecs;
+    }
+
     private function isTerminalStatus(?string $status): bool
     {
         $normalized = Str::lower(trim((string) $status));
@@ -1492,14 +1777,14 @@ class FeedImportProcessorService
         return null;
     }
 
-    private function firstValidUrl(array $node, array $keys): ?string
+    private function firstValidUrl(array $node, array $keys, ?string $baseUrl = null): ?string
     {
         foreach ($keys as $key) {
             if (! array_key_exists($key, $node)) {
                 continue;
             }
 
-            $url = $this->toValidUrl($node[$key]);
+            $url = $this->toValidUrl($node[$key], $baseUrl);
             if ($url) {
                 return $url;
             }
@@ -1508,9 +1793,9 @@ class FeedImportProcessorService
         return null;
     }
 
-    private function extractImageFromNode(array $node): ?string
+    private function extractImageFromNode(array $node, ?string $baseUrl = null): ?string
     {
-        $direct = $this->firstValidUrl($node, ['image', 'image_url', 'thumbnail', 'photo', 'picture', 'main_image']);
+        $direct = $this->firstValidUrl($node, ['image', 'image_url', 'thumbnail', 'photo', 'picture', 'main_image'], $baseUrl);
         if ($direct) {
             return $direct;
         }
@@ -1521,7 +1806,7 @@ class FeedImportProcessorService
             }
 
             foreach ($node[$key] as $candidate) {
-                $url = $this->toValidUrl($candidate);
+                $url = $this->toValidUrl($candidate, $baseUrl);
                 if ($url) {
                     return $url;
                 }
@@ -1531,7 +1816,7 @@ class FeedImportProcessorService
         return null;
     }
 
-    private function toValidUrl($value): ?string
+    private function toValidUrl($value, ?string $baseUrl = null): ?string
     {
         if (! is_scalar($value)) {
             return null;
@@ -1542,7 +1827,63 @@ class FeedImportProcessorService
             return null;
         }
 
-        return filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
+        if (filter_var($url, FILTER_VALIDATE_URL)) {
+            return $url;
+        }
+
+        if (str_starts_with($url, '//')) {
+            $baseScheme = parse_url((string) $baseUrl, PHP_URL_SCHEME) ?: 'https';
+            $candidate = $baseScheme . ':' . $url;
+            return filter_var($candidate, FILTER_VALIDATE_URL) ? $candidate : null;
+        }
+
+        if ($baseUrl && (str_starts_with($url, '/') || ! preg_match('/^[a-z][a-z0-9+\-.]*:/i', $url))) {
+            $absolute = $this->resolveRelativeUrl($baseUrl, $url);
+            return filter_var($absolute, FILTER_VALIDATE_URL) ? $absolute : null;
+        }
+
+        return null;
+    }
+
+    private function resolveRelativeUrl(string $baseUrl, string $relative): string
+    {
+        $relative = trim($relative);
+        if ($relative === '') {
+            return $baseUrl;
+        }
+
+        $baseParts = parse_url($baseUrl);
+        $scheme = $baseParts['scheme'] ?? 'https';
+        $host = $baseParts['host'] ?? '';
+        $port = isset($baseParts['port']) ? ':' . $baseParts['port'] : '';
+        $basePath = $baseParts['path'] ?? '/';
+
+        if ($host === '') {
+            return $relative;
+        }
+
+        if (str_starts_with($relative, '/')) {
+            return $scheme . '://' . $host . $port . $relative;
+        }
+
+        $dir = preg_replace('#/[^/]*$#', '/', $basePath);
+        $dir = $dir ?: '/';
+        $path = $dir . $relative;
+
+        $path = preg_replace('#/\.?/#', '/', $path);
+        while (str_contains($path, '../')) {
+            $path = preg_replace('#/(?!\.\./)[^/]+/\.\./#', '/', $path, 1) ?? $path;
+            if (! str_contains($path, '../')) {
+                break;
+            }
+            // Safety break for malformed paths.
+            if (! preg_match('#/(?!\.\./)[^/]+/\.\./#', $path)) {
+                $path = str_replace('../', '', $path);
+                break;
+            }
+        }
+
+        return $scheme . '://' . $host . $port . $path;
     }
 
     private function titleFromUrl(string $url): string
@@ -1683,7 +2024,7 @@ class FeedImportProcessorService
         return array_values(array_unique(array_slice($lines, 0, 12)));
     }
 
-    private function normalizeImageUrls($images): array
+    private function normalizeImageUrls($images, ?string $baseUrl = null): array
     {
         $urls = [];
 
@@ -1692,7 +2033,7 @@ class FeedImportProcessorService
         }
 
         if (is_string($images)) {
-            $url = $this->toValidUrl($images);
+            $url = $this->toValidUrl($images, $baseUrl);
             return $url ? [$url] : [];
         }
 
@@ -1704,7 +2045,7 @@ class FeedImportProcessorService
             if (is_array($image)) {
                 foreach (['url', 'src', 'image', 'image_url'] as $key) {
                     if (array_key_exists($key, $image)) {
-                        $candidate = $this->toValidUrl($image[$key]);
+                        $candidate = $this->toValidUrl($image[$key], $baseUrl);
                         if ($candidate) {
                             $urls[] = $candidate;
                         }
@@ -1713,7 +2054,7 @@ class FeedImportProcessorService
                 continue;
             }
 
-            $candidate = $this->toValidUrl($image);
+            $candidate = $this->toValidUrl($image, $baseUrl);
             if ($candidate) {
                 $urls[] = $candidate;
             }
@@ -1760,6 +2101,348 @@ class FeedImportProcessorService
         if (count($toInsert) > 0) {
             ItemImages::insert($toInsert);
         }
+    }
+
+    private function syncCustomFieldValuesFromEntry(Item $item, int $categoryId, array $entry, string $description): void
+    {
+        $pairs = $this->buildSpecPairsForFieldMapping($entry, $description);
+        if (count($pairs) === 0) {
+            return;
+        }
+
+        $fields = $this->getCategoryCustomFields($categoryId);
+        if ($fields->isEmpty()) {
+            return;
+        }
+
+        $hasLanguageColumn = Schema::hasColumn('item_custom_field_values', 'language_id');
+        $defaultLangId = 1;
+
+        foreach ($fields as $field) {
+            if (! $field instanceof CustomField) {
+                continue;
+            }
+
+            $rawValue = $this->findBestSpecValueForCustomField($field, $pairs);
+            if ($rawValue === null || trim($rawValue) === '') {
+                continue;
+            }
+
+            $mappedValues = $this->mapRawValueToFieldType($field, $rawValue);
+            if (count($mappedValues) === 0) {
+                continue;
+            }
+
+            $payloadValue = json_encode($mappedValues, JSON_UNESCAPED_UNICODE);
+            if (! is_string($payloadValue) || $payloadValue === '') {
+                continue;
+            }
+
+            $conditions = [
+                'item_id' => $item->id,
+                'custom_field_id' => $field->id,
+            ];
+
+            $attributes = [
+                'value' => $payloadValue,
+            ];
+
+            if ($hasLanguageColumn) {
+                $conditions['language_id'] = $defaultLangId;
+                $attributes['language_id'] = $defaultLangId;
+            }
+
+            ItemCustomFieldValue::updateOrCreate($conditions, $attributes);
+        }
+    }
+
+    private function getCategoryCustomFields(int $categoryId)
+    {
+        if (array_key_exists($categoryId, self::$cachedCategoryFields)) {
+            return self::$cachedCategoryFields[$categoryId];
+        }
+
+        $fields = CustomField::with('translations')
+            ->where('status', 1)
+            ->whereHas('custom_field_category', function ($query) use ($categoryId) {
+                $query->where('category_id', $categoryId);
+            })
+            ->get();
+
+        self::$cachedCategoryFields[$categoryId] = $fields;
+
+        return $fields;
+    }
+
+    private function buildSpecPairsForFieldMapping(array $entry, string $description): array
+    {
+        $pairs = [];
+
+        $specLines = $this->normalizeSpecs($entry['specs'] ?? []);
+        foreach ($specLines as $line) {
+            if (preg_match('/^([^:]{2,120})\s*:\s*(.{1,260})$/u', $line, $matches) === 1) {
+                $pairs[] = [
+                    'key' => trim((string) $matches[1]),
+                    'value' => trim((string) $matches[2]),
+                ];
+            }
+        }
+
+        $keywordFields = $this->extractKeywordFieldsFromText($description);
+        foreach ($this->normalizeSpecs($keywordFields['specs'] ?? []) as $line) {
+            if (preg_match('/^([^:]{2,120})\s*:\s*(.{1,260})$/u', $line, $matches) === 1) {
+                $pairs[] = [
+                    'key' => trim((string) $matches[1]),
+                    'value' => trim((string) $matches[2]),
+                ];
+            }
+        }
+
+        foreach ([
+            'price' => $entry['price'] ?? null,
+            'old_price' => $entry['old_price'] ?? null,
+            'title' => $entry['title'] ?? null,
+            'description' => $entry['description'] ?? null,
+        ] as $key => $value) {
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                $pairs[] = ['key' => $key, 'value' => trim((string) $value)];
+            }
+        }
+
+        $dedup = [];
+        $result = [];
+        foreach ($pairs as $pair) {
+            $key = trim((string) ($pair['key'] ?? ''));
+            $value = trim((string) ($pair['value'] ?? ''));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+
+            $hash = $this->normalizeKeyword($key) . '|' . $this->normalizeKeyword($value);
+            if (isset($dedup[$hash])) {
+                continue;
+            }
+            $dedup[$hash] = true;
+            $result[] = ['key' => $key, 'value' => $value];
+        }
+
+        return $result;
+    }
+
+    private function findBestSpecValueForCustomField(CustomField $field, array $pairs): ?string
+    {
+        $aliases = [$field->name];
+
+        if ($field->relationLoaded('translations')) {
+            foreach ($field->translations as $translation) {
+                $name = trim((string) ($translation->name ?? ''));
+                if ($name !== '') {
+                    $aliases[] = $name;
+                }
+            }
+        }
+
+        $aliases = array_values(array_unique(array_filter($aliases)));
+        if (count($aliases) === 0) {
+            return null;
+        }
+
+        $bestScore = 0;
+        $bestValue = null;
+
+        foreach ($pairs as $pair) {
+            $pairKey = trim((string) ($pair['key'] ?? ''));
+            $pairValue = trim((string) ($pair['value'] ?? ''));
+            if ($pairKey === '' || $pairValue === '') {
+                continue;
+            }
+
+            foreach ($aliases as $alias) {
+                $score = $this->scoreKeywordSimilarity($pairKey, (string) $alias);
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestValue = $pairValue;
+                }
+            }
+        }
+
+        return $bestScore >= 35 ? $bestValue : null;
+    }
+
+    private function scoreKeywordSimilarity(string $a, string $b): int
+    {
+        $na = $this->normalizeKeyword($a);
+        $nb = $this->normalizeKeyword($b);
+
+        if ($na === '' || $nb === '') {
+            return 0;
+        }
+
+        if ($na === $nb) {
+            return 100;
+        }
+
+        if (str_contains($na, $nb) || str_contains($nb, $na)) {
+            return 75;
+        }
+
+        if ($this->keywordMatches($na, $nb)) {
+            return 60;
+        }
+
+        $tokensA = array_values(array_filter(preg_split('/\s+/', $na) ?: []));
+        $tokensB = array_values(array_filter(preg_split('/\s+/', $nb) ?: []));
+        if (count($tokensA) === 0 || count($tokensB) === 0) {
+            return 0;
+        }
+
+        $best = 0;
+        foreach ($tokensA as $ta) {
+            foreach ($tokensB as $tb) {
+                if ($ta === $tb) {
+                    $best = max($best, 50);
+                    continue;
+                }
+
+                $distance = levenshtein($ta, $tb);
+                if ($distance <= 1) {
+                    $best = max($best, 45);
+                } elseif ($distance <= 2 && strlen($tb) >= 6) {
+                    $best = max($best, 38);
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    private function mapRawValueToFieldType(CustomField $field, string $rawValue): array
+    {
+        $type = trim((string) $field->type);
+        $rawValue = trim($rawValue);
+        if ($rawValue === '') {
+            return [];
+        }
+
+        if ($type === 'number') {
+            $number = $this->extractFirstNumericValue($rawValue);
+            return $number !== null ? [(string) $number] : [];
+        }
+
+        if ($type === 'textbox') {
+            $clean = trim($rawValue);
+            if ($clean === '') {
+                return [];
+            }
+
+            if (! empty($field->max_length) && is_numeric($field->max_length)) {
+                $max = (int) $field->max_length;
+                if ($max > 0) {
+                    $clean = substr($clean, 0, $max);
+                }
+            }
+
+            return [$clean];
+        }
+
+        if (in_array($type, ['radio', 'dropdown', 'checkbox'], true)) {
+            $options = $this->extractOptionsForCustomField($field);
+            if (count($options) === 0) {
+                return [$rawValue];
+            }
+
+            if ($type === 'checkbox') {
+                $chunks = preg_split('/[,;|\/]+/', $rawValue) ?: [$rawValue];
+                $selected = [];
+                foreach ($chunks as $chunk) {
+                    $chunk = trim((string) $chunk);
+                    if ($chunk === '') {
+                        continue;
+                    }
+
+                    $match = $this->findBestOptionMatch($chunk, $options);
+                    if ($match !== null) {
+                        $selected[] = $match;
+                    }
+                }
+
+                $selected = array_values(array_unique($selected));
+                return count($selected) > 0 ? $selected : [];
+            }
+
+            $match = $this->findBestOptionMatch($rawValue, $options);
+            return $match !== null ? [$match] : [];
+        }
+
+        return [$rawValue];
+    }
+
+    private function extractOptionsForCustomField(CustomField $field): array
+    {
+        $options = [];
+
+        if (is_array($field->values)) {
+            foreach ($field->values as $value) {
+                $value = trim((string) $value);
+                if ($value !== '') {
+                    $options[] = $value;
+                }
+            }
+        } elseif (is_string($field->values)) {
+            $parts = preg_split('/[|,]/', $field->values) ?: [];
+            foreach ($parts as $part) {
+                $part = trim((string) $part);
+                if ($part !== '') {
+                    $options[] = $part;
+                }
+            }
+        }
+
+        if ($field->relationLoaded('translations')) {
+            foreach ($field->translations as $translation) {
+                $translatedValues = $translation->value ?? null;
+                if (is_array($translatedValues)) {
+                    foreach ($translatedValues as $tv) {
+                        $tv = trim((string) $tv);
+                        if ($tv !== '') {
+                            $options[] = $tv;
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($options));
+    }
+
+    private function findBestOptionMatch(string $value, array $options): ?string
+    {
+        $value = trim($value);
+        if ($value === '' || count($options) === 0) {
+            return null;
+        }
+
+        $best = null;
+        $bestScore = 0;
+        foreach ($options as $option) {
+            $score = $this->scoreKeywordSimilarity($value, (string) $option);
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $option;
+            }
+        }
+
+        return $bestScore >= 38 ? $best : null;
+    }
+
+    private function extractFirstNumericValue(string $value): ?string
+    {
+        if (preg_match('/-?\d+(?:[\.,]\d+)?/', $value, $matches) !== 1) {
+            return null;
+        }
+
+        $number = str_replace(',', '.', (string) $matches[0]);
+        return is_numeric($number) ? (string) $number : null;
     }
 
     private function resolveImageValue($candidate): string
