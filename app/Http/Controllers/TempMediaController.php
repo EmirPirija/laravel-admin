@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Intervention\Image\Facades\Image;
+use Throwable;
 // Koristimo punu putanju za FFMpeg klase da izbjegnemo greske ako nisu importovane
 use FFMpeg\FFMpeg;
 use FFMpeg\Format\Video\X264;
@@ -16,7 +17,7 @@ class TempMediaController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|file|mimes:jpg,jpeg,png,webp|max:10240',
+            'image' => 'required|file|mimes:jpg,jpeg,png,webp,heic,heif|max:20480',
         ]);
 
         $file = $request->file('image');
@@ -24,8 +25,21 @@ class TempMediaController extends Controller
 
         Storage::disk('public')->makeDirectory("tmp/images/{$userId}");
 
-        $img = Image::make($file->getPathname());
-        $img->orientate();
+        try {
+            $img = Image::make($file->getPathname());
+            $img->orientate();
+        } catch (Throwable $e) {
+            Log::warning('TempMedia uploadImage decode failed', [
+                'mime' => $file->getMimeType(),
+                'name' => $file->getClientOriginalName(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Format slike nije podržan na serveru. Sačuvajte sliku kao JPG/PNG i pokušajte ponovo.',
+            ], 422);
+        }
 
         // --- WATERMARK LOGIKA (30% width, 50% opacity, Centered) ---
         $watermarkPath = public_path('lmx-watermark.png');
