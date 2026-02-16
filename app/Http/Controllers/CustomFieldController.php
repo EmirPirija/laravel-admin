@@ -36,7 +36,11 @@ class CustomFieldController extends Controller {
 
     public function index() {
         ResponseService::noAnyPermissionThenRedirect(['custom-field-list', 'custom-field-create', 'custom-field-update', 'custom-field-delete']);
-        $categories = Category::get();
+        $categories = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->orderBy('name')
+            ->get()
+            ->each->setAppends([]);
         return view('custom-fields.index', compact('categories'));
     }
 
@@ -47,6 +51,8 @@ class CustomFieldController extends Controller {
 
         $cat_id = $request->id ?? 0;
         $categories = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->orderBy('name')
             ->get()
             ->each->setAppends([]);
 
@@ -80,7 +86,11 @@ class CustomFieldController extends Controller {
             ->get();
     
         // categories tree (same as normal editor)
-        $all = Category::without('translations')->get()->each->setAppends([]);
+        $all = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->orderBy('name')
+            ->get()
+            ->each->setAppends([]);
         $all = HelperService::buildNestedChildSubcategoryObject($all);
         $categories = $all->whereNull('parent_category_id');
     
@@ -207,7 +217,7 @@ class CustomFieldController extends Controller {
                 $cf->update($update);
     
                 // categories faster
-                $selectedCats = array_map('intval', $data['selected_categories'] ?? []);
+                $selectedCats = $this->normalizeIdArray($data['selected_categories'] ?? []);
                 $cf->categories()->sync($selectedCats);
     
                 // translations
@@ -220,7 +230,7 @@ class CustomFieldController extends Controller {
                         $trValues = $data['values'][$langId] ?? null; // can be null/empty
                     }
     
-                    CustomFieldTranslation::updateOrCreate(
+                    CustomFieldsTranslation::updateOrCreate(
                         ['custom_field_id' => $cf->id, 'language_id' => $langId],
                         ['name' => $trName, 'value' => $trValues]
                     );
@@ -314,15 +324,8 @@ class CustomFieldController extends Controller {
             }
 
             $customField = CustomField::create($customFieldData);
-
-            $categoryMappings = collect($request->selected_categories)->map(function ($categoryId) use ($customField) {
-                return [
-                    'category_id'      => $categoryId,
-                    'custom_field_id'  => $customField->id
-                ];
-            })->toArray();
-
-            CustomFieldCategory::upsert($categoryMappings, ['custom_field_id', 'category_id']);
+            $selectedCategoryIds = $this->normalizeIdArray($request->input('selected_categories', []));
+            $customField->categories()->sync($selectedCategoryIds);
 
             foreach ($otherLanguages as $lang) {
                 $langId = $lang->id;
@@ -347,70 +350,103 @@ class CustomFieldController extends Controller {
         }
     }
 
-
-
    public function show(Request $request) {
         try {
             ResponseService::noPermissionThenSendJson('custom-field-list');
-            $offset = $request->input('offset', 0);
-            $limit = $request->input('limit', 15);
-            $sort = $request->input('sort', 'id');
-            $order = $request->input('order', 'DESC');
 
-            $sql = CustomField::orderBy($sort, $order);
-            $sql->with(['categories:id,name,parent_category_id']);
-              if (!empty($request->filter)) {
-            // Fix escaped JSON if middleware or frontend sent &quot; instead of "
-            $filterString = html_entity_decode($request->filter, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        
-            try {
-                $filterData = json_decode($filterString, false, 512, JSON_THROW_ON_ERROR);
-                $sql = $sql->filter($filterData);
-            } catch (\JsonException $e) {
-                return response()->json(['error' => 'Invalid JSON format in filter parameter'], 400);
+            $offset = max(0, (int)$request->input('offset', 0));
+            $limit = min(200, max(5, (int)$request->input('limit', 15)));
+            $sort = $this->sanitizeSortColumn($request->input('sort', 'id'));
+            $order = strtoupper((string)$request->input('order', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+
+            $sql = CustomField::query()
+                ->withoutGlobalScope('priority')
+                ->select([
+                    'custom_fields.id',
+                    'custom_fields.name',
+                    'custom_fields.type',
+                    'custom_fields.image',
+                    'custom_fields.required',
+                    'custom_fields.status',
+                    'custom_fields.priority',
+                ])
+                ->withCount('categories');
+
+            if (!empty($request->filter)) {
+                $filterString = html_entity_decode((string)$request->filter, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                try {
+                    $filterData = json_decode($filterString, false, 512, JSON_THROW_ON_ERROR);
+                    $sql->filter($filterData);
+                } catch (\JsonException) {
+                    return response()->json(['error' => 'Invalid JSON format in filter parameter'], 400);
+                }
             }
-        }
 
             if (!empty($request->search)) {
-                $sql = $sql->search($request->search);
+                $sql->search((string)$request->search);
             }
-            $total = $sql->count();
-            $result = $sql->skip($offset)->take($limit)->get();
-            $result->each(function ($field) {
-                $field->categories->each(function ($cat) {
-                    $cat->full_path = $cat->full_path; // accessor already generates it
-                });
-            });
-            $bulkData = array();
-            $bulkData['total'] = $total;
-            $rows = array();
 
+            $total = (clone $sql)->count();
+
+            $sql->addSelect([
+                'first_category_name' => DB::table('custom_field_categories as cfc')
+                    ->join('categories as c', 'c.id', '=', 'cfc.category_id')
+                    ->whereColumn('cfc.custom_field_id', 'custom_fields.id')
+                    ->orderBy('cfc.id')
+                    ->limit(1)
+                    ->select('c.name'),
+            ]);
+            $result = $sql
+                ->orderBy($sort, $order)
+                ->skip($offset)
+                ->take($limit)
+                ->get();
+
+            $rows = [];
             foreach ($result as $row) {
                 $operate = '';
                 if (Auth::user()->can('custom-field-update')) {
                     $operate .= BootstrapTableService::editButton(route('custom-fields.edit', $row->id));
                 }
-
                 if (Auth::user()->can('custom-field-delete')) {
                     $operate .= BootstrapTableService::deleteButton(route('custom-fields.destroy', $row->id));
                 }
-                $tempRow = $row->toArray();
-                $tempRow['operate'] = $operate;
-                $tempRow['category_names'] = array_column($row->categories->toArray(), 'full_path');
 
+                $categoryCount = (int)($row->categories_count ?? 0);
+                $firstCategoryName = trim((string)($row->first_category_name ?? ''));
+                if ($categoryCount <= 0) {
+                    $categorySummary = '-';
+                } elseif ($categoryCount === 1) {
+                    $categorySummary = $firstCategoryName !== '' ? $firstCategoryName : __('1 category');
+                } else {
+                    $restCount = $categoryCount - 1;
+                    $categorySummary = $firstCategoryName !== ''
+                        ? sprintf('%s (+%d)', $firstCategoryName, $restCount)
+                        : sprintf(__('%d categories'), $categoryCount);
+                }
 
-
-                $rows[] = $tempRow;
+                $rows[] = [
+                    'id' => $row->id,
+                    'image' => $row->image,
+                    'name' => $row->name,
+                    'type' => $row->type,
+                    'required' => (int)$row->required,
+                    'status' => (int)$row->status,
+                    'priority' => $row->priority,
+                    'categories_count' => $categoryCount,
+                    'category_names' => $categorySummary,
+                    'operate' => $operate,
+                ];
             }
-            $bulkData['rows'] = $rows;
 
-
-            return response()->json($bulkData);
+            return response()->json([
+                'total' => $total,
+                'rows' => $rows,
+            ]);
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e, "CustomFieldController -> show");
             ResponseService::errorResponse('Something Went Wrong');
         }
-
     }
 
 
@@ -433,24 +469,21 @@ class CustomFieldController extends Controller {
             ];
         }
        $selected_categories = $custom_field->custom_field_category->pluck('category_id')->toArray();
-
         $selected_all_categories = $selected_categories;
+        $parentMap = $this->getCategoryParentMap();
 
         foreach ($selected_categories as $catId) {
-            $categoryId = $catId;
-            while ($categoryId) {
-                $parent = Category::without('translations')->where('id', $categoryId)->value('parent_category_id');
-                if ($parent) {
-                    $selected_all_categories[] = $parent;
-                    $categoryId = $parent;
-                } else {
-                    $categoryId = null;
-                }
+            $categoryId = (int)$catId;
+            while ($categoryId && !empty($parentMap[$categoryId])) {
+                $categoryId = (int)$parentMap[$categoryId];
+                $selected_all_categories[] = $categoryId;
             }
         }
 
         $selected_all_categories = array_unique($selected_all_categories);
          $categories = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->orderBy('name')
             ->get()
             ->each->setAppends([]);
 
@@ -515,7 +548,7 @@ class CustomFieldController extends Controller {
 
         try {
             DB::beginTransaction();
-            $custom_fields = CustomField::with('custom_field_category')->findOrFail($id);
+            $custom_fields = CustomField::findOrFail($id);
             
             $data = [
                 'name'       => $request->input("name.$defaultLangId"),
@@ -539,32 +572,8 @@ class CustomFieldController extends Controller {
 
             $custom_fields->update($data);
 
-            $old_selected_category = $custom_fields->custom_field_category->pluck('category_id')->toArray();
-            $new_selected_category = $request->selected_categories;
-
-            // If category exists in old category array but not in new category array then we need to delete that category
-            if ($new_selected_category) {
-                foreach (array_diff($old_selected_category, $new_selected_category) as $category_id) {
-                    $custom_fields->custom_field_category->first(function ($data) use ($category_id) {
-                        return $data->category_id == $category_id;
-                    })->delete();
-                }
-
-                $newSelectedCategory = [];
-                //If category exists in new category array but not existing in old category array then we need to add that category
-                foreach (array_diff($new_selected_category, $old_selected_category) as $category_id) {
-                    $newSelectedCategory[] = [
-                        'category_id'     => $category_id,
-                        'custom_field_id' => $id,
-                        'created_at'      => time(),
-                        'updated_at'      => time(),
-                    ];
-                }
-
-                if (count($newSelectedCategory) > 0) {
-                    CustomFieldCategory::insert($newSelectedCategory);
-                }
-            }
+            $selectedCategoryIds = $this->normalizeIdArray($request->input('selected_categories', []));
+            $custom_fields->categories()->sync($selectedCategoryIds);
 
             $originalValues = $request->input("values.$defaultLangId", []);
             
@@ -1231,6 +1240,33 @@ class CustomFieldController extends Controller {
         }
         
         return response()->download($pdfPath, 'custom-fields-bulk-upload-instructions.pdf');
+    }
+
+    private function normalizeIdArray(array|string|null $value): array
+    {
+        if (is_string($value)) {
+            $value = array_filter(explode(',', $value));
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($value as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $normalized[] = $id;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    private function sanitizeSortColumn(string $sort): string
+    {
+        $allowed = ['id', 'name', 'type', 'status', 'required', 'priority', 'categories_count'];
+        return in_array($sort, $allowed, true) ? $sort : 'id';
     }
 
     private function getCategoryParentMap(): array

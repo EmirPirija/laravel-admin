@@ -845,7 +845,9 @@ public function bulkUpdate(Request $request)
 
     public function customFields($id) {
         ResponseService::noPermissionThenRedirect('custom-field-list');
-        $category = Category::find($id);
+        $category = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->findOrFail($id);
         $p_id = $category->parent_category_id;
         $cat_id = $category->id;
         $category_name = $category->name;
@@ -855,38 +857,132 @@ public function bulkUpdate(Request $request)
 
     public function getCategoryCustomFields(Request $request, $id) {
         ResponseService::noPermissionThenSendJson('custom-field-list');
-        $offset = $request->input('offset', 0);
-        $limit = $request->input('limit', 10);
-        $sort = $request->input('sort', 'id');
-        $order = $request->input('order', 'ASC');
+        $offset = max(0, (int)$request->input('offset', 0));
+        $limit = min(200, max(5, (int)$request->input('limit', 10)));
+        $sort = $this->sanitizeCustomFieldSort((string)$request->input('sort', 'id'));
+        $order = strtoupper((string)$request->input('order', 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
 
-        $sql = CustomField::whereHas('categories', static function ($q) use ($id) {
-            $q->where('category_id', $id);
-        })->orderBy($sort, $order);
+        $sql = CustomField::query()
+            ->withoutGlobalScope('priority')
+            ->select([
+                'custom_fields.id',
+                'custom_fields.name',
+                'custom_fields.type',
+                'custom_fields.image',
+                'custom_fields.required',
+                'custom_fields.status',
+                'custom_fields.priority',
+            ])
+            ->whereHas('categories', static function ($q) use ($id) {
+                $q->where('category_id', (int)$id);
+            });
 
-        if (isset($request->search)) {
-            $sql->search($request->search);
+        if (!empty($request->search)) {
+            $sql->search((string)$request->search);
         }
 
-        $sql->take($limit);
-        $total = $sql->count();
-        $res = $sql->skip($offset)->take($limit)->get();
-        $bulkData = array();
-        $rows = array();
-        $tempRow['type'] = '';
+        $total = (clone $sql)->count();
+        $res = $sql->orderBy($sort, $order)->skip($offset)->take($limit)->get();
 
-
+        $rows = [];
         foreach ($res as $row) {
-            $tempRow = $row->toArray();
-//            $operate = BootstrapTableService::editButton(route('custom-fields.edit', $row->id));
             $operate = BootstrapTableService::deleteButton(route('category.custom-fields.destroy', [$id, $row->id]));
-            $tempRow['operate'] = $operate;
-            $rows[] = $tempRow;
+            $rows[] = [
+                'id' => $row->id,
+                'image' => $row->image,
+                'name' => $row->name,
+                'type' => $row->type,
+                'required' => (int)$row->required,
+                'status' => (int)$row->status,
+                'priority' => $row->priority,
+                'operate' => $operate,
+            ];
         }
 
-        $bulkData['rows'] = $rows;
-        $bulkData['total'] = $total;
-        return response()->json($bulkData);
+        return response()->json([
+            'rows' => $rows,
+            'total' => $total,
+        ]);
+    }
+
+    public function searchAssignableCustomFields(Request $request, $id)
+    {
+        ResponseService::noPermissionThenSendJson('custom-field-list');
+
+        $categoryId = (int)$id;
+        $term = trim((string)$request->input('q', $request->input('search', '')));
+        $limit = min(50, max(5, (int)$request->input('limit', 20)));
+
+        $query = CustomField::query()
+            ->withoutGlobalScope('priority')
+            ->select('id', 'name', 'type', 'status')
+            ->whereNotExists(function ($sub) use ($categoryId) {
+                $sub->select(DB::raw(1))
+                    ->from('custom_field_categories as cfc')
+                    ->whereColumn('cfc.custom_field_id', 'custom_fields.id')
+                    ->where('cfc.category_id', $categoryId);
+            });
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'LIKE', '%' . $term . '%')
+                    ->orWhere('type', 'LIKE', '%' . $term . '%');
+            });
+        }
+
+        $rows = $query
+            ->orderByDesc('id')
+            ->take($limit)
+            ->get();
+
+        $items = $rows->map(function ($row) {
+            $statusLabel = (int)$row->status === 1 ? 'Aktivno' : 'Neaktivno';
+            return [
+                'id' => (int)$row->id,
+                'text' => sprintf('#%d • %s (%s, %s)', (int)$row->id, (string)$row->name, (string)$row->type, $statusLabel),
+            ];
+        })->values();
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
+
+    public function assignCustomFields(Request $request, $id)
+    {
+        ResponseService::noPermissionThenSendJson('custom-field-update');
+
+        $categoryId = (int)$id;
+        Category::without('translations')->select('id')->findOrFail($categoryId);
+
+        $customFieldIds = $this->normalizeIdArray($request->input('custom_field_ids', []));
+        if (empty($customFieldIds)) {
+            ResponseService::validationError('Odaberi najmanje jedno custom polje.');
+        }
+
+        $existingIds = CustomField::query()
+            ->withoutGlobalScope('priority')
+            ->whereIn('id', $customFieldIds)
+            ->pluck('id')
+            ->map(fn($value) => (int)$value)
+            ->toArray();
+
+        if (empty($existingIds)) {
+            ResponseService::validationError('Odabrana custom polja ne postoje.');
+        }
+
+        $now = now();
+        $rows = array_map(static function ($fieldId) use ($categoryId, $now) {
+            return [
+                'category_id' => $categoryId,
+                'custom_field_id' => $fieldId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }, $existingIds);
+
+        CustomFieldCategory::upsert($rows, ['category_id', 'custom_field_id'], ['updated_at']);
+        ResponseService::successResponse('Custom polja su uspješno dodijeljena kategoriji.');
     }
 
     public function destroyCategoryCustomField($categoryID, $customFieldID) {
@@ -930,6 +1026,33 @@ public function bulkUpdate(Request $request)
             ResponseService::logErrorRedirect($th);
             ResponseService::errorResponse('Something Went Wrong');
         }
+    }
+
+    private function sanitizeCustomFieldSort(string $sort): string
+    {
+        $allowed = ['id', 'name', 'type', 'status', 'required', 'priority'];
+        return in_array($sort, $allowed, true) ? $sort : 'id';
+    }
+
+    private function normalizeIdArray(array|string|null $value): array
+    {
+        if (is_string($value)) {
+            $value = array_filter(explode(',', $value));
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($value as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $normalized[] = $id;
+            }
+        }
+
+        return array_values(array_unique($normalized));
     }
 
     private function forgetAdminCategoryCaches(): void

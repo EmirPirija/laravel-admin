@@ -177,6 +177,8 @@ Route::prefix('category/port')->group(function () {
         Route::post('/bulk-edit', [CategoryController::class, 'bulkUpdate'])->name('category.bulk-update');
         Route::get('/{id}/custom-fields', [CategoryController::class, 'customFields'])->name('category.custom-fields');
         Route::get('/{id}/custom-fields/show', [CategoryController::class, 'getCategoryCustomFields'])->name('category.custom-fields.show');
+        Route::get('/{id}/custom-fields/search', [CategoryController::class, 'searchAssignableCustomFields'])->name('category.custom-fields.search');
+        Route::post('/{id}/custom-fields/assign', [CategoryController::class, 'assignCustomFields'])->name('category.custom-fields.assign');
         Route::delete('/{id}/custom-fields/{customFieldID}/delete', [CategoryController::class, 'destroyCategoryCustomField'])->name('category.custom-fields.destroy');
         Route::get('/categories/order', [CategoryController::class, 'categoriesReOrder'])->name('category.order');
         Route::post('categories/change-order', [CategoryController::class, 'updateOrder'])->name('category.order.change');
