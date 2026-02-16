@@ -64,10 +64,16 @@ class ItemCollection extends ResourceCollection {
                 $response[$key]['video_thumbnail'] = $collection->video_thumbnail;
                 $response[$key]['video_duration'] = $collection->video_duration;
  
-                // Feature status
-                $response[$key]['is_feature'] = $collection->status == "approved" && $collection->relationLoaded('featured_items')
-                    ? $collection->featured_items->isNotEmpty()
-                    : false;
+                // Feature status + placement metadata
+                $activeFeaturedItem = null;
+                if ($collection->status == "approved" && $collection->relationLoaded('featured_items') && $collection->featured_items->isNotEmpty()) {
+                    $activeFeaturedItem = $collection->featured_items->sortByDesc('updated_at')->first();
+                }
+
+                $response[$key]['is_feature'] = ! is_null($activeFeaturedItem);
+                $response[$key]['featured_placement'] = $activeFeaturedItem?->placement;
+                $response[$key]['positions'] = $activeFeaturedItem?->positions ?? $activeFeaturedItem?->placement;
+                $response[$key]['featured_duration_days'] = $activeFeaturedItem?->duration_days;
  
                 // Favourites
                 if ($collection->relationLoaded('favourites')) {

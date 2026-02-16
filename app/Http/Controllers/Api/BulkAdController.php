@@ -376,6 +376,9 @@ class BulkAdController extends Controller
                 ],
                 [
                     'user_purchased_package_id' => $userPackage->id,
+                    'placement' => $placement,
+                    'positions' => $placement,
+                    'duration_days' => $durationDays,
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
                 ]
@@ -424,4 +427,3 @@ class BulkAdController extends Controller
             ->all();
     }
 }
-

@@ -17,6 +17,13 @@ class FeaturedItems extends Model {
         'item_id',
         'package_id',
         'user_purchased_package_id',
+        'placement',
+        'positions',
+        'duration_days',
+    ];
+
+    protected $casts = [
+        'duration_days' => 'integer',
     ];
 
     public function user() {

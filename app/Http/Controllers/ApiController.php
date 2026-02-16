@@ -887,6 +887,9 @@ public function getItem(Request $request)
         'sort_by' => 'nullable|in:new-to-old,old-to-new,price-high-to-low,price-low-to-high,popular_items',
         'posted_since' => 'nullable|in:all-time,today,within-1-week,within-2-week,within-1-month,within-3-month',
         'current_page' => 'nullable|string',
+        'is_feature' => 'nullable',
+        'placement' => 'nullable|in:category,home,category_home',
+        'positions' => 'nullable|in:category,home,category_home',
     ]);
  
     if ($validator->fails()) {
@@ -943,6 +946,25 @@ public function getItem(Request $request)
             })->when($request->slug, function ($sql) use ($request) {
                 return $sql->where('slug', $request->slug);
             });
+
+        $normalizePlacement = static function ($raw) {
+            $value = strtolower(trim((string) $raw));
+            return in_array($value, ['category', 'home', 'category_home'], true) ? $value : null;
+        };
+
+        $placementFilter = $normalizePlacement($request->input('placement') ?: $request->input('positions'));
+
+        $applyFeaturedPlacement = static function ($query) use ($placementFilter) {
+            $query->whereHas('featured_items', function ($featuredQuery) use ($placementFilter) {
+                if ($placementFilter === 'home') {
+                    $featuredQuery->whereIn('placement', ['home', 'category_home']);
+                } elseif ($placementFilter === 'category') {
+                    $featuredQuery->whereIn('placement', ['category', 'category_home']);
+                } elseif ($placementFilter === 'category_home') {
+                    $featuredQuery->where('placement', 'category_home');
+                }
+            });
+        };
  
         //            // Other users should only get approved items
         //            if (!Auth::check()) {
@@ -978,10 +1000,33 @@ public function getItem(Request $request)
                 $sql->onlyTrashed()->getNonExpiredItems();
             } elseif ($request->status == 'featured') {
                 //If status is featured then display only featured items
-                $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems();
+                $sql->where('status', 'approved');
+                $applyFeaturedPlacement($sql);
+                $sql->getNonExpiredItems();
             } elseif ($request->status == 'expired') {
                 $sql->whereNotNull('expiry_date')
                     ->where('expiry_date', '<', Carbon::now())->whereNull('deleted_at');
+            }
+        }
+
+        $isFeatureInput = $request->input('is_feature');
+        if ($isFeatureInput !== null && $isFeatureInput !== '') {
+            $featureFlag = filter_var($isFeatureInput, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($featureFlag === null) {
+                $normalizedFeatureFlag = strtolower(trim((string) $isFeatureInput));
+                if (in_array($normalizedFeatureFlag, ['1', 'yes', 'on'], true)) {
+                    $featureFlag = true;
+                } elseif (in_array($normalizedFeatureFlag, ['0', 'no', 'off'], true)) {
+                    $featureFlag = false;
+                }
+            }
+
+            if ($featureFlag === true) {
+                $sql->where('status', 'approved');
+                $applyFeaturedPlacement($sql);
+            } elseif ($featureFlag === false) {
+                $sql->whereDoesntHave('featured_items');
             }
         }
  
@@ -1028,7 +1073,11 @@ public function getItem(Request $request)
                     ? $sql // User sort already applied, skip feature section sort
                     : $sql->reorder()->withCount('favourites'),//->orderBy('favourites_count', 'DESC'),
  
-                'featured_ads' => $sql->where('status', 'approved')->has('featured_items')->getNonExpiredItems(),
+                'featured_ads' => (static function () use ($sql, $applyFeaturedPlacement) {
+                    $query = $sql->where('status', 'approved');
+                    $applyFeaturedPlacement($query);
+                    return $query->getNonExpiredItems();
+                })(),
             };
         }
  
@@ -2523,14 +2572,31 @@ public function getItem(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'item_id' => 'required|integer',
+            'placement' => 'nullable|in:category,home,category_home',
+            'positions' => 'nullable|in:category,home,category_home',
+            'duration_days' => 'nullable|integer|min:1|max:365',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            DB::commit();
+            DB::beginTransaction();
             $user = Auth::user();
+            if (! $user) {
+                DB::rollBack();
+                return ResponseService::errorResponse(__('Unauthenticated user'));
+            }
+
             Item::where('status', 'approved')->findOrFail($request->item_id);
+
+            $placement = strtolower(trim((string) ($request->input('placement') ?: $request->input('positions') ?: 'category_home')));
+            if (! in_array($placement, ['category', 'home', 'category_home'], true)) {
+                $placement = 'category_home';
+            }
+
+            $durationDays = (int) $request->input('duration_days', 30);
+            $durationDays = max(1, min($durationDays, 365));
+
             $user_package = UserPurchasedPackage::onlyActive()
                 ->where(['user_id' => $user->id])
                 ->with('package')
@@ -2540,11 +2606,32 @@ public function getItem(Request $request)
                 ->first();
 
             if (! $user_package) {
+                DB::rollBack();
                 return ResponseService::errorResponse(__('You need to purchase a Featured Ad plan first.'));
             }
+
+            $startDate = Carbon::today();
+            $requestedEndDate = Carbon::today()->addDays($durationDays);
+            $packageEndDate = ! empty($user_package->end_date) ? Carbon::parse($user_package->end_date) : null;
+            $endDate = $packageEndDate ? $requestedEndDate->min($packageEndDate) : $requestedEndDate;
+
             $featuredItems = FeaturedItems::where(['item_id' => $request->item_id, 'package_id' => $user_package->package_id])->first();
             if (! empty($featuredItems)) {
-                ResponseService::errorResponse(__('Advertisement is already featured'));
+                $featuredItems->update([
+                    'placement' => $placement,
+                    'positions' => $placement,
+                    'duration_days' => $durationDays,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                ]);
+
+                DB::commit();
+                return ResponseService::successResponse(__('Featured Advertisement Updated Successfully'), [
+                    'placement' => $placement,
+                    'positions' => $placement,
+                    'duration_days' => $durationDays,
+                    'featured_until' => $endDate->toDateString(),
+                ]);
             }
 
             $user_package->used_limit++;
@@ -2554,12 +2641,20 @@ public function getItem(Request $request)
                 'item_id' => $request->item_id,
                 'package_id' => $user_package->package_id,
                 'user_purchased_package_id' => $user_package->id,
-                'start_date' => date('Y-m-d'),
-                'end_date' => $user_package->end_date,
+                'placement' => $placement,
+                'positions' => $placement,
+                'duration_days' => $durationDays,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
             ]);
 
             DB::commit();
-            ResponseService::successResponse(__('Featured Advertisement Created Successfully'));
+            return ResponseService::successResponse(__('Featured Advertisement Created Successfully'), [
+                'placement' => $placement,
+                'positions' => $placement,
+                'duration_days' => $durationDays,
+                'featured_until' => $endDate->toDateString(),
+            ]);
         } catch (Throwable $th) {
             DB::rollBack();
             ResponseService::logErrorResponse($th, 'API Controller -> createAdvertisement');
