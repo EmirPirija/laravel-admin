@@ -31,6 +31,25 @@ class ItemCollection extends ResourceCollection {
             $currentLanguage = Language::where('code', $contentLangCode)->first();
             $currentLangId = $currentLanguage->id ?? 1;
             $defaultLangId = 1;
+
+            $normalizePlacement = static function ($raw) {
+                $value = strtolower(trim((string) $raw));
+                return in_array($value, ['category', 'home', 'category_home'], true) ? $value : null;
+            };
+
+            $requestedPlacementContext = $normalizePlacement(
+                $request->input('placement') ?: $request->input('positions')
+            );
+            $derivedPlacementContext = null;
+            if (! $requestedPlacementContext) {
+                $currentPage = strtolower(trim((string) $request->input('current_page')));
+                if ($currentPage === 'home') {
+                    $derivedPlacementContext = 'home';
+                } elseif ($request->filled('category_id') || $request->filled('category_slug')) {
+                    $derivedPlacementContext = 'category';
+                }
+            }
+            $placementContext = $requestedPlacementContext ?: $derivedPlacementContext;
  
             foreach ($this->collection as $key => $collection) {
  
@@ -64,16 +83,101 @@ class ItemCollection extends ResourceCollection {
                 $response[$key]['video_thumbnail'] = $collection->video_thumbnail;
                 $response[$key]['video_duration'] = $collection->video_duration;
  
-                // Feature status + placement metadata
-                $activeFeaturedItem = null;
-                if ($collection->status == "approved" && $collection->relationLoaded('featured_items') && $collection->featured_items->isNotEmpty()) {
-                    $activeFeaturedItem = $collection->featured_items->sortByDesc('updated_at')->first();
+                // Feature status + placement metadata (context-aware)
+                $statusValue = strtolower((string) ($collection->status ?? ''));
+                $isStatusEligibleForFeatured = in_array($statusValue, ['approved', 'featured', 'reserved'], true);
+                $featuredRows = ($isStatusEligibleForFeatured && $collection->relationLoaded('featured_items'))
+                    ? $collection->featured_items
+                    : collect();
+
+                $sortFeaturedRows = static function ($rows) {
+                    return $rows->sortByDesc(function ($row) {
+                        return Carbon::parse(
+                            $row->updated_at
+                                ?: $row->created_at
+                                ?: $row->end_date
+                                ?: $row->start_date
+                                ?: '1970-01-01 00:00:00'
+                        )->getTimestamp();
+                    });
+                };
+                $resolveFeaturedRowPlacement = static function ($row) use ($normalizePlacement) {
+                    if (! $row) {
+                        return null;
+                    }
+
+                    return $normalizePlacement($row->placement ?: $row->positions);
+                };
+
+                $sortedFeaturedRows = $featuredRows->isNotEmpty() ? $sortFeaturedRows($featuredRows) : collect();
+                $activeFeaturedItem = $sortedFeaturedRows->first();
+                $isFeatureAny = ! is_null($activeFeaturedItem);
+
+                $isFeatureHome = $sortedFeaturedRows->contains(function ($row) use ($resolveFeaturedRowPlacement) {
+                    return in_array($resolveFeaturedRowPlacement($row), ['home', 'category_home'], true);
+                });
+                $isFeatureCategory = $sortedFeaturedRows->contains(function ($row) use ($resolveFeaturedRowPlacement) {
+                    return in_array($resolveFeaturedRowPlacement($row), ['category', 'category_home'], true);
+                });
+
+                if ($placementContext === 'home') {
+                    $activeFeaturedItem = $sortedFeaturedRows->first(function ($row) use ($resolveFeaturedRowPlacement) {
+                        return in_array($resolveFeaturedRowPlacement($row), ['home', 'category_home'], true);
+                    }) ?: $activeFeaturedItem;
+                } elseif ($placementContext === 'category') {
+                    $activeFeaturedItem = $sortedFeaturedRows->first(function ($row) use ($resolveFeaturedRowPlacement) {
+                        return in_array($resolveFeaturedRowPlacement($row), ['category', 'category_home'], true);
+                    }) ?: $activeFeaturedItem;
+                } elseif ($placementContext === 'category_home') {
+                    $activeFeaturedItem = $sortedFeaturedRows->first(function ($row) use ($resolveFeaturedRowPlacement) {
+                        return $resolveFeaturedRowPlacement($row) === 'category_home';
+                    }) ?: $activeFeaturedItem;
                 }
 
-                $response[$key]['is_feature'] = ! is_null($activeFeaturedItem);
-                $response[$key]['featured_placement'] = $activeFeaturedItem?->placement;
-                $response[$key]['positions'] = $activeFeaturedItem?->positions ?? $activeFeaturedItem?->placement;
+                $featuredPlacement = $resolveFeaturedRowPlacement($activeFeaturedItem) ?: ($isFeatureAny ? 'category_home' : null);
+
+                $isFeatureForContext = $isFeatureAny;
+                if ($placementContext === 'home') {
+                    $isFeatureForContext = $isFeatureHome;
+                } elseif ($placementContext === 'category') {
+                    $isFeatureForContext = $isFeatureCategory;
+                } elseif ($placementContext === 'category_home') {
+                    $isFeatureForContext = $isFeatureAny && $featuredPlacement === 'category_home';
+                }
+
+                $featuredEndDate = null;
+                if (! empty($activeFeaturedItem?->end_date)) {
+                    $featuredEndDate = Carbon::parse($activeFeaturedItem->end_date)->endOfDay();
+                }
+
+                $featuredSecondsLeft = null;
+                $featuredDaysLeft = null;
+                $featuredHoursLeft = null;
+                if ($featuredEndDate) {
+                    $featuredSecondsLeft = Carbon::now()->diffInSeconds($featuredEndDate, false);
+                    if ($featuredSecondsLeft > 0) {
+                        $featuredDaysLeft = (int) ceil($featuredSecondsLeft / 86400);
+                        $featuredHoursLeft = (int) ceil($featuredSecondsLeft / 3600);
+                    } else {
+                        $featuredSecondsLeft = 0;
+                        $featuredDaysLeft = 0;
+                        $featuredHoursLeft = 0;
+                    }
+                }
+
+                $response[$key]['is_feature'] = $isFeatureForContext;
+                $response[$key]['is_feature_any'] = $isFeatureAny;
+                $response[$key]['is_feature_home'] = $isFeatureHome;
+                $response[$key]['is_feature_category'] = $isFeatureCategory;
+                $response[$key]['featured_placement'] = $featuredPlacement;
+                $response[$key]['positions'] = $activeFeaturedItem?->positions ?? $featuredPlacement;
                 $response[$key]['featured_duration_days'] = $activeFeaturedItem?->duration_days;
+                $response[$key]['featured_start_date'] = $activeFeaturedItem?->start_date;
+                $response[$key]['featured_end_date'] = $activeFeaturedItem?->end_date;
+                $response[$key]['featured_expires_at'] = $featuredEndDate?->toIso8601String();
+                $response[$key]['featured_seconds_left'] = $featuredSecondsLeft;
+                $response[$key]['featured_days_left'] = $featuredDaysLeft;
+                $response[$key]['featured_hours_left'] = $featuredHoursLeft;
  
                 // Favourites
                 if ($collection->relationLoaded('favourites')) {

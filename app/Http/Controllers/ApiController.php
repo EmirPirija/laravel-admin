@@ -952,17 +952,55 @@ public function getItem(Request $request)
             return in_array($value, ['category', 'home', 'category_home'], true) ? $value : null;
         };
 
-        $placementFilter = $normalizePlacement($request->input('placement') ?: $request->input('positions'));
+        $requestedPlacementFilter = $normalizePlacement($request->input('placement') ?: $request->input('positions'));
+        $derivedPlacementFilter = null;
+        if (! $requestedPlacementFilter) {
+            $currentPage = strtolower(trim((string) $request->input('current_page')));
+            if ($currentPage === 'home') {
+                $derivedPlacementFilter = 'home';
+            } elseif (! empty($request->category_id) || ! empty($request->category_slug)) {
+                $derivedPlacementFilter = 'category';
+            }
+        }
+        $placementFilter = $requestedPlacementFilter ?: $derivedPlacementFilter;
 
-        $applyFeaturedPlacement = static function ($query) use ($placementFilter) {
-            $query->whereHas('featured_items', function ($featuredQuery) use ($placementFilter) {
+        $applyPlacementFilterToFeaturedQuery = static function ($featuredQuery) use ($placementFilter) {
+            if (! $placementFilter) {
+                return;
+            }
+
+            $featuredQuery->where(function ($placementScope) use ($placementFilter) {
                 if ($placementFilter === 'home') {
-                    $featuredQuery->whereIn('placement', ['home', 'category_home']);
+                    $placementScope
+                        ->whereIn('placement', ['home', 'category_home'])
+                        ->orWhere(function ($legacyPlacement) {
+                            $legacyPlacement
+                                ->whereNull('placement')
+                                ->whereIn('positions', ['home', 'category_home']);
+                        });
                 } elseif ($placementFilter === 'category') {
-                    $featuredQuery->whereIn('placement', ['category', 'category_home']);
+                    $placementScope
+                        ->whereIn('placement', ['category', 'category_home'])
+                        ->orWhere(function ($legacyPlacement) {
+                            $legacyPlacement
+                                ->whereNull('placement')
+                                ->whereIn('positions', ['category', 'category_home']);
+                        });
                 } elseif ($placementFilter === 'category_home') {
-                    $featuredQuery->where('placement', 'category_home');
+                    $placementScope
+                        ->where('placement', 'category_home')
+                        ->orWhere(function ($legacyPlacement) {
+                            $legacyPlacement
+                                ->whereNull('placement')
+                                ->where('positions', 'category_home');
+                        });
                 }
+            });
+        };
+
+        $applyFeaturedPlacement = static function ($query) use ($applyPlacementFilterToFeaturedQuery) {
+            $query->whereHas('featured_items', function ($featuredQuery) use ($applyPlacementFilterToFeaturedQuery) {
+                $applyPlacementFilterToFeaturedQuery($featuredQuery);
             });
         };
  
@@ -2625,12 +2663,18 @@ public function getItem(Request $request)
                     'end_date' => $endDate->toDateString(),
                 ]);
 
+                $featuredExpiresAt = $endDate->copy()->endOfDay();
+                $featuredSecondsLeft = max(0, Carbon::now()->diffInSeconds($featuredExpiresAt, false));
+                $featuredDaysLeft = (int) ceil($featuredSecondsLeft / 86400);
                 DB::commit();
                 return ResponseService::successResponse(__('Featured Advertisement Updated Successfully'), [
                     'placement' => $placement,
                     'positions' => $placement,
                     'duration_days' => $durationDays,
                     'featured_until' => $endDate->toDateString(),
+                    'featured_expires_at' => $featuredExpiresAt->toIso8601String(),
+                    'featured_seconds_left' => $featuredSecondsLeft,
+                    'featured_days_left' => $featuredDaysLeft,
                 ]);
             }
 
@@ -2648,12 +2692,18 @@ public function getItem(Request $request)
                 'end_date' => $endDate->toDateString(),
             ]);
 
+            $featuredExpiresAt = $endDate->copy()->endOfDay();
+            $featuredSecondsLeft = max(0, Carbon::now()->diffInSeconds($featuredExpiresAt, false));
+            $featuredDaysLeft = (int) ceil($featuredSecondsLeft / 86400);
             DB::commit();
             return ResponseService::successResponse(__('Featured Advertisement Created Successfully'), [
                 'placement' => $placement,
                 'positions' => $placement,
                 'duration_days' => $durationDays,
                 'featured_until' => $endDate->toDateString(),
+                'featured_expires_at' => $featuredExpiresAt->toIso8601String(),
+                'featured_seconds_left' => $featuredSecondsLeft,
+                'featured_days_left' => $featuredDaysLeft,
             ]);
         } catch (Throwable $th) {
             DB::rollBack();
@@ -2809,11 +2859,54 @@ public function getItem(Request $request)
             $featureSection = $featureSection->get();
             $tempRow = [];
             $rows = [];
+            $normalizePlacement = static function ($raw) {
+                $value = strtolower(trim((string) $raw));
+                return in_array($value, ['category', 'home', 'category_home'], true) ? $value : null;
+            };
 
             // Pre-process location filters once (outside the loop)
             // Priority: area_id > city > state > country > latitude/longitude
             // Only fallback to all items if current_page=home is passed
             $isHomePage = $request->current_page === 'home';
+            $featuredSectionPlacementFilter = $normalizePlacement($request->input('placement') ?: $request->input('positions'));
+            if (! $featuredSectionPlacementFilter && $isHomePage) {
+                $featuredSectionPlacementFilter = 'home';
+            } elseif (! $featuredSectionPlacementFilter && (! empty($request->category_id) || ! empty($request->category_slug))) {
+                $featuredSectionPlacementFilter = 'category';
+            }
+            $applyFeaturedSectionPlacement = static function ($query) use ($featuredSectionPlacementFilter) {
+                if (! $featuredSectionPlacementFilter) {
+                    return;
+                }
+
+                $query->where(function ($placementScope) use ($featuredSectionPlacementFilter) {
+                    if ($featuredSectionPlacementFilter === 'home') {
+                        $placementScope
+                            ->whereIn('placement', ['home', 'category_home'])
+                            ->orWhere(function ($legacyPlacement) {
+                                $legacyPlacement
+                                    ->whereNull('placement')
+                                    ->whereIn('positions', ['home', 'category_home']);
+                            });
+                    } elseif ($featuredSectionPlacementFilter === 'category') {
+                        $placementScope
+                            ->whereIn('placement', ['category', 'category_home'])
+                            ->orWhere(function ($legacyPlacement) {
+                                $legacyPlacement
+                                    ->whereNull('placement')
+                                    ->whereIn('positions', ['category', 'category_home']);
+                            });
+                    } elseif ($featuredSectionPlacementFilter === 'category_home') {
+                        $placementScope
+                            ->where('placement', 'category_home')
+                            ->orWhere(function ($legacyPlacement) {
+                                $legacyPlacement
+                                    ->whereNull('placement')
+                                    ->where('positions', 'category_home');
+                            });
+                    }
+                });
+            };
             $locationMessage = null;
             $hasAreaFilter = ! empty($request->area_id);
             $hasCityFilter = ! empty($request->city);
@@ -3087,7 +3180,11 @@ public function getItem(Request $request)
                         return $baseItems->whereIn('category_id', $categoryIDS)->orderBy('id', 'DESC');
                     })(),
                     'most_liked' => $baseItems->withCount('favourites')->orderBy('favourites_count', 'DESC'),
-                    'featured_ads' => $baseItems->has('featured_items')->orderBy('id', 'DESC'),
+                    'featured_ads' => (static function () use ($baseItems, $applyFeaturedSectionPlacement) {
+                        return $baseItems->whereHas('featured_items', function ($query) use ($applyFeaturedSectionPlacement) {
+                            $applyFeaturedSectionPlacement($query);
+                        })->orderBy('id', 'DESC');
+                    })(),
                 };
 
                 // Add auth-specific relationships
