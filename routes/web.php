@@ -187,9 +187,10 @@ Route::prefix('category/port')->group(function () {
     /*** Category Module : END ***/
 
     /*** Custom Field Module : START ***/
-    Route::group(['prefix' => 'custom-fields'], static function () {
+Route::group(['prefix' => 'custom-fields'], static function () {
     Route::post('/{id}/value/add', [CustomFieldController::class, 'addCustomFieldValue'])->name('custom-fields.value.add');
     Route::get('/{id}/value/show', [CustomFieldController::class, 'getCustomFieldValues'])->name('custom-fields.value.show');
+    Route::get('/category-options/search', [CustomFieldController::class, 'searchCategoryOptions'])->name('custom-fields.category-options.search');
     Route::put('/{id}/value/edit', [CustomFieldController::class, 'updateCustomFieldValue'])->name('custom-fields.value.update');
     Route::delete('/{id}/value/{value}/delete', [CustomFieldController::class, 'deleteCustomFieldValue'])->name('custom-fields.value.delete');
     Route::get('/bulk-upload', [CustomFieldController::class, 'bulkUpload'])->name('custom-fields.bulk-upload');

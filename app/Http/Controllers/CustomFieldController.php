@@ -36,12 +36,7 @@ class CustomFieldController extends Controller {
 
     public function index() {
         ResponseService::noAnyPermissionThenRedirect(['custom-field-list', 'custom-field-create', 'custom-field-update', 'custom-field-delete']);
-        $categories = Category::without('translations')
-            ->select('id', 'name', 'parent_category_id')
-            ->orderBy('name')
-            ->get()
-            ->each->setAppends([]);
-        return view('custom-fields.index', compact('categories'));
+        return view('custom-fields.index');
     }
 
    public function create(Request $request)
@@ -372,6 +367,18 @@ class CustomFieldController extends Controller {
                 ])
                 ->withCount('categories');
 
+            $categoryFilterId = (int)$request->input('category_id', 0);
+            if ($categoryFilterId > 0) {
+                $sql->whereHas('categories', static function ($q) use ($categoryFilterId) {
+                    $q->where('category_id', $categoryFilterId);
+                });
+            }
+
+            $typeFilter = trim((string)$request->input('type_filter', ''));
+            if ($typeFilter !== '') {
+                $sql->where('custom_fields.type', $typeFilter);
+            }
+
             if (!empty($request->filter)) {
                 $filterString = html_entity_decode((string)$request->filter, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                 try {
@@ -447,6 +454,37 @@ class CustomFieldController extends Controller {
             ResponseService::logErrorResponse($e, "CustomFieldController -> show");
             ResponseService::errorResponse('Something Went Wrong');
         }
+    }
+
+    public function searchCategoryOptions(Request $request)
+    {
+        ResponseService::noPermissionThenSendJson('custom-field-list');
+
+        $term = trim((string)$request->input('q', $request->input('search', '')));
+        $limit = min(50, max(5, (int)$request->input('limit', 25)));
+
+        $query = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->orderBy('name');
+
+        if ($term !== '') {
+            $query->where('name', 'LIKE', '%' . $term . '%');
+        }
+
+        $categories = $query->take($limit)->get();
+        $pathMap = $this->getCategoryPathMap();
+
+        $items = $categories->map(function ($category) use ($pathMap) {
+            $id = (int)$category->id;
+            return [
+                'id' => $id,
+                'text' => $pathMap[$id] ?? (string)$category->name,
+            ];
+        })->values();
+
+        return response()->json([
+            'items' => $items,
+        ]);
     }
 
 

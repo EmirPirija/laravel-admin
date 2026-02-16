@@ -41,15 +41,13 @@
                             <div class="row">
                                 <div class="col-12 col-md-6">
                                     <label for="filter">{{ __("Category") }}</label>
-                                    <select name="category" class="form-control bootstrap-table-filter-control-category_names" aria-label="category">
+                                    <select id="customFieldCategoryFilter" class="form-control" aria-label="category">
                                         <option value="">{{ __("All") }}</option>
-                                        @php($filterCategories = $categories->map(function($c){ return $c; }))
-                                        @include('category.dropdowntree', ['categories' => $filterCategories])
                                     </select>
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <label for="type">{{ __("Type") }}</label>
-                                    <select name="type" class="form-select form-control bootstrap-table-filter-control-type" id="type">
+                                    <select class="form-select form-control" id="customFieldTypeFilter">
                                         <option value="">{{ __("All") }}</option>
                                         <option value="number">{{ __("Number Input") }}</option>
                                         <option value="textbox">{{ __("Text Input") }}</option>
@@ -69,17 +67,18 @@
                                data-show-refresh="true" data-fixed-columns="true" data-fixed-number="1" data-fixed-right-number="1"
                                data-trim-on-search="false" data-responsive="true" data-sort-name="id" data-sort-order="desc"
                                data-pagination-successively-size="3"
+                               data-query-params="customFieldQueryParams"
                                data-escape="true"
                                data-show-export="true" data-export-options='{"fileName": "custom-field-list","ignoreColumn": ["operate"]}' data-export-types="['pdf','json', 'xml', 'csv', 'txt', 'sql', 'doc', 'excel']'
-                               data-mobile-responsive="true" data-filter-control="true" data-filter-control-container="#filters">
+                               data-mobile-responsive="true">
                             <thead class="thead-dark">
                             <tr>
                                 <th scope="col" data-field="state" data-checkbox="true"></th>
                                 <th scope="col" data-field="id" data-align="center" data-sortable="true">{{ __('ID') }}</th>
                                 <th scope="col" data-field="image" data-align="center" data-formatter="imageFormatter">{{ __('Image') }}</th>
                                 <th scope="col" data-field="name" data-align="center" data-escape="true" data-sortable="true">{{ __('Name') }}</th>
-                                <th scope="col" data-field="category_names" data-align="center" data-filter-name="category_id" data-filter-control="select" data-filter-data="">{{ __('Category') }}</th>
-                                <th scope="col" data-field="type" data-align="center" data-sortable="true" data-filter-name="type" data-filter-control="select" data-filter-data="">{{ __('Type') }}</th>
+                                <th scope="col" data-field="category_names" data-align="center">{{ __('Category') }}</th>
+                                <th scope="col" data-field="type" data-align="center" data-sortable="true">{{ __('Type') }}</th>
                                 @canany(['custom-field-update','custom-field-delete'])
                                     <th scope="col" data-field="operate" data-escape="false" data-sortable="false">{{ __('Action') }}</th>
                                 @endcanany
@@ -148,8 +147,6 @@
                                 <div class="col-md-8" id="bulkCategoriesWrap" style="display:none;">
                                     <label class="form-label">{{ __("Select categories") }}</label>
                                     <select class="form-control select2" name="categories[]" id="bulk_categories" multiple style="width: 100%;">
-                                        @php($bulkCategories = $categories->map(function($c){ return $c; }))
-                                        @include('category.dropdowntree', ['categories' => $bulkCategories])
                                     </select>
                                     <small class="text-muted">{{ __("Used for Add/Remove/Replace actions.") }}</small>
                                 </div>
@@ -170,6 +167,14 @@
 @endsection
 
 @section('script')
+    <script>
+        function customFieldQueryParams(params) {
+            params.category_id = $('#customFieldCategoryFilter').val() || '';
+            params.type_filter = $('#customFieldTypeFilter').val() || '';
+            return params;
+        }
+    </script>
+
     @can('custom-field-update')
         <script>
             $(document).ready(function () {
@@ -198,9 +203,58 @@
 
                 $(document).on('change', '#category_action', toggleCategorySelect);
 
+                if ($('#customFieldCategoryFilter').length) {
+                    $('#customFieldCategoryFilter').select2({
+                        placeholder: "{{ __('Type to search category') }}",
+                        allowClear: true,
+                        width: '100%',
+                        ajax: {
+                            url: "{{ route('custom-fields.category-options.search') }}",
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                return {
+                                    q: params.term || '',
+                                    limit: 30
+                                };
+                            },
+                            processResults: function (data) {
+                                return { results: data.items || [] };
+                            },
+                            cache: true
+                        },
+                        minimumInputLength: 0
+                    });
+                }
+
+                $('#customFieldTypeFilter').on('change', function () {
+                    $table.bootstrapTable('refresh', {silent: true});
+                });
+                $('#customFieldCategoryFilter').on('change', function () {
+                    $table.bootstrapTable('refresh', {silent: true});
+                });
+
                 if ($('#bulk_categories').length) {
                     $('#bulk_categories').select2({
-                        dropdownParent: $('#bulkEditModal')
+                        dropdownParent: $('#bulkEditModal'),
+                        placeholder: "{{ __('Type to search categories') }}",
+                        width: '100%',
+                        ajax: {
+                            url: "{{ route('custom-fields.category-options.search') }}",
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                return {
+                                    q: params.term || '',
+                                    limit: 30
+                                };
+                            },
+                            processResults: function (data) {
+                                return { results: data.items || [] };
+                            },
+                            cache: true
+                        },
+                        minimumInputLength: 0
                     });
                 }
 
