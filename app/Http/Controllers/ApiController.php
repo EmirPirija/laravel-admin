@@ -446,6 +446,8 @@ class ApiController extends Controller
             'exchange' => 'nullable|boolean',
             'zamjena' => 'nullable|boolean',
             'zamena' => 'nullable|boolean',
+            'scarcity_enabled' => 'nullable|boolean',
+            'is_scarcity_enabled' => 'nullable|boolean',
             'publish_to_instagram' => 'nullable|boolean',
             'instagram_source_url' => 'nullable|url|max:1000',
             'price_per_unit' => 'nullable|numeric|min:0',
@@ -592,6 +594,8 @@ class ApiController extends Controller
             )
         );
         $data['exchange_possible'] = filter_var($exchangeInput ?? false, FILTER_VALIDATE_BOOLEAN);
+        $scarcityInput = $request->input('scarcity_enabled', $request->input('is_scarcity_enabled'));
+        $data['scarcity_enabled'] = filter_var($scarcityInput ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $data['publish_to_instagram'] = filter_var(
             $request->input('publish_to_instagram', false),
@@ -946,6 +950,14 @@ public function getItem(Request $request)
             })->when($request->slug, function ($sql) use ($request) {
                 return $sql->where('slug', $request->slug);
             });
+
+        $scarcityFilterInput = $request->input('scarcity_enabled', $request->input('is_scarcity_enabled'));
+        if ($scarcityFilterInput !== null && $scarcityFilterInput !== '' && Schema::hasColumn('items', 'scarcity_enabled')) {
+            $scarcityFlag = filter_var($scarcityFilterInput, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($scarcityFlag !== null) {
+                $sql->where('scarcity_enabled', $scarcityFlag ? 1 : 0);
+            }
+        }
 
         $normalizePlacement = static function ($raw) {
             $value = strtolower(trim((string) $raw));
@@ -1663,6 +1675,8 @@ public function getItem(Request $request)
             'exchange' => 'nullable|boolean',
             'zamjena' => 'nullable|boolean',
             'zamena' => 'nullable|boolean',
+            'scarcity_enabled' => 'nullable|boolean',
+            'is_scarcity_enabled' => 'nullable|boolean',
             'publish_to_instagram' => 'nullable|boolean',
             'instagram_source_url' => 'nullable|url|max:1000',
             'price_per_unit' => 'nullable|numeric|min:0',
@@ -1732,6 +1746,13 @@ public function getItem(Request $request)
                     ? trim((string) $request->input('seller_product_code'))
                     : null;
             }
+            if ($request->has('scarcity_enabled') || $request->has('is_scarcity_enabled')) {
+                $scarcityInput = $request->input('scarcity_enabled', $request->input('is_scarcity_enabled'));
+                $data['scarcity_enabled'] = filter_var($scarcityInput ?? false, FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $data['scarcity_enabled'] = (bool) $item->scarcity_enabled;
+            }
+            unset($data['is_scarcity_enabled']);
             // image: upload file OR temp_main_image_id
             $tempMainImageId = $request->input('temp_main_image_id');
             if (!empty($tempMainImageId) && !$request->hasFile('image')) {
