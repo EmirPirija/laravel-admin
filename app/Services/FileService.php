@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Setting;
 use Exception;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +11,21 @@ use RuntimeException;
 use Throwable;
 
 class FileService {
+    private static function resolveWatermarkPath(): ?string
+    {
+        $preferred = public_path('lmx-watermark.png');
+        if (file_exists($preferred)) {
+            return $preferred;
+        }
+
+        $fallback = public_path('watermark.png');
+        if (file_exists($fallback)) {
+            return $fallback;
+        }
+
+        return null;
+    }
+
     /**
      * @param $requestFile
      * @param $folder
@@ -140,9 +154,7 @@ class FileService {
 
         try {
             if (in_array($requestFile->getClientOriginalExtension(), ['jpg', 'jpeg', 'png'])) {
-                $watermarkPath = Setting::where('name', 'watermark_image')->value('value');
-
-                $fullWatermarkPath = storage_path('app/public/' . $watermarkPath);
+                $fullWatermarkPath = self::resolveWatermarkPath();
                 $watermark = null;
 
                 $imagePath = $requestFile->getPathname();
@@ -153,7 +165,7 @@ class FileService {
                 $imageWidth = $image->width();
                 $imageHeight = $image->height();
 
-                if (!empty($watermarkPath) && file_exists($fullWatermarkPath)) {
+                if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
                     $watermark = Image::make($fullWatermarkPath)
                         ->resize($imageWidth, $imageHeight, function ($constraint) {
                             $constraint->aspectRatio(); // Preserve aspect ratio
@@ -190,8 +202,7 @@ class FileService {
 
     try {
         if (in_array($requestFile->getClientOriginalExtension(), ['jpg', 'jpeg', 'png'])) {
-            $watermarkPath = Setting::where('name', 'watermark_image')->value('value');
-            $fullWatermarkPath = storage_path('app/public/' . $watermarkPath);
+            $fullWatermarkPath = self::resolveWatermarkPath();
             $watermark = null;
             $imagePath = $requestFile->getPathname();
             if (!file_exists($imagePath) || !is_readable($imagePath)) {
@@ -202,7 +213,7 @@ class FileService {
             $imageHeight = $image->height();
 
 
-            if (!empty($watermarkPath) && file_exists($fullWatermarkPath)) {
+            if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
                 $watermark = Image::make($fullWatermarkPath)
                     ->resize($imageWidth, $imageHeight, function ($constraint) {
                         $constraint->aspectRatio(); // Preserve aspect ratio

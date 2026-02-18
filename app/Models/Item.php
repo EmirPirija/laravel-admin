@@ -26,6 +26,7 @@ class Item extends Model {
         'show_only_to_premium',
         'video_link',
         'publish_to_instagram',
+        'add_video_to_story',
         'instagram_source_url',
         'status',
         'rejected_reason',
@@ -74,6 +75,7 @@ class Item extends Model {
     protected $casts = [
         'is_on_sale' => 'boolean',
         'publish_to_instagram' => 'boolean',
+        'add_video_to_story' => 'boolean',
         'available_now' => 'boolean',
         'exchange_possible' => 'boolean',
         'old_price' => 'decimal:2',

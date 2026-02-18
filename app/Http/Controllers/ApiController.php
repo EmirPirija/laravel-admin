@@ -449,6 +449,7 @@ class ApiController extends Controller
             'scarcity_enabled' => 'nullable|boolean',
             'is_scarcity_enabled' => 'nullable|boolean',
             'publish_to_instagram' => 'nullable|boolean',
+            'add_video_to_story' => 'nullable|boolean',
             'instagram_source_url' => 'nullable|url|max:1000',
             'price_per_unit' => 'nullable|numeric|min:0',
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
@@ -541,6 +542,10 @@ class ApiController extends Controller
 
         // 🔹 Priprema $data
         $data = $request->all(); // bazni podaci iz requesta
+        $storyColumnExists = Schema::hasColumn('items', 'add_video_to_story');
+        if (!$storyColumnExists) {
+            unset($data['add_video_to_story']);
+        }
 
         $data['name']        = $request->name;
         $data['slug']        = $uniqueSlug;
@@ -601,6 +606,13 @@ class ApiController extends Controller
             $request->input('publish_to_instagram', false),
             FILTER_VALIDATE_BOOLEAN
         );
+        $storyRequested = filter_var(
+            $request->input('add_video_to_story', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        if ($storyColumnExists) {
+            $data['add_video_to_story'] = false;
+        }
         $data['instagram_source_url'] = $request->filled('instagram_source_url')
             ? trim((string) $request->input('instagram_source_url'))
             : null;
@@ -659,6 +671,17 @@ class ApiController extends Controller
                 $data['video'] = $this->moveTempMediaToPermanent($tempV->path, 'item_videos');
                 $tempV->delete();
             }
+        }
+
+        if ($storyColumnExists) {
+            $hasVideoForStory = !empty($data['video']) || $request->filled('video_link');
+            if ($storyRequested && !$hasVideoForStory) {
+                ResponseService::validationError('Dodajte video ili video URL prije uključivanja story objave.');
+            }
+            if ($storyRequested) {
+                $this->ensureStorySlotAvailable((int) $user->id);
+            }
+            $data['add_video_to_story'] = $storyRequested && $hasVideoForStory;
         }
 
         // 🔹 Kreiranje item-a
@@ -1678,6 +1701,7 @@ public function getItem(Request $request)
             'scarcity_enabled' => 'nullable|boolean',
             'is_scarcity_enabled' => 'nullable|boolean',
             'publish_to_instagram' => 'nullable|boolean',
+            'add_video_to_story' => 'nullable|boolean',
             'instagram_source_url' => 'nullable|url|max:1000',
             'price_per_unit' => 'nullable|numeric|min:0',
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
@@ -1718,11 +1742,17 @@ public function getItem(Request $request)
             $uniqueSlug = HelperService::generateUniqueSlug(new Item, $slug, $request->id);
 
             $data = $request->except(['video', 'image', 'gallery_images', 'custom_field_files']);
+            $storyColumnExists = Schema::hasColumn('items', 'add_video_to_story');
+            if (!$storyColumnExists) {
+                unset($data['add_video_to_story']);
+            }
             $data['slug'] = $uniqueSlug;
             $data['status'] = $status;
             if ($request->has('publish_to_instagram')) {
                 $data['publish_to_instagram'] = $request->boolean('publish_to_instagram');
             }
+            $storyToggleProvided = $storyColumnExists && $request->has('add_video_to_story');
+            $storyRequested = $storyToggleProvided ? $request->boolean('add_video_to_story') : null;
             if ($request->has('instagram_source_url')) {
                 $data['instagram_source_url'] = $request->filled('instagram_source_url')
                     ? trim((string) $request->input('instagram_source_url'))
@@ -1879,6 +1909,29 @@ public function getItem(Request $request)
                 }
                 unset($data['video_thumbnail'], $data['video_duration']);
             }
+
+            if ($storyColumnExists) {
+                $effectiveRawVideo = array_key_exists('video', $data)
+                    ? $data['video']
+                    : $item->getRawOriginal('video');
+                $effectiveVideoLink = array_key_exists('video_link', $data)
+                    ? $data['video_link']
+                    : $item->video_link;
+                $hasVideoForStory = !empty($effectiveRawVideo) || !empty(trim((string) $effectiveVideoLink));
+
+                if ($storyToggleProvided) {
+                    if ($storyRequested && !$hasVideoForStory) {
+                        ResponseService::validationError('Dodajte video ili video URL prije uključivanja story objave.');
+                    }
+                    if ($storyRequested) {
+                        $this->ensureStorySlotAvailable((int) $item->user_id, (int) $item->id);
+                    }
+                    $data['add_video_to_story'] = $storyRequested && $hasVideoForStory;
+                } elseif (!$hasVideoForStory) {
+                    $data['add_video_to_story'] = false;
+                }
+            }
+
             if ($item->inventory_count !== null && (int) $item->inventory_count <= 0) {
                 $continueSelling = (bool) optional($item->user?->sellerSettings)->continue_selling_out_of_stock;
                 if (! $continueSelling) {
@@ -6414,6 +6467,25 @@ public function getMyReview(Request $request)
      * Moves a temp media (stored on the configured filesystem disk) to a permanent folder.
      * Returns the NEW storage path.
      */
+    private function ensureStorySlotAvailable(int $userId, ?int $ignoreItemId = null): void
+    {
+        if (!Schema::hasColumn('items', 'add_video_to_story')) {
+            return;
+        }
+
+        $query = Item::query()
+            ->where('user_id', $userId)
+            ->where('add_video_to_story', 1);
+
+        if (!empty($ignoreItemId)) {
+            $query->where('id', '!=', $ignoreItemId);
+        }
+
+        if ($query->count() >= 5) {
+            ResponseService::validationError('Maksimalno 5 aktivnih story objava je dozvoljeno po profilu.');
+        }
+    }
+
     private function moveTempMediaToPermanent(string $tempPath, string $destFolder): string
     {
         $diskName = config('filesystems.default');

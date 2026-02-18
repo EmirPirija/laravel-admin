@@ -82,6 +82,7 @@ class ItemCollection extends ResourceCollection {
                 $response[$key]['video'] = $collection->video;
                 $response[$key]['video_thumbnail'] = $collection->video_thumbnail;
                 $response[$key]['video_duration'] = $collection->video_duration;
+                $response[$key]['add_video_to_story'] = (bool) ($collection->add_video_to_story ?? false);
  
                 // Feature status + placement metadata (context-aware)
                 $statusValue = strtolower((string) ($collection->status ?? ''));
