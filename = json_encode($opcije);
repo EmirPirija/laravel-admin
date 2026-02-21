@@ -1,0 +1,20 @@
+[90m= [39m[34;4mApp\Models\CustomField[39;24m {#6637
+    [34mid[39m: [35m11605[39m,
+    [34mname[39m: "[32mKubikaža (ccm)[39m",
+    [34mtype[39m: "[32mnumber[39m",
+    [34mimage[39m: "",
+    [34mrequired[39m: [35m0[39m,
+    [34mvalues[39m: "[32m[][39m",
+    [34mmin_length[39m: [36mnull[39m,
+    [34mmax_length[39m: [36mnull[39m,
+    [34mdependent_on[39m: [36mnull[39m,
+    [34mparent_mapping[39m: [36mnull[39m,
+    [34mstatus[39m: [35m1[39m,
+    [34mpriority[39m: [35m5[39m,
+    #[33mcreated_at[39m: "[32m2026-01-07 18:43:09[39m",
+    #[33mupdated_at[39m: "[32m2026-01-07 18:43:09[39m",
+    +[1mtranslated_name[22m: "[32mKubikaža (ccm)[39m",
+    +[1mtranslated_value[22m: [],
+    +[1mparent_field_name[22m: [36mnull[39m,
+  }
+
