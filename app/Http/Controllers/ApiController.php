@@ -229,7 +229,7 @@ class ApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'identifier' => 'required|string|max:191',
+                'identifier' => 'required|string|min:3|max:191',
             ]);
 
             if ($validator->fails()) {
@@ -237,24 +237,38 @@ class ApiController extends Controller
             }
 
             $identifier = trim((string) $request->input('identifier', ''));
+            if ($identifier === '') {
+                ResponseService::validationError(__('Invalid Login Credentials'));
+            }
+
             $identifierLower = Str::lower($identifier);
             $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
+            static $hasUsernameColumn = null;
+            if ($hasUsernameColumn === null) {
+                $hasUsernameColumn = Schema::hasColumn('users', 'username');
+            }
 
             $query = User::query()
                 ->role('User')
+                ->whereNotNull('email')
+                ->where('email', '!=', '')
                 ->select(['id', 'name', 'email']);
 
             if ($isEmail) {
                 $query->whereRaw('LOWER(email) = ?', [$identifierLower]);
             } else {
-                $query->where(function ($q) use ($identifierLower) {
-                    if (Schema::hasColumn('users', 'username')) {
+                $query->where(function ($q) use ($identifierLower, $hasUsernameColumn) {
+                    if ($hasUsernameColumn) {
                         $q->orWhereRaw('LOWER(username) = ?', [$identifierLower]);
                     }
 
                     // In existing flows "username" is often persisted into the "name" column.
                     $q->orWhereRaw('LOWER(name) = ?', [$identifierLower]);
                 });
+
+                if ($hasUsernameColumn) {
+                    $query->orderByRaw('CASE WHEN LOWER(username) = ? THEN 0 ELSE 1 END', [$identifierLower]);
+                }
             }
 
             $user = $query->first();

@@ -272,7 +272,7 @@ Route::get('get-otp', [ApiController::class, 'getOtp']);
 Route::get('verify-otp', [ApiController::class, 'verifyOtp']);
 Route::get('get-package', [ApiController::class, 'getPackage']);
 Route::get('get-languages', [ApiController::class, 'getLanguages']);
-Route::post('resolve-login-identifier', [ApiController::class, 'resolveLoginIdentifier']);
+Route::post('resolve-login-identifier', [ApiController::class, 'resolveLoginIdentifier'])->middleware('throttle:20,1');
 Route::post('user-signup', [ApiController::class, 'userSignup']);
 Route::post('set-item-total-click', [ApiController::class, 'setItemTotalClick']);
 Route::get('get-system-settings', [ApiController::class, 'getSystemSettings']);
