@@ -225,6 +225,55 @@ class ApiController extends Controller
         }
     }
 
+    public function resolveLoginIdentifier(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'identifier' => 'required|string|max:191',
+            ]);
+
+            if ($validator->fails()) {
+                ResponseService::validationError($validator->errors()->first());
+            }
+
+            $identifier = trim((string) $request->input('identifier', ''));
+            $identifierLower = Str::lower($identifier);
+            $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
+
+            $query = User::query()
+                ->role('User')
+                ->select(['id', 'name', 'email']);
+
+            if ($isEmail) {
+                $query->whereRaw('LOWER(email) = ?', [$identifierLower]);
+            } else {
+                $query->where(function ($q) use ($identifierLower) {
+                    if (Schema::hasColumn('users', 'username')) {
+                        $q->orWhereRaw('LOWER(username) = ?', [$identifierLower]);
+                    }
+
+                    // In existing flows "username" is often persisted into the "name" column.
+                    $q->orWhereRaw('LOWER(name) = ?', [$identifierLower]);
+                });
+            }
+
+            $user = $query->first();
+
+            if (! $user || empty($user->email)) {
+                ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+            }
+
+            ResponseService::successResponse(__('Data Fetched Successfully'), [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'identifier_type' => $isEmail ? 'email' : 'username',
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> resolveLoginIdentifier');
+            ResponseService::errorResponse();
+        }
+    }
+
     public function getUser(Request $request)
     {
         try {
