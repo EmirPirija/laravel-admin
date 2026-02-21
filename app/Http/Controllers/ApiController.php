@@ -66,6 +66,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Unique;
 use Stichoza\GoogleTranslate\GoogleTranslate;
 use Illuminate\Validation\Rule;
+use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 use Twilio\Rest\Client as TwilioRestClient;
 
@@ -213,6 +214,7 @@ class ApiController extends Controller
                 $token = null;
             } else {
                 $token = $auth->createToken($auth->name ?? '')->plainTextToken;
+                $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
             }
             if ($auth) {
                 NotificationService::sendNewDeviceLoginEmail($auth, $request);
@@ -5989,6 +5991,7 @@ public function getMyReview(Request $request)
             $auth = User::find(Auth::id());
 
             $token = $auth->createToken($auth->name ?? '')->plainTextToken;
+            $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
 
             return ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
         } catch (Throwable $th) {
@@ -6495,17 +6498,275 @@ public function getMyReview(Request $request)
             if ($validator->fails()) {
                 return ResponseService::validationError($validator->errors()->first());
             }
-            if($request->fcm_token){
-                 UserFcmToken::where('user_id', $user->id)
+
+            if ($request->fcm_token) {
+                UserFcmToken::where('user_id', $user->id)
                 ->where('fcm_token', $request->fcm_token)
                 ->delete();
             }
+
+            $currentToken = $user?->currentAccessToken();
+            if ($currentToken) {
+                $currentToken->delete();
+            }
+
             return ResponseService::successResponse(__('User logged out successfully'));
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> Logout');
 
             return ResponseService::errorResponse();
         }
+    }
+
+    public function getActiveSessions(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ResponseService::errorResponse(__('User not authenticated'));
+            }
+
+            $currentToken = $user->currentAccessToken();
+            $currentSessionId = $currentToken?->id;
+
+            if ($currentToken) {
+                $this->updateCurrentTokenSessionMetadata($request, $currentToken, $request->platform_type);
+            }
+
+            $columnSupport = $this->getSessionMetadataColumnSupport();
+            $selectColumns = ['id', 'name', 'last_used_at', 'created_at'];
+
+            if ($columnSupport['device_name']) $selectColumns[] = 'device_name';
+            if ($columnSupport['platform']) $selectColumns[] = 'platform';
+            if ($columnSupport['ip_address']) $selectColumns[] = 'ip_address';
+            if ($columnSupport['user_agent']) $selectColumns[] = 'user_agent';
+
+            $tokensQuery = $user->tokens()->select($selectColumns);
+            if (!empty($currentSessionId)) {
+                $tokensQuery->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$currentSessionId]);
+            }
+            $tokens = $tokensQuery
+                ->orderByRaw('COALESCE(last_used_at, created_at) DESC')
+                ->get();
+
+            $sessions = $tokens->map(function ($token) use ($currentSessionId) {
+                $ua = $token->user_agent ?? '';
+                $parsed = $this->parseSessionDeviceInfo($ua, $token->platform ?? null);
+
+                $deviceName = trim((string) ($token->device_name ?? ''));
+                if ($deviceName === '') {
+                    $deviceName = $parsed['device_name'];
+                }
+
+                $platform = trim((string) ($token->platform ?? ''));
+                if ($platform === '') {
+                    $platform = $parsed['platform'];
+                }
+
+                return [
+                    'id' => $token->id,
+                    'name' => $token->name,
+                    'is_current' => !empty($currentSessionId) && (int) $token->id === (int) $currentSessionId,
+                    'device_name' => $deviceName,
+                    'platform' => $platform,
+                    'device_type' => $parsed['device_type'],
+                    'os' => $parsed['os'],
+                    'browser' => $parsed['browser'],
+                    'ip_address' => $token->ip_address ?? null,
+                    'user_agent' => $ua ?: null,
+                    'last_used_at' => $token->last_used_at,
+                    'created_at' => $token->created_at,
+                    'last_active_at' => $token->last_used_at ?? $token->created_at,
+                ];
+            })->values();
+
+            return ResponseService::successResponse(__('Data Fetched Successfully'), [
+                'current_session_id' => $currentSessionId,
+                'sessions' => $sessions,
+                'total_sessions' => $sessions->count(),
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> getActiveSessions');
+            return ResponseService::errorResponse();
+        }
+    }
+
+    public function logoutAllDevices(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ResponseService::errorResponse(__('User not authenticated'));
+            }
+
+            $validator = Validator::make($request->all(), [
+                'keep_current' => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $keepCurrent = filter_var($request->input('keep_current', false), FILTER_VALIDATE_BOOLEAN);
+            $currentTokenId = $user->currentAccessToken()?->id;
+
+            $tokensQuery = $user->tokens();
+            if ($keepCurrent && !empty($currentTokenId)) {
+                $tokensQuery->where('id', '!=', $currentTokenId);
+            }
+
+            $revokedCount = (clone $tokensQuery)->count();
+            $tokensQuery->delete();
+
+            UserFcmToken::where('user_id', $user->id)->delete();
+
+            return ResponseService::successResponse('Sesije su uspješno zatvorene.', [
+                'revoked_count' => $revokedCount,
+                'keep_current' => $keepCurrent,
+                'current_session_id' => $keepCurrent ? $currentTokenId : null,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> logoutAllDevices');
+            return ResponseService::errorResponse();
+        }
+    }
+
+    private function getSessionMetadataColumnSupport(): array
+    {
+        static $columnSupport = null;
+
+        if ($columnSupport !== null) {
+            return $columnSupport;
+        }
+
+        $table = 'personal_access_tokens';
+        $columnSupport = [
+            'device_name' => Schema::hasColumn($table, 'device_name'),
+            'platform' => Schema::hasColumn($table, 'platform'),
+            'ip_address' => Schema::hasColumn($table, 'ip_address'),
+            'user_agent' => Schema::hasColumn($table, 'user_agent'),
+        ];
+
+        return $columnSupport;
+    }
+
+    private function parseSessionDeviceInfo(?string $userAgent, ?string $platformHint = null): array
+    {
+        $ua = Str::lower((string) $userAgent);
+
+        $deviceType = 'desktop';
+        if (Str::contains($ua, ['ipad', 'tablet'])) {
+            $deviceType = 'tablet';
+        } elseif (Str::contains($ua, ['mobile', 'iphone', 'android'])) {
+            $deviceType = 'mobile';
+        }
+
+        $os = 'Nepoznat OS';
+        if (Str::contains($ua, ['iphone', 'ipad', 'ios'])) {
+            $os = 'iOS';
+        } elseif (Str::contains($ua, ['android'])) {
+            $os = 'Android';
+        } elseif (Str::contains($ua, ['windows'])) {
+            $os = 'Windows';
+        } elseif (Str::contains($ua, ['mac os', 'macintosh', 'macos'])) {
+            $os = 'macOS';
+        } elseif (Str::contains($ua, ['linux'])) {
+            $os = 'Linux';
+        }
+
+        $browser = 'Nepoznat preglednik';
+        if (Str::contains($ua, ['edg/'])) {
+            $browser = 'Edge';
+        } elseif (Str::contains($ua, ['opr/', 'opera'])) {
+            $browser = 'Opera';
+        } elseif (Str::contains($ua, ['chrome/']) && !Str::contains($ua, ['edg/', 'opr/'])) {
+            $browser = 'Chrome';
+        } elseif (Str::contains($ua, ['safari/']) && !Str::contains($ua, ['chrome/'])) {
+            $browser = 'Safari';
+        } elseif (Str::contains($ua, ['firefox/'])) {
+            $browser = 'Firefox';
+        }
+
+        $platform = Str::lower(trim((string) $platformHint));
+        if ($platform === '') {
+            if ($os === 'Android') {
+                $platform = 'android';
+            } elseif ($os === 'iOS') {
+                $platform = 'ios';
+            } else {
+                $platform = 'web';
+            }
+        }
+
+        $deviceTypeLabel = match ($deviceType) {
+            'mobile' => 'Mobilni uređaj',
+            'tablet' => 'Tablet',
+            default => 'Računar',
+        };
+
+        return [
+            'device_type' => $deviceType,
+            'platform' => $platform,
+            'os' => $os,
+            'browser' => $browser,
+            'device_name' => "{$browser} - {$os} ({$deviceTypeLabel})",
+        ];
+    }
+
+    private function persistTokenSessionMetadata(?string $plainTextToken, Request $request, ?string $platformHint = null): void
+    {
+        if (empty($plainTextToken)) {
+            return;
+        }
+
+        $parts = explode('|', (string) $plainTextToken, 2);
+        $tokenId = isset($parts[0]) ? (int) $parts[0] : 0;
+
+        if ($tokenId <= 0) {
+            return;
+        }
+
+        $columnSupport = $this->getSessionMetadataColumnSupport();
+        $sessionData = $this->parseSessionDeviceInfo($request->userAgent(), $platformHint);
+
+        $updates = [];
+        if ($columnSupport['device_name']) $updates['device_name'] = $sessionData['device_name'];
+        if ($columnSupport['platform']) $updates['platform'] = $sessionData['platform'];
+        if ($columnSupport['ip_address']) $updates['ip_address'] = $request->ip();
+        if ($columnSupport['user_agent']) $updates['user_agent'] = Str::limit((string) $request->userAgent(), 65000, '');
+
+        if (empty($updates)) {
+            return;
+        }
+
+        PersonalAccessToken::query()
+            ->where('id', $tokenId)
+            ->where('tokenable_type', User::class)
+            ->update($updates);
+    }
+
+    private function updateCurrentTokenSessionMetadata(Request $request, $currentToken, ?string $platformHint = null): void
+    {
+        if (!$currentToken) {
+            return;
+        }
+
+        $columnSupport = $this->getSessionMetadataColumnSupport();
+        $sessionData = $this->parseSessionDeviceInfo($request->userAgent(), $platformHint);
+
+        $updates = [];
+        if ($columnSupport['device_name']) $updates['device_name'] = $sessionData['device_name'];
+        if ($columnSupport['platform']) $updates['platform'] = $sessionData['platform'];
+        if ($columnSupport['ip_address']) $updates['ip_address'] = $request->ip();
+        if ($columnSupport['user_agent']) $updates['user_agent'] = Str::limit((string) $request->userAgent(), 65000, '');
+
+        if (empty($updates)) {
+            return;
+        }
+
+        PersonalAccessToken::query()
+            ->where('id', $currentToken->id)
+            ->update($updates);
     }
 
      public function getSellerSlug(Request $request) {

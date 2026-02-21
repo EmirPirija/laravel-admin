@@ -262,6 +262,8 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
     Route::get('get-job-applications', [ApiController::class, 'recruiterApplications']);
     Route::get('my-job-applications', [ApiController::class, 'myJobApplications']);
     Route::post('update-job-applications-status', [ApiController::class, 'updateJobStatus']);
+    Route::get('active-sessions', [ApiController::class, 'getActiveSessions']);
+    Route::post('logout-all-devices', [ApiController::class, 'logoutAllDevices']);
     Route::post('logout', [ApiController::class, 'logout']);
 });
 
