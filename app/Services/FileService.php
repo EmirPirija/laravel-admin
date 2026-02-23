@@ -26,6 +26,68 @@ class FileService {
         return null;
     }
 
+    private static function randomBetween(int $min, int $max): int
+    {
+        if ($max <= $min) {
+            return $min;
+        }
+        return random_int($min, $max);
+    }
+
+    private static function pickRandomEdgePosition(
+        int $imageWidth,
+        int $imageHeight,
+        int $watermarkWidth,
+        int $watermarkHeight,
+        int $padding
+    ): array {
+        $minX = $padding;
+        $maxX = max($padding, $imageWidth - $watermarkWidth - $padding);
+        $minY = $padding;
+        $maxY = max($padding, $imageHeight - $watermarkHeight - $padding);
+        $edge = ['top', 'right', 'bottom', 'left'][random_int(0, 3)];
+
+        if ($edge === 'top') {
+            return [self::randomBetween($minX, $maxX), $minY];
+        }
+        if ($edge === 'right') {
+            return [$maxX, self::randomBetween($minY, $maxY)];
+        }
+        if ($edge === 'bottom') {
+            return [self::randomBetween($minX, $maxX), $maxY];
+        }
+
+        return [$minX, self::randomBetween($minY, $maxY)];
+    }
+
+    private static function applyRandomEdgeWatermark($image, string $watermarkPath): void
+    {
+        if (!file_exists($watermarkPath)) {
+            return;
+        }
+
+        $imageWidth = $image->width();
+        $imageHeight = $image->height();
+        $targetWatermarkWidth = max(1, (int) round($imageWidth * 0.22));
+
+        $watermark = Image::make($watermarkPath)
+            ->resize($targetWatermarkWidth, null, function ($constraint) {
+                $constraint->aspectRatio();
+            })
+            ->opacity(35);
+
+        $padding = max(8, (int) round(min($imageWidth, $imageHeight) * 0.02));
+        [$x, $y] = self::pickRandomEdgePosition(
+            $imageWidth,
+            $imageHeight,
+            $watermark->width(),
+            $watermark->height(),
+            $padding
+        );
+
+        $image->insert($watermark, 'top-left', $x, $y);
+    }
+
     /**
      * @param $requestFile
      * @param $folder
@@ -155,26 +217,15 @@ class FileService {
         try {
             if (in_array($requestFile->getClientOriginalExtension(), ['jpg', 'jpeg', 'png'])) {
                 $fullWatermarkPath = self::resolveWatermarkPath();
-                $watermark = null;
 
                 $imagePath = $requestFile->getPathname();
                 if (!file_exists($imagePath) || !is_readable($imagePath)) {
                     throw new RuntimeException("Uploaded image file is not readable at path: " . $imagePath);
                 }
                 $image = Image::make($imagePath)->encode(null, 60);
-                $imageWidth = $image->width();
-                $imageHeight = $image->height();
 
                 if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
-                    $watermark = Image::make($fullWatermarkPath)
-                        ->resize($imageWidth, $imageHeight, function ($constraint) {
-                            $constraint->aspectRatio(); // Preserve aspect ratio
-                        })
-                        ->opacity(10);
-                }
-
-                if ($watermark) {
-                    $image->insert($watermark, 'center');
+                    self::applyRandomEdgeWatermark($image, $fullWatermarkPath);
                 }
 
                 Storage::disk(config('filesystems.default'))->put($folder . '/' . $file_name, (string)$image->encode());
@@ -203,26 +254,15 @@ class FileService {
     try {
         if (in_array($requestFile->getClientOriginalExtension(), ['jpg', 'jpeg', 'png'])) {
             $fullWatermarkPath = self::resolveWatermarkPath();
-            $watermark = null;
             $imagePath = $requestFile->getPathname();
             if (!file_exists($imagePath) || !is_readable($imagePath)) {
                 throw new RuntimeException("Uploaded image file is not readable at path: " . $imagePath);
             }
             $image = Image::make($imagePath)->encode(null, 60);
-            $imageWidth = $image->width();
-            $imageHeight = $image->height();
 
 
             if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
-                $watermark = Image::make($fullWatermarkPath)
-                    ->resize($imageWidth, $imageHeight, function ($constraint) {
-                        $constraint->aspectRatio(); // Preserve aspect ratio
-                    })
-                    ->opacity(10);
-            }
-
-            if ($watermark) {
-                $image->insert($watermark, 'center');
+                self::applyRandomEdgeWatermark($image, $fullWatermarkPath);
             }
 
 

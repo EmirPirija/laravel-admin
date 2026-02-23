@@ -41,17 +41,26 @@ class TempMediaController extends Controller
             ], 422);
         }
 
-        // --- WATERMARK LOGIKA (30% width, 50% opacity, Centered) ---
+        // --- WATERMARK LOGIKA (random uz ivicu, nikad centar) ---
         $watermarkPath = public_path('lmx-watermark.png');
 
         if (file_exists($watermarkPath)) {
             $watermark = Image::make($watermarkPath);
-            $watermarkWidth = $img->width() * 0.30;
+            $watermarkWidth = max(1, (int) round($img->width() * 0.22));
             $watermark->resize($watermarkWidth, null, function ($constraint) {
                 $constraint->aspectRatio();
             });
             $watermark->opacity(50);
-            $img->insert($watermark, 'center');
+
+            $padding = max(8, (int) round(min($img->width(), $img->height()) * 0.02));
+            [$x, $y] = $this->pickRandomEdgePosition(
+                $img->width(),
+                $img->height(),
+                $watermark->width(),
+                $watermark->height(),
+                $padding
+            );
+            $img->insert($watermark, 'top-left', $x, $y);
         }
 
         // Resize na Full HD ako je prevelika
@@ -206,5 +215,34 @@ class TempMediaController extends Controller
         $temp->delete();
 
         return response()->json(['error' => false]);
+    }
+
+    private function pickRandomEdgePosition(int $imageWidth, int $imageHeight, int $watermarkWidth, int $watermarkHeight, int $padding): array
+    {
+        $minX = $padding;
+        $maxX = max($padding, $imageWidth - $watermarkWidth - $padding);
+        $minY = $padding;
+        $maxY = max($padding, $imageHeight - $watermarkHeight - $padding);
+        $edge = ['top', 'right', 'bottom', 'left'][random_int(0, 3)];
+
+        if ($edge === 'top') {
+            return [$this->randomBetween($minX, $maxX), $minY];
+        }
+        if ($edge === 'right') {
+            return [$maxX, $this->randomBetween($minY, $maxY)];
+        }
+        if ($edge === 'bottom') {
+            return [$this->randomBetween($minX, $maxX), $maxY];
+        }
+
+        return [$minX, $this->randomBetween($minY, $maxY)];
+    }
+
+    private function randomBetween(int $min, int $max): int
+    {
+        if ($max <= $min) {
+            return $min;
+        }
+        return random_int($min, $max);
     }
 }
