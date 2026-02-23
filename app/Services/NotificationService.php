@@ -314,28 +314,39 @@ class NotificationService {
     }
    public static function sendNewDeviceLoginEmail(User $user, HttpRequest $request)
     {
-        try {
-
-            $deviceType = ucfirst($request->platform_type ?? 'Unknown');
-            $ip = request()->ip();
-            $loginTime = now()->format('d M Y - h:i A');
-
-            // Fetch company name
-            $companyName = Setting::where('name', 'company_name')->value('value') ?? 'Unknown';
-
-            // Email message
-            $message =
-                "A new device has just logged in to your {$companyName} account.\n\n" .
-                "⏰ Login Time: {$loginTime}\n\n";
-
-            Mail::raw($message, function ($msg) use ($user, $companyName) {
-                $msg->to($user->email)
-                    ->from('admin@yourdomain.com', $companyName)
-                    ->subject("New Device Login Detected - {$companyName}");
-            });
-        } catch (\Exception $e) {
-            Log::error("Failed to send new device login email: " . $e->getMessage());
+        if (empty($user->email) || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+            return;
         }
+
+        $email = (string) $user->email;
+        $companyName = (string) (Setting::where('name', 'company_name')->value('value') ?? 'LMX');
+        $loginTime = now()->format('d M Y - h:i A');
+        $ip = $request->ip();
+        $deviceType = ucfirst((string) ($request->platform_type ?? 'Unknown'));
+        $fromAddress = (string) (config('mail.from.address') ?? 'noreply@lmx.ba');
+        $fromName = (string) (config('mail.from.name') ?? $companyName);
+
+        $message =
+            "A new device has just logged in to your {$companyName} account.\n\n" .
+            "🖥 Device: {$deviceType}\n" .
+            "🌐 IP: {$ip}\n" .
+            "⏰ Login Time: {$loginTime}\n\n";
+
+        // Do not block the login/signup response on SMTP latency.
+        dispatch(function () use ($email, $companyName, $fromAddress, $fromName, $message) {
+            try {
+                Mail::raw($message, function ($msg) use ($email, $companyName, $fromAddress, $fromName) {
+                    $msg->to($email)
+                        ->from($fromAddress, $fromName)
+                        ->subject("New Device Login Detected - {$companyName}");
+                });
+            } catch (\Throwable $e) {
+                Log::warning("Failed to send new device login email", [
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        })->afterResponse();
     }
 
 

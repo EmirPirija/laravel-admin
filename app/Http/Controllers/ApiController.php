@@ -216,7 +216,7 @@ class ApiController extends Controller
                 $token = $auth->createToken($auth->name ?? '')->plainTextToken;
                 $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
             }
-            if ($auth) {
+            if ($auth && !empty($auth->email) && filter_var($auth->email, FILTER_VALIDATE_EMAIL)) {
                 NotificationService::sendNewDeviceLoginEmail($auth, $request);
             }
             ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
