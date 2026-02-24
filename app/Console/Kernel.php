@@ -37,6 +37,10 @@ $schedule->command('vacation:process-schedules')
         // Postojeći taskovi
         $schedule->command('notify:expiring-items')->dailyAt('09:00');
         $schedule->command('notify:expiring-packages')->daily();
+        $schedule->command('firebase:prune-stale-users')
+            ->everyFifteenMinutes()
+            ->name('firebase-prune-stale-users')
+            ->withoutOverlapping();
  
         // NOVO: Objavi zakazane oglase
         $schedule->call(function () {
