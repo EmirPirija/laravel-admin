@@ -19,11 +19,13 @@ class FirebaseAuthCleanupService
      * @param bool $dryRun
      * @param int $scanChunk
      * @param bool $allowEmptySource
+     * @param bool $strictUserSync
      * @return array{
      *   firebase_users:int,
      *   local_social_logins:int,
      *   local_legacy_firebase_users:int,
      *   local_firebase_links:int,
+     *   strict_orphan_users:int,
      *   stale_users:int,
      *   stale_items:int,
      *   deleted_users:int,
@@ -31,7 +33,12 @@ class FirebaseAuthCleanupService
      *   failures:array<int, array{user_id:int,error:string}>
      * }
      */
-    public function pruneStaleUsers(bool $dryRun = false, int $scanChunk = 1000, bool $allowEmptySource = false): array
+    public function pruneStaleUsers(
+        bool $dryRun = false,
+        int $scanChunk = 1000,
+        bool $allowEmptySource = false,
+        bool $strictUserSync = false
+    ): array
     {
         $projectId = $this->resolveProjectId();
         $accessToken = $this->resolveAccessToken();
@@ -95,12 +102,34 @@ class FirebaseAuthCleanupService
             }
         }
 
+        $strictOrphanUsers = 0;
+        if ($strictUserSync) {
+            $validUserIds = array_map('intval', array_keys($hasValidFirebaseLink));
+
+            $strictOrphanUserIds = User::withTrashed()
+                ->role('User')
+                ->when(count($validUserIds) > 0, function ($q) use ($validUserIds) {
+                    $q->whereNotIn('id', $validUserIds);
+                })
+                ->when(count($validUserIds) === 0, function ($q) {
+                    // When Firebase has no mapped users, strict mode treats all "User" role accounts as orphan.
+                    return $q;
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $strictOrphanUsers = count($strictOrphanUserIds);
+            $candidateUserIds = array_values(array_unique(array_merge($candidateUserIds, $strictOrphanUserIds)));
+        }
+
         if (count($candidateUserIds) === 0) {
             return [
                 'firebase_users' => count($firebaseUidSet),
                 'local_social_logins' => $localSocialLogins,
                 'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
                 'local_firebase_links' => $localFirebaseLinks,
+                'strict_orphan_users' => $strictOrphanUsers,
                 'stale_users' => 0,
                 'stale_items' => 0,
                 'deleted_users' => 0,
@@ -119,6 +148,7 @@ class FirebaseAuthCleanupService
                 'local_social_logins' => $localSocialLogins,
                 'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
                 'local_firebase_links' => $localFirebaseLinks,
+                'strict_orphan_users' => $strictOrphanUsers,
                 'stale_users' => count($candidateUserIds),
                 'stale_items' => $staleItems,
                 'deleted_users' => 0,
@@ -155,6 +185,7 @@ class FirebaseAuthCleanupService
             'local_social_logins' => $localSocialLogins,
             'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
             'local_firebase_links' => $localFirebaseLinks,
+            'strict_orphan_users' => $strictOrphanUsers,
             'stale_users' => count($candidateUserIds),
             'stale_items' => $staleItems,
             'deleted_users' => $deletedUsers,
