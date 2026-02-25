@@ -92,6 +92,118 @@ class ApiController extends Controller
     static::deleted(fn() => Cache::flush());
 }
 
+    private function normalizePhoneDigits($value): string
+    {
+        return preg_replace('/\D+/', '', (string) ($value ?? '')) ?? '';
+    }
+
+    private function normalizePhoneInput(?string $countryCode, ?string $mobile): array
+    {
+        $normalizedCountry = $this->normalizePhoneDigits($countryCode);
+        $normalizedMobile = $this->normalizePhoneDigits($mobile);
+
+        if ($normalizedMobile === '') {
+            return [
+                'country' => $normalizedCountry,
+                'mobile' => '',
+                'full' => '',
+            ];
+        }
+
+        $mobilePart = $normalizedMobile;
+        if ($normalizedCountry !== '' && Str::startsWith($normalizedMobile, $normalizedCountry)) {
+            $mobilePart = substr($normalizedMobile, strlen($normalizedCountry)) ?: $normalizedMobile;
+        }
+
+        $full = $normalizedCountry !== ''
+            ? (Str::startsWith($normalizedMobile, $normalizedCountry) ? $normalizedMobile : $normalizedCountry.$mobilePart)
+            : $normalizedMobile;
+
+        return [
+            'country' => $normalizedCountry,
+            'mobile' => $mobilePart,
+            'full' => $full,
+        ];
+    }
+
+    private function normalizedUserPhone(User $user): string
+    {
+        $mobile = $this->normalizePhoneDigits($user->mobile);
+        $country = $this->normalizePhoneDigits($user->country_code);
+
+        if ($mobile === '') {
+            return '';
+        }
+
+        if ($country !== '' && Str::startsWith($mobile, $country)) {
+            return $mobile;
+        }
+
+        return $country !== '' ? $country.$mobile : $mobile;
+    }
+
+    private function findPhoneConflict(
+        ?string $countryCode,
+        ?string $mobile,
+        ?int $excludeUserId = null,
+        bool $onlyVerified = false,
+        bool $withTrashed = false
+    ): ?User {
+        $normalized = $this->normalizePhoneInput($countryCode, $mobile);
+        if ($normalized['full'] === '') {
+            return null;
+        }
+
+        $mobileCandidates = array_values(array_unique(array_filter([
+            $normalized['mobile'],
+            $normalized['full'],
+            '+'.$normalized['mobile'],
+            '+'.$normalized['full'],
+        ])));
+
+        $countryCandidates = array_values(array_unique(array_filter([
+            $normalized['country'],
+            '+'.$normalized['country'],
+        ])));
+
+        $query = User::query();
+        if ($withTrashed) {
+            $query->withTrashed();
+        }
+
+        if ($excludeUserId) {
+            $query->where('id', '!=', $excludeUserId);
+        }
+
+        if ($onlyVerified) {
+            $query->whereNotNull('phone_verified_at');
+        }
+
+        $query->where(function ($outer) use ($mobileCandidates, $countryCandidates, $normalized) {
+            if (! empty($mobileCandidates)) {
+                $outer->whereIn('mobile', $mobileCandidates);
+            }
+
+            if ($normalized['mobile'] !== '' && ! empty($countryCandidates)) {
+                $outer->orWhere(function ($withCountry) use ($normalized, $countryCandidates) {
+                    $withCountry
+                        ->where('mobile', $normalized['mobile'])
+                        ->whereIn('country_code', $countryCandidates);
+                });
+            }
+        });
+
+        $candidates = $query->get();
+
+        foreach ($candidates as $candidate) {
+            if ($this->normalizedUserPhone($candidate) === $normalized['full']) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     public function getSystemSettings(Request $request)
     {
         try {
@@ -148,10 +260,12 @@ class ApiController extends Controller
             $validator = Validator::make($request->all(), [
                 'type' => 'required|in:email,google,phone,apple',
                 'firebase_id' => 'required',
-                'country_code' => 'nullable|string',
+                'mobile' => 'required_if:type,phone|string|max:32',
+                'country_code' => 'nullable|string|max:8',
+                'auth_intent' => 'nullable|in:login,register',
                 'flag' => 'boolean',
                 'platform_type' => 'nullable|in:android,ios',
-                'region_code'  => 'nullable|string'
+                'region_code'  => 'nullable|string|max:8',
             ]);
 
             if ($validator->fails()) {
@@ -160,39 +274,112 @@ class ApiController extends Controller
 
             $type = $request->type;
             $firebase_id = $request->firebase_id;
-            $socialLogin = SocialLogin::where('firebase_id', $firebase_id)->where('type', $type)->with('user', function ($q) {
-                $q->withTrashed();
-            })->whereHas('user', function ($q) {
-                $q->role('User');
-            })->first();
+            $authIntent = $request->input('auth_intent', 'login');
+            $phoneInput = $this->normalizePhoneInput($request->country_code, $request->mobile);
+
+            if ($type === 'phone' && $phoneInput['full'] === '') {
+                ResponseService::validationError(__('Unesite ispravan broj telefona.'));
+            }
+
+            $socialLogin = SocialLogin::where('firebase_id', $firebase_id)
+                ->where('type', $type)
+                ->with('user', function ($q) {
+                    $q->withTrashed();
+                })
+                ->whereHas('user', function ($q) {
+                    $q->role('User');
+                })
+                ->first();
+
             if (! empty($socialLogin->user->deleted_at)) {
                 ResponseService::errorResponse(__('User is deactivated. Please Contact the administrator'));
             }
-            if (empty($socialLogin)) {
-                DB::beginTransaction();
-                if ($request->type == 'phone') {
-                    $unique['mobile'] = $request->mobile;
-                } else {
-                    $unique['email'] = $request->email;
-                }
-                $existingUser = User::withTrashed()->where($unique)->first();
 
-                if ($existingUser && $existingUser->trashed()) {
-                    // DB::rollBack();
-                    ResponseService::errorResponse(__('Your account has been deactivated.'), null, config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'));
+            if ($type === 'phone' && $authIntent === 'register' && ! empty($socialLogin)) {
+                ResponseService::validationError(
+                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                );
+            }
+
+            if (empty($socialLogin)) {
+                if ($type === 'phone') {
+                    $request->merge([
+                        'mobile' => $phoneInput['mobile'],
+                        'country_code' => $phoneInput['country'] ?: null,
+                    ]);
+
+                    $existingPhoneUser = $this->findPhoneConflict(
+                        $phoneInput['country'],
+                        $phoneInput['mobile'],
+                        null,
+                        false,
+                        true
+                    );
+
+                    if ($existingPhoneUser && ! $existingPhoneUser->hasRole('User')) {
+                        ResponseService::errorResponse(__('Invalid Login Credentials'));
+                    }
+
+                    if ($existingPhoneUser && $existingPhoneUser->trashed()) {
+                        ResponseService::errorResponse(
+                            __('Your account has been deactivated.'),
+                            null,
+                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                        );
+                    }
+
+                    if ($existingPhoneUser && $authIntent === 'register') {
+                        ResponseService::validationError(
+                            __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                        );
+                    }
+
+                    DB::beginTransaction();
+                    if ($existingPhoneUser) {
+                        $user = $existingPhoneUser;
+                    } else {
+                        $user = User::create([
+                            ...$request->all(),
+                            'mobile' => $phoneInput['mobile'],
+                            'country_code' => $phoneInput['country'] ?: null,
+                            'region_code' => $request->region_code ?? null,
+                            'phone_verified_at' => now(),
+                            'profile' => $request->hasFile('profile')
+                                ? $request->file('profile')->store('user_profile', 'public')
+                                : $request->profile,
+                        ]);
+                        $user->assignRole('User');
+                    }
+                } else {
+                    $unique = ['email' => $request->email];
+                    $existingUser = User::withTrashed()->where($unique)->first();
+
+                    if ($existingUser && $existingUser->trashed()) {
+                        ResponseService::errorResponse(
+                            __('Your account has been deactivated.'),
+                            null,
+                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                        );
+                    }
+
+                    DB::beginTransaction();
+                    $user = User::updateOrCreate([...$unique], [
+                        ...$request->all(),
+                        'region_code' => $request->region_code ?? null,
+                        'profile' => $request->hasFile('profile')
+                            ? $request->file('profile')->store('user_profile', 'public')
+                            : $request->profile,
+                    ]);
+                    $user->assignRole('User');
                 }
-                $user = User::updateOrCreate([...$unique], [
-                    ...$request->all(),
-                    'region_code' => $request->region_code ?? null,
-                    'profile' => $request->hasFile('profile') ? $request->file('profile')->store('user_profile', 'public') : $request->profile,
-                ]);
+
                 SocialLogin::updateOrCreate([
-                    'type' => $request->type,
+                    'type' => $type,
                     'user_id' => $user->id,
                 ], [
-                    'firebase_id' => $request->firebase_id,
+                    'firebase_id' => $firebase_id,
                 ]);
-                $user->assignRole('User');
+
                 Auth::login($user);
                 $auth = User::find($user->id);
                 DB::commit();
@@ -200,28 +387,44 @@ class ApiController extends Controller
                 Auth::login($socialLogin->user);
                 $auth = Auth::user();
             }
+
             if (! $auth->hasRole('User')) {
-                ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.INVALID_LOGIN'));
+                ResponseService::errorResponse(
+                    __('Invalid Login Credentials'),
+                    null,
+                    config('constants.RESPONSE_CODE.INVALID_LOGIN')
+                );
             }
 
             if (! empty($request->fcm_id)) {
-                //                UserFcmToken::insertOrIgnore(['user_id' => $auth->id, 'fcm_token' => $request->fcm_id, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()]);
-                UserFcmToken::updateOrCreate(['fcm_token' => $request->fcm_id], ['user_id' => $auth->id, 'platform_type' => $request->platform_type, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()]);
+                UserFcmToken::updateOrCreate(
+                    ['fcm_token' => $request->fcm_id],
+                    [
+                        'user_id' => $auth->id,
+                        'platform_type' => $request->platform_type,
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ]
+                );
             }
+
             $auth->fcm_id = $request->fcm_id;
             if (!empty($request->registration)) {
-                //If registration is passed then don't create token
                 $token = null;
             } else {
                 $token = $auth->createToken($auth->name ?? '')->plainTextToken;
                 $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
             }
+
             if ($auth && !empty($auth->email) && filter_var($auth->email, FILTER_VALIDATE_EMAIL)) {
                 NotificationService::sendNewDeviceLoginEmail($auth, $request);
             }
+
             ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
         } catch (Throwable $th) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             ResponseService::logErrorResponse($th, 'API Controller -> Signup');
             ResponseService::errorResponse();
         }
@@ -320,18 +523,13 @@ class ApiController extends Controller
                 'name'                  => 'nullable|string',
                 'profile'               => 'nullable|mimes:jpg,jpeg,png|max:7168',
                 'email'                 => 'nullable|email|unique:users,email,' . Auth::user()->id,
-                // 'mobile'                => 'nullable|unique:users,mobile,' . Auth::user()->id,
-                 'mobile'                => [
-                                                'nullable',
-                                                Rule::unique('users')->ignore(Auth::user()->id)->where(function ($query) use ($request) {
-                                                    return $query->where('country_code', "+".$request->country_code);
-                                                }),
-                                            ],
+                'mobile'                => 'nullable|string|max:32',
                 'fcm_id'                => 'nullable',
                 'address'               => 'nullable',
                 'show_personal_details' => 'boolean',
-                'country_code' => 'nullable|string',
-                'region_code' =>  'nullable|string',
+                'country_code' => 'nullable|string|max:8',
+                'region_code' =>  'nullable|string|max:8',
+                'mark_phone_verified' => 'nullable|boolean',
                 'use_svg_avatar' => 'nullable|boolean',
                 'avatar_key' => ['nullable','string','max:50', Rule::in([
                 'lmx-01','lmx-02','lmx-03','lmx-04','lmx-05','lmx-06',
@@ -346,6 +544,48 @@ class ApiController extends Controller
             $app_user = Auth::user();
             //Email should not be updated when type is google.
             $data = $app_user->type == 'google' ? $request->except('email') : $request->all();
+            unset($data['mark_phone_verified']);
+
+            $incomingPhoneProvided = $request->filled('mobile') || $request->filled('country_code');
+            if ($incomingPhoneProvided) {
+                $incomingPhone = $this->normalizePhoneInput(
+                    $request->input('country_code', $app_user->country_code),
+                    $request->input('mobile', $app_user->mobile)
+                );
+
+                if ($incomingPhone['mobile'] === '') {
+                    ResponseService::validationError(__('Unesite ispravan broj telefona.'));
+                }
+
+                $isPhoneVerificationRequest = $request->boolean('mark_phone_verified');
+                if ($isPhoneVerificationRequest) {
+                    $conflict = $this->findPhoneConflict(
+                        $incomingPhone['country'],
+                        $incomingPhone['mobile'],
+                        $app_user->id,
+                        true,
+                        false
+                    );
+
+                    if (! empty($conflict)) {
+                        ResponseService::validationError(
+                            __('Ovaj broj je već verificiran na drugom računu.')
+                        );
+                    }
+                }
+
+                $currentPhone = $this->normalizePhoneInput($app_user->country_code, $app_user->mobile);
+                $phoneChanged = $currentPhone['full'] !== $incomingPhone['full'];
+
+                $data['mobile'] = $incomingPhone['mobile'];
+                $data['country_code'] = $incomingPhone['country'] ?: null;
+
+                if ($isPhoneVerificationRequest) {
+                    $data['phone_verified_at'] = now();
+                } elseif ($phoneChanged) {
+                    $data['phone_verified_at'] = null;
+                }
+            }
 
             if ($request->hasFile('profile')) {
                 $data['profile'] = FileService::compressAndReplace($request->file('profile'), 'profile', $app_user->getRawOriginal('profile'));
@@ -475,8 +715,8 @@ class ApiController extends Controller
             'name' => 'required',
             'category_id' => 'required|integer',
             'description' => 'required',
-            'latitude' => 'required',
-            'longitude' => 'required',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'address' => 'required',
             'contact' => 'numeric',
             'show_only_to_premium' => 'nullable|boolean',
@@ -531,9 +771,14 @@ class ApiController extends Controller
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
+        $resolvedCoords = $this->resolveListingCoordinates($request);
+        $request->merge([
+            'latitude' => $resolvedCoords['lat'],
+            'longitude' => $resolvedCoords['lng'],
+        ]);
 
         // 🔹 Validacija translations
-        $translations = json_decode($request->input('translations', '{}'), true, 512, JSON_THROW_ON_ERROR);
+        $translations = $this->decodeJsonArrayInput($request, 'translations', []);
         if (!empty($translations)) {
             foreach ($translations as $languageId => $translation) {
                 Validator::make($translation, [
@@ -839,7 +1084,7 @@ class ApiController extends Controller
         // 🔹 Custom fields (default)
         if ($request->custom_fields) {
             $itemCustomFieldValues = [];
-            foreach (json_decode($request->custom_fields, true, 512, JSON_THROW_ON_ERROR) as $key => $custom_field) {
+            foreach ($this->decodeJsonArrayInput($request, 'custom_fields', []) as $key => $custom_field) {
                 $itemCustomFieldValues[] = [
                     'item_id'         => $item->id,
                     'language_id'     => 1,
@@ -878,12 +1123,7 @@ class ApiController extends Controller
 
         // 🔹 Translated custom fields
         if ($request->has('custom_field_translations')) {
-            $customFieldTranslations = $request->input('custom_field_translations');
-
-            if (!is_array($customFieldTranslations)) {
-                $customFieldTranslations = html_entity_decode($customFieldTranslations);
-                $customFieldTranslations = json_decode($customFieldTranslations, true, 512, JSON_THROW_ON_ERROR);
-            }
+            $customFieldTranslations = $this->decodeJsonArrayInput($request, 'custom_field_translations', []);
 
             $translatedEntries = [];
 
@@ -2011,7 +2251,7 @@ public function getItem(Request $request)
 
             $item->update($data);
             // Update or create item translations
-            $translations = json_decode($request->input('translations', '{}'), true, 512, JSON_THROW_ON_ERROR);
+            $translations = $this->decodeJsonArrayInput($request, 'translations', []);
             if (! empty($translations)) {
                 foreach ($translations as $languageId => $translationData) {
                     if (Language::where('id', $languageId)->exists()) {
@@ -2045,7 +2285,7 @@ public function getItem(Request $request)
             //Update Custom Field values for item
             if ($request->custom_fields) {
                 $itemCustomFieldValues = [];
-                foreach (json_decode($request->custom_fields, true, 512, JSON_THROW_ON_ERROR) as $key => $custom_field) {
+                foreach ($this->decodeJsonArrayInput($request, 'custom_fields', []) as $key => $custom_field) {
                     $itemCustomFieldValues[] = [
                         'item_id' => $item->id,
                         'custom_field_id' => $key,
@@ -2137,12 +2377,7 @@ public function getItem(Request $request)
             }
             // Update or insert custom field translations
             if ($request->has('custom_field_translations')) {
-                $customFieldTranslations = $request->input('custom_field_translations');
-
-                if (! is_array($customFieldTranslations)) {
-                    $customFieldTranslations = html_entity_decode($customFieldTranslations);
-                    $customFieldTranslations = json_decode($customFieldTranslations, true, 512, JSON_THROW_ON_ERROR);
-                }
+                $customFieldTranslations = $this->decodeJsonArrayInput($request, 'custom_field_translations', []);
                 $translatedEntries = [];
 
                 foreach ($customFieldTranslations as $languageId => $fieldsByCustomField) {
@@ -2764,7 +2999,12 @@ public function getItem(Request $request)
                 return ResponseService::errorResponse(__('Unauthenticated user'));
             }
 
-            Item::where('status', 'approved')->findOrFail($request->item_id);
+            $item = Item::where('user_id', $user->id)->findOrFail($request->item_id);
+            $itemStatus = strtolower((string) ($item->getAttributes()['status'] ?? $item->status ?? ''));
+            if (! in_array($itemStatus, ['approved', 'active', 'featured'], true)) {
+                DB::rollBack();
+                return ResponseService::errorResponse(__('Only active ad can be featured.'));
+            }
 
             $placement = strtolower(trim((string) ($request->input('placement') ?: $request->input('positions') ?: 'category_home')));
             if (! in_array($placement, ['category', 'home', 'category_home'], true)) {
@@ -2783,8 +3023,29 @@ public function getItem(Request $request)
                 ->first();
 
             if (! $user_package) {
-                DB::rollBack();
-                return ResponseService::errorResponse(__('You need to purchase a Featured Ad plan first.'));
+                $fallbackPackage = Package::query()
+                    ->where('type', 'advertisement')
+                    ->where(function ($query) {
+                        $query->whereNull('status')->orWhere('status', 1);
+                    })
+                    ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
+                    ->orderBy('final_price', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->first();
+
+                if (! $fallbackPackage) {
+                    DB::rollBack();
+                    return ResponseService::errorResponse(__('Unable to feature this ad right now. Please try again later.'));
+                }
+
+                $user_package = UserPurchasedPackage::create([
+                    'user_id' => $user->id,
+                    'package_id' => $fallbackPackage->id,
+                    'start_date' => Carbon::today()->toDateString(),
+                    'end_date' => null,
+                    'total_limit' => null,
+                    'used_limit' => 0,
+                ]);
             }
 
             $startDate = Carbon::today();
@@ -2792,9 +3053,20 @@ public function getItem(Request $request)
             $packageEndDate = ! empty($user_package->end_date) ? Carbon::parse($user_package->end_date) : null;
             $endDate = $packageEndDate ? $requestedEndDate->min($packageEndDate) : $requestedEndDate;
 
-            $featuredItems = FeaturedItems::where(['item_id' => $request->item_id, 'package_id' => $user_package->package_id])->first();
+            $featuredItems = FeaturedItems::where('item_id', $request->item_id)
+                ->where('package_id', $user_package->package_id)
+                ->orderByDesc('id')
+                ->first();
+
+            if (! $featuredItems) {
+                $featuredItems = FeaturedItems::where('item_id', $request->item_id)
+                    ->orderByDesc('id')
+                    ->first();
+            }
             if (! empty($featuredItems)) {
                 $featuredItems->update([
+                    'package_id' => $user_package->package_id,
+                    'user_purchased_package_id' => $user_package->id,
                     'placement' => $placement,
                     'positions' => $placement,
                     'duration_days' => $durationDays,
@@ -5944,6 +6216,10 @@ public function getMyReview(Request $request)
             $validator = Validator::make($request->all(), [
                 'number' => 'required|string',
                 'otp' => 'required|numeric|digits:6',
+                'intent' => 'nullable|in:login,register,profile_verification',
+                'mobile' => 'nullable|string|max:32',
+                'country_code' => 'nullable|string|max:8',
+                'region_code' => 'nullable|string|max:8',
             ]);
 
             if ($validator->fails()) {
@@ -5976,16 +6252,100 @@ public function getMyReview(Request $request)
             }
             $otpRecord->delete();
 
-            $user = User::where('mobile', $trimmedNumber)->where('type', 'phone')->first();
+            $intent = $request->input('intent', 'login');
+
+            if ($intent === 'profile_verification') {
+                if (! Auth::check()) {
+                    return ResponseService::errorResponse(__('Unauthorized'));
+                }
+
+                $authUser = Auth::user();
+                $normalized = $this->normalizePhoneInput(
+                    $request->input('country_code'),
+                    $request->input('mobile', $trimmedNumber)
+                );
+
+                if ($normalized['mobile'] === '') {
+                    return ResponseService::validationError(__('Unesite ispravan broj telefona.'));
+                }
+
+                $conflict = $this->findPhoneConflict(
+                    $normalized['country'],
+                    $normalized['mobile'],
+                    $authUser->id,
+                    true,
+                    false
+                );
+
+                if (! empty($conflict)) {
+                    return ResponseService::validationError(
+                        __('Ovaj broj je već verificiran na drugom računu.')
+                    );
+                }
+
+                $authUser->update([
+                    'mobile' => $normalized['mobile'],
+                    'country_code' => $normalized['country'] ?: null,
+                    'region_code' => strtoupper((string) $request->input('region_code', $authUser->region_code ?? 'BA')) ?: 'BA',
+                    'phone_verified_at' => now(),
+                ]);
+
+                $authUser->refresh();
+                return ResponseService::successResponse(__('Broj telefona je uspješno verificiran.'), $authUser);
+            }
+
+            $loginCountryCode = $this->normalizePhoneDigits($request->input('country_code'));
+            if ($loginCountryCode === '' && Str::startsWith($trimmedNumber, '387')) {
+                $loginCountryCode = '387';
+            }
+            $loginMobile = $trimmedNumber;
+            if ($loginCountryCode !== '' && Str::startsWith($trimmedNumber, $loginCountryCode)) {
+                $loginMobile = substr($trimmedNumber, strlen($loginCountryCode)) ?: $trimmedNumber;
+            }
+
+            $user = $this->findPhoneConflict(
+                $loginCountryCode,
+                $loginMobile,
+                null,
+                false,
+                false
+            );
+
+            if ($intent === 'register' && ! empty($user)) {
+                return ResponseService::validationError(
+                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                );
+            }
 
             if (! $user) {
+                $defaultCountryCode = $loginCountryCode ?: null;
+
+                $normalizedForStore = $this->normalizePhoneInput($defaultCountryCode, $trimmedNumber);
+                $mobileToStore = $normalizedForStore['mobile'] !== ''
+                    ? $normalizedForStore['mobile']
+                    : $trimmedNumber;
+
                 $user = User::create([
-                    'mobile' => $trimmedNumber,
+                    'mobile' => $mobileToStore,
+                    'country_code' => $normalizedForStore['country'] ?: $defaultCountryCode,
                     'type' => 'phone',
+                    'phone_verified_at' => now(),
                 ]);
 
                 $user->assignRole('User');
             }
+
+            if (! $user->hasRole('User')) {
+                return ResponseService::errorResponse(__('Invalid Login Credentials'));
+            }
+
+            if (empty($user->phone_verified_at)) {
+                $user->phone_verified_at = now();
+            }
+            if (empty($user->country_code) && ! empty($loginCountryCode)) {
+                $user->country_code = $loginCountryCode;
+            }
+            $user->save();
 
             Auth::login($user);
             $auth = User::find(Auth::id());
@@ -6834,6 +7194,73 @@ public function getMyReview(Request $request)
     {
         if (!$path) return null;
         return Storage::disk(config('filesystems.default'))->url($path);
+    }
+
+    private function decodeJsonArrayInput(Request $request, string $key, array $default = []): array
+    {
+        $rawValue = $request->input($key, null);
+
+        if ($rawValue === null || $rawValue === '') {
+            return $default;
+        }
+
+        if (is_array($rawValue)) {
+            return $rawValue;
+        }
+
+        try {
+            $decoded = json_decode(html_entity_decode((string) $rawValue), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable $th) {
+            ResponseService::validationError("Neispravan format polja '{$key}'. Osvježite stranicu i pokušajte ponovo.");
+        }
+
+        return is_array($decoded) ? $decoded : $default;
+    }
+
+    private function resolveListingCoordinates(Request $request): array
+    {
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
+
+        if (is_numeric($lat) && is_numeric($lng)) {
+            return [
+                'lat' => (float) $lat,
+                'lng' => (float) $lng,
+            ];
+        }
+
+        $areaId = $request->input('area_id');
+        if (!empty($areaId)) {
+            $area = Area::query()->find($areaId);
+            if ($area && is_numeric($area->latitude) && is_numeric($area->longitude)) {
+                return [
+                    'lat' => (float) $area->latitude,
+                    'lng' => (float) $area->longitude,
+                ];
+            }
+        }
+
+        $cityName = trim((string) $request->input('city', ''));
+        if ($cityName !== '') {
+            $city = City::query()
+                ->whereRaw('LOWER(name) = ?', [Str::lower($cityName)])
+                ->first();
+
+            if ($city && is_numeric($city->latitude) && is_numeric($city->longitude)) {
+                return [
+                    'lat' => (float) $city->latitude,
+                    'lng' => (float) $city->longitude,
+                ];
+            }
+        }
+
+        $defaultLat = Setting::query()->where('name', 'default_latitude')->value('value');
+        $defaultLng = Setting::query()->where('name', 'default_longitude')->value('value');
+
+        return [
+            'lat' => is_numeric($defaultLat) ? (float) $defaultLat : 43.8563,
+            'lng' => is_numeric($defaultLng) ? (float) $defaultLng : 18.4131,
+        ];
     }
 
 

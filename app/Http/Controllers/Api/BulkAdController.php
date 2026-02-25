@@ -349,10 +349,33 @@ class BulkAdController extends Controller
 
         $userPackage = $userPackageQuery->orderBy('end_date')->first();
         if (! $userPackage) {
-            return [
-                'success' => false,
-                'message' => 'Nije pronađen aktivan paket za izdvajanje oglasa',
-            ];
+            $fallbackPackage = ($package instanceof Package)
+                ? $package
+                : Package::query()
+                    ->where('type', 'advertisement')
+                    ->where(function ($query) {
+                        $query->whereNull('status')->orWhere('status', 1);
+                    })
+                    ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
+                    ->orderBy('final_price', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->first();
+
+            if (! $fallbackPackage) {
+                return [
+                    'success' => false,
+                    'message' => 'Izdvajanje trenutno nije dostupno. Pokušaj ponovo kasnije.',
+                ];
+            }
+
+            $userPackage = UserPurchasedPackage::create([
+                'user_id' => $userId,
+                'package_id' => $fallbackPackage->id,
+                'start_date' => Carbon::today()->toDateString(),
+                'end_date' => null,
+                'total_limit' => null,
+                'used_limit' => 0,
+            ]);
         }
 
         if ($userPackage->total_limit !== null && (int) $userPackage->used_limit >= (int) $userPackage->total_limit) {
@@ -369,23 +392,46 @@ class BulkAdController extends Controller
 
         DB::beginTransaction();
         try {
-            FeaturedItems::updateOrCreate(
-                [
-                    'item_id' => $item->id,
+            $featuredRow = FeaturedItems::where('item_id', $item->id)
+                ->where('package_id', $userPackage->package_id)
+                ->orderByDesc('id')
+                ->first();
+
+            if (! $featuredRow) {
+                $featuredRow = FeaturedItems::where('item_id', $item->id)
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            $createdFeaturedRow = false;
+            if ($featuredRow) {
+                $featuredRow->update([
                     'package_id' => $userPackage->package_id,
-                ],
-                [
                     'user_purchased_package_id' => $userPackage->id,
                     'placement' => $placement,
                     'positions' => $placement,
                     'duration_days' => $durationDays,
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
-                ]
-            );
+                ]);
+            } else {
+                FeaturedItems::create([
+                    'item_id' => $item->id,
+                    'package_id' => $userPackage->package_id,
+                    'user_purchased_package_id' => $userPackage->id,
+                    'placement' => $placement,
+                    'positions' => $placement,
+                    'duration_days' => $durationDays,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                ]);
+                $createdFeaturedRow = true;
+            }
 
-            $userPackage->used_limit = (int) $userPackage->used_limit + 1;
-            $userPackage->save();
+            if ($createdFeaturedRow) {
+                $userPackage->used_limit = (int) $userPackage->used_limit + 1;
+                $userPackage->save();
+            }
 
             DB::commit();
 
