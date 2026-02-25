@@ -349,10 +349,19 @@ class BulkAdController extends Controller
 
         $userPackage = $userPackageQuery->orderBy('end_date')->first();
         if (! $userPackage) {
-            $fallbackPackage = ($package instanceof Package)
-                ? $package
-                : Package::query()
-                    ->where('type', 'advertisement')
+            $fallbackPackage = null;
+            if ($package instanceof Package) {
+                $fallbackPackage = $package;
+            } else {
+                $fallbackPackageQuery = Package::query()
+                    ->where(function ($query) {
+                        $query->where('type', 'advertisement');
+                        if (Schema::hasColumn('packages', 'package_type')) {
+                            $query->orWhere('package_type', 'advertisement');
+                        }
+                    });
+
+                $fallbackPackage = (clone $fallbackPackageQuery)
                     ->where(function ($query) {
                         $query->whereNull('status')->orWhere('status', 1);
                     })
@@ -360,6 +369,43 @@ class BulkAdController extends Controller
                     ->orderBy('final_price', 'asc')
                     ->orderBy('id', 'asc')
                     ->first();
+
+                if (! $fallbackPackage) {
+                    $fallbackPackage = (clone $fallbackPackageQuery)
+                        ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
+                        ->orderBy('final_price', 'asc')
+                        ->orderBy('id', 'asc')
+                        ->first();
+                }
+
+                if (! $fallbackPackage) {
+                    $fallbackPackage = Package::query()
+                        ->where(function ($query) {
+                            $query->whereNull('status')->orWhere('status', 1);
+                        })
+                        ->orderBy('id', 'asc')
+                        ->first();
+                }
+
+                if (! $fallbackPackage) {
+                    $fallbackPayload = [
+                        'name' => 'LMX Auto Featured',
+                        'description' => 'Auto-generated package used for featured ad fallback.',
+                        'price' => 0,
+                        'discount_in_percentage' => 0,
+                        'final_price' => 0,
+                        'duration' => 'unlimited',
+                        'item_limit' => 'unlimited',
+                        'type' => 'advertisement',
+                        'icon' => 'packages/auto-featured.png',
+                        'status' => 1,
+                    ];
+                    if (Schema::hasColumn('packages', 'package_type')) {
+                        $fallbackPayload['package_type'] = 'advertisement';
+                    }
+                    $fallbackPackage = Package::create($fallbackPayload);
+                }
+            }
 
             if (! $fallbackPackage) {
                 return [
