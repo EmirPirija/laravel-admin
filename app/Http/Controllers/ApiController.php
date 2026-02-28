@@ -172,6 +172,7 @@ protected static function booted()
             $type = $request->type;
             $firebase_id = $request->firebase_id;
             $authIntent = $request->input('auth_intent', 'login');
+            $phoneRegisterFallbackToLogin = false;
             $normalizedEmail = $this->normalizeEmail($request->email);
             $phoneInput = $this->normalizePhoneInput($request->country_code, $request->mobile);
             $eventIdentifier = $type === 'phone'
@@ -207,10 +208,7 @@ protected static function booted()
             }
 
             if ($type === 'phone' && $authIntent === 'register' && ! empty($socialLogin)) {
-                ResponseService::conflictResponse(
-                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
-                    ['reason' => 'phone_already_registered']
-                );
+                $phoneRegisterFallbackToLogin = true;
             }
 
             if (empty($socialLogin)) {
@@ -249,10 +247,7 @@ protected static function booted()
                     }
 
                     if ($existingPhoneUser && $authIntent === 'register') {
-                        ResponseService::conflictResponse(
-                            __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
-                            ['reason' => 'phone_already_registered']
-                        );
+                        $phoneRegisterFallbackToLogin = true;
                     }
 
                     if (! $existingPhoneUser && $authIntent === 'login') {
@@ -397,9 +392,19 @@ protected static function booted()
                 'type' => $type,
                 'intent' => $authIntent,
                 'user_id' => $auth->id ?? null,
+                'register_fallback_login' => $phoneRegisterFallbackToLogin,
             ], 'success', $eventIdentifier, $auth->id ?? null);
 
-            ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
+            $successMessage = ($type === 'phone' && $phoneRegisterFallbackToLogin)
+                ? __('Broj je već registrovan. Prijavili smo vas na postojeći račun.')
+                : __('User logged-in successfully');
+
+            ResponseService::successResponse($successMessage, $auth, [
+                'token' => $token,
+                'meta' => [
+                    'register_fallback_login' => $phoneRegisterFallbackToLogin,
+                ],
+            ]);
         } catch (Throwable $th) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
@@ -6532,13 +6537,7 @@ public function getMyReview(Request $request)
                 false
             );
 
-            if ($intent === 'register' && ! empty($user)) {
-                return ResponseService::conflictResponse(
-                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
-                    ['reason' => 'phone_already_registered'],
-                    config('constants.RESPONSE_CODE.CONFLICT')
-                );
-            }
+            $registerFallbackToLogin = $intent === 'register' && ! empty($user);
 
             if (! $user) {
                 if ($intent === 'login') {
@@ -6580,9 +6579,19 @@ public function getMyReview(Request $request)
             AuthEventService::log('otp_verify_success', [
                 'intent' => $intent,
                 'user_id' => $auth->id,
+                'register_fallback_login' => $registerFallbackToLogin,
             ], 'success', $toNumber, $auth->id);
 
-            return ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
+            $successMessage = $registerFallbackToLogin
+                ? __('Broj je već registrovan. Prijavili smo vas na postojeći račun.')
+                : __('User logged-in successfully');
+
+            return ResponseService::successResponse($successMessage, $auth, [
+                'token' => $token,
+                'meta' => [
+                    'register_fallback_login' => $registerFallbackToLogin,
+                ],
+            ]);
         } catch (Throwable $th) {
             AuthEventService::log('otp_verify_failed', [
                 'reason' => 'exception',
