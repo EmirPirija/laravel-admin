@@ -4,7 +4,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 
 return new class extends Migration {
     private function hasIndex(string $table, string $index): bool
@@ -79,7 +78,7 @@ return new class extends Migration {
             ->toArray();
 
         if (!empty($duplicateEmailsRaw)) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Ne mogu dodati unique index za users.email. Prvo riješite duplikate: '.implode(', ', $duplicateEmailsRaw)
             );
         }
@@ -95,7 +94,7 @@ return new class extends Migration {
             ->toArray();
 
         if (!empty($duplicateEmails)) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Ne mogu dodati unique index za email. Prvo riješite duplikate: '.implode(', ', $duplicateEmails)
             );
         }
@@ -111,7 +110,7 @@ return new class extends Migration {
             ->toArray();
 
         if (!empty($duplicatePhones)) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Ne mogu dodati unique index za telefon. Prvo riješite duplikate: '.implode(', ', $duplicatePhones)
             );
         }
@@ -131,7 +130,7 @@ return new class extends Migration {
                 ->map(fn ($row) => ($row->country_code ?? '').($row->mobile ?? ''))
                 ->implode(', ');
 
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Ne mogu dodati unique index za country_code + mobile. Prvo riješite duplikate: '.$pairs
             );
         }
