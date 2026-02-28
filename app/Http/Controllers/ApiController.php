@@ -5299,15 +5299,17 @@ public function getChatMessages(Request $request)
     public function storeContactUs(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required',
-            'email' => 'required|email',
-            'subject' => 'required',
-            'message' => 'required',
+            'name' => 'required|string|max:120',
+            'email' => 'required|email|max:190',
+            'subject' => 'required|string|max:190',
+            'message' => 'required|string|max:5000',
+            'phone' => 'nullable|string|max:40',
         ]);
 
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
+
         try {
             $payload = [
                 'name' => trim((string) $request->input('name')),
@@ -5317,49 +5319,100 @@ public function getChatMessages(Request $request)
                 'phone' => trim((string) $request->input('phone', '')),
             ];
 
-            ContactUs::create($payload);
+            $contact = ContactUs::create($payload);
 
-            $mailTo = (string) config('mail.contact_to', 'info@lmx.ba');
-            $fromAddress = (string) (config('mail.from.address') ?: 'info@lmx.ba');
-            $fromName = (string) (config('mail.from.name') ?: config('app.name', 'LMX'));
-            $replyTo = filter_var($payload['email'], FILTER_VALIDATE_EMAIL) ? $payload['email'] : null;
-            $phoneLine = $payload['phone'] !== '' ? "\nTelefon: {$payload['phone']}" : '';
+            $deliveryResult = $this->deliverContactFormEmail($payload);
 
-            $emailSubject = sprintf('[LMX Kontakt] %s', $payload['subject']);
-            $emailBody = "Nova poruka sa kontakt forme:\n\n"
-                ."Ime: {$payload['name']}\n"
-                ."E-mail: {$payload['email']}"
-                .$phoneLine
-                ."\nNaslov: {$payload['subject']}\n\n"
-                ."Poruka:\n{$payload['message']}";
+            if ($deliveryResult['sent'] === true) {
+                ResponseService::successResponse(__('Poruka je uspješno poslana.'));
+            }
 
+            Log::warning('Contact form saved but email delivery failed', [
+                'contact_id' => $contact->id,
+                'mail_to' => $deliveryResult['mail_to'],
+                'attempted_mailers' => $deliveryResult['attempted_mailers'],
+                'last_error' => $deliveryResult['last_error'],
+            ]);
+
+            ResponseService::warningResponse(
+                __('Poruka je sačuvana i vidljiva podršci u inboxu, ali e-mail obavijest trenutno nije isporučena.'),
+                [
+                    'saved' => true,
+                    'contact_id' => $contact->id,
+                    'email_sent' => false,
+                ],
+                config('constants.RESPONSE_CODE.SUCCESS'),
+                200
+            );
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'API Controller -> storeContactUs');
+            ResponseService::errorResponse();
+        }
+    }
+
+    private function deliverContactFormEmail(array $payload): array
+    {
+        $mailToRaw = (string) config('mail.contact_to', 'info@lmx.ba');
+        $mailTo = filter_var($mailToRaw, FILTER_VALIDATE_EMAIL) ? $mailToRaw : 'info@lmx.ba';
+
+        $fromAddressRaw = (string) (config('mail.from.address') ?: $mailTo);
+        $fromAddress = filter_var($fromAddressRaw, FILTER_VALIDATE_EMAIL) ? $fromAddressRaw : $mailTo;
+        $fromName = (string) (config('mail.from.name') ?: config('app.name', 'LMX'));
+        $replyTo = filter_var($payload['email'] ?? null, FILTER_VALIDATE_EMAIL) ? $payload['email'] : null;
+        $phoneLine = !empty($payload['phone']) ? "\nTelefon: {$payload['phone']}" : '';
+
+        $emailSubject = sprintf('[LMX Kontakt] %s', (string) ($payload['subject'] ?? 'Kontakt forma'));
+        $emailBody = "Nova poruka sa kontakt forme:\n\n"
+            ."Ime: ".($payload['name'] ?? '-')."\n"
+            ."E-mail: ".($payload['email'] ?? '-')
+            .$phoneLine
+            ."\nNaslov: ".($payload['subject'] ?? '-') . "\n\n"
+            ."Poruka:\n".($payload['message'] ?? '-');
+
+        $configuredMailers = config('mail.contact_mailers', []);
+        if (!is_array($configuredMailers) || empty($configuredMailers)) {
+            $configuredMailers = [
+                (string) config('mail.default', 'smtp'),
+                'failover',
+            ];
+        }
+        $mailers = array_values(array_unique(array_filter($configuredMailers)));
+
+        $attempted = [];
+        $lastError = null;
+
+        foreach ($mailers as $mailer) {
             try {
-                Mail::raw($emailBody, function ($mail) use ($mailTo, $fromAddress, $fromName, $replyTo, $payload, $emailSubject) {
+                Mail::mailer($mailer)->raw($emailBody, function ($mail) use ($mailTo, $fromAddress, $fromName, $replyTo, $payload, $emailSubject) {
                     $mail->to($mailTo)
                         ->from($fromAddress, $fromName)
                         ->subject($emailSubject);
 
                     if ($replyTo) {
-                        $mail->replyTo($replyTo, $payload['name']);
+                        $mail->replyTo($replyTo, (string) ($payload['name'] ?? 'Kontakt'));
                     }
                 });
+
+                return [
+                    'sent' => true,
+                    'mailer' => $mailer,
+                    'mail_to' => $mailTo,
+                    'attempted_mailers' => $attempted,
+                    'last_error' => null,
+                ];
             } catch (Throwable $mailException) {
-                Log::warning('Contact form email delivery failed', [
-                    'to' => $mailTo,
-                    'from' => $fromAddress,
-                    'sender_email' => $payload['email'],
-                    'error' => $mailException->getMessage(),
-                ]);
-
-                ResponseService::errorResponse(__('Poruka je sačuvana, ali slanje e-maila nije uspjelo. Pokušajte ponovo.'));
+                $attempted[] = $mailer;
+                $lastError = $mailException->getMessage();
             }
-
-            ResponseService::successResponse(__('Contact Us Stored Successfully'));
-
-        } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'API Controller -> storeContactUs');
-            ResponseService::errorResponse();
         }
+
+        return [
+            'sent' => false,
+            'mailer' => null,
+            'mail_to' => $mailTo,
+            'attempted_mailers' => $attempted,
+            'last_error' => $lastError,
+        ];
     }
 
     public function addItemReview(Request $request)

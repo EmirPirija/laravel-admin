@@ -108,6 +108,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Contact Form Mailers
+    |--------------------------------------------------------------------------
+    |
+    | Ordered mailers for support contact notifications. First successful
+    | mailer is used.
+    |
+    */
+    'contact_mailers' => array_values(array_filter(array_map('trim', explode(',', (string) env('MAIL_CONTACT_MAILERS', env('MAIL_MAILER', 'smtp').',failover'))))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Markdown Mail Settings
     |--------------------------------------------------------------------------
     |
