@@ -176,7 +176,6 @@ Route::prefix('category/port')->group(function () {
     Route::resource('category', CategoryController::class);
     Route::group(['prefix' => 'category'], static function () {
         Route::get('/{id}/subcategories', [CategoryController::class, 'getSubCategories'])->name('category.subcategories');
-        Route::post('/bulk-edit', [CategoryController::class, 'bulkUpdate'])->name('category.bulk-update');
         Route::get('/{id}/custom-fields', [CategoryController::class, 'customFields'])->name('category.custom-fields');
         Route::get('/{id}/custom-fields/show', [CategoryController::class, 'getCategoryCustomFields'])->name('category.custom-fields.show');
         Route::get('/{id}/custom-fields/search', [CategoryController::class, 'searchAssignableCustomFields'])->name('category.custom-fields.search');
@@ -249,7 +248,7 @@ Route::group(['prefix' => 'custom-fields'], static function () {
     Route::resource('advertisement', ItemController::class);
     Route::get('item/create', [ItemController::class, 'create'])->name('item.create');
     Route::get('item/states/search', [ItemController::class, 'searchState'])->name('state.search');
-    Route::get('item/cities/search', [ItemController::class, 'searchCities'])->name('cities.search');
+    Route::get('item/cities/search', [ItemController::class, 'searchCities'])->name('item.cities.search');
     // Route::get('/get-subcategories', [ItemController::class, 'getSubCategories'])->name('advertisement.get-subcategories');
     Route::get('/get-parent-categories', [ItemController::class, 'getParentCategories'])->name('advertisement.get-parent-categories');
         Route::get('/get-subcategories', [ItemController::class, 'getSubCategories'])->name('advertisement.get-subcategories');
