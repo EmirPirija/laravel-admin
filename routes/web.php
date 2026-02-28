@@ -243,11 +243,6 @@ Route::group(['prefix' => 'custom-fields'], static function () {
     /*** Item Module : START ***/
     Route::group(['prefix' => 'advertisement'], static function () {
         Route::put('/{id}/approval', [ItemController::class, 'updateItemApproval'])->name('advertisement.approval');
-        // web.php or routes file
-            Route::get('/{id}/edit', [ItemController::class, 'editForm'])->name('advertisement.edit');
-            //  Route::get('/{id}/edit', [ItemController::class, 'editForm'])->name('advertisement.edit');
-
-
     });
   Route::get('/get-custom-fields/{categoryId}', [ItemController::class, 'getCustomFields']);
   Route::get('/get-subsubcategories/{categoryId}/{subcategoryId}', [CategoryController::class, 'getSubsubcategories']);
