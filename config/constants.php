@@ -13,6 +13,7 @@ return [
         'LOGIN_SUCCESS'    => 100,
         'VALIDATION_ERROR' => 102,
         'EXCEPTION_ERROR'  => 103,
+        'PHONE_NOT_REGISTERED' => 104,
         'SUCCESS'          => 200,
     ],
     'CACHE'            => [

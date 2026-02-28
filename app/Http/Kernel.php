@@ -76,5 +76,6 @@ class Kernel extends HttpKernel {
         'verified'         => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'language'         => \App\Http\Middleware\LanguageManager::class,
         'permission'       => PermissionMiddleware::class,
+        'track.auth.rate'  => \App\Http\Middleware\TrackAuthRateSignals::class,
     ];
 }

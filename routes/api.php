@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\SavedUserListItemController;
 use App\Http\Controllers\Api\FollowPreferenceController;
 use App\Http\Controllers\Api\BulkAdController;
 use App\Http\Controllers\Api\ShopOperationsController;
+use App\Http\Controllers\Api\SystemHealthController;
 
 
 
@@ -46,6 +47,7 @@ Route::post('item-statistics/track-favorite', [ItemStatisticsController::class, 
 Route::post('item-statistics/track-search-impressions', [ItemStatisticsController::class, 'trackBatchSearchImpressions']);
 Route::post('item-statistics/track-search-click', [ItemStatisticsController::class, 'trackSearchClick']);
 Route::get('social/callback/{platform}', [\App\Http\Controllers\Api\SocialMediaController::class, 'handleCallback']);
+Route::get('health', [SystemHealthController::class, 'index']);
 
 
     // ============================================
@@ -270,12 +272,12 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
 
 
 /* Non Authenticated Routes */
-Route::get('get-otp', [ApiController::class, 'getOtp']);
-Route::get('verify-otp', [ApiController::class, 'verifyOtp']);
+Route::get('get-otp', [ApiController::class, 'getOtp'])->middleware('track.auth.rate:8,1,get-otp');
+Route::get('verify-otp', [ApiController::class, 'verifyOtp'])->middleware('track.auth.rate:12,1,verify-otp');
 Route::get('get-package', [ApiController::class, 'getPackage']);
 Route::get('get-languages', [ApiController::class, 'getLanguages']);
-Route::post('resolve-login-identifier', [ApiController::class, 'resolveLoginIdentifier'])->middleware('throttle:20,1');
-Route::post('user-signup', [ApiController::class, 'userSignup']);
+Route::post('resolve-login-identifier', [ApiController::class, 'resolveLoginIdentifier'])->middleware(['throttle:20,1', 'track.auth.rate:20,1,resolve-login-identifier']);
+Route::post('user-signup', [ApiController::class, 'userSignup'])->middleware('track.auth.rate:10,1,user-signup');
 Route::post('set-item-total-click', [ApiController::class, 'setItemTotalClick']);
 Route::get('get-system-settings', [ApiController::class, 'getSystemSettings']);
 Route::get('app-payment-status', [ApiController::class, 'appPaymentStatus']);

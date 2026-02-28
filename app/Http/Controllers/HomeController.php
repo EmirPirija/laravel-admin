@@ -7,6 +7,7 @@ use App\Models\CustomField;
 use App\Models\Item;
 use App\Models\User;
 use App\Services\ResponseService;
+use App\Services\SystemHealthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -86,8 +87,9 @@ $todayStats = Cache::remember("dashboard:today-stats:{$todayKey}", 60, function 
 });
 
 // (Opcionalno “i sl”)
-$todayNewUsers = User::role('User')->where('created_at', '>=', $today)->count();
-$todayNewAds   = Item::where('created_at', '>=', $today)->count();
+        $todayNewUsers = User::role('User')->where('created_at', '>=', $today)->count();
+        $todayNewAds   = Item::where('created_at', '>=', $today)->count();
+        $systemHealth = app(SystemHealthService::class)->check();
 
 return view('home', compact(
     'category_item_count',
@@ -99,7 +101,8 @@ return view('home', compact(
     'items',
     'todayStats',
     'todayNewUsers',
-    'todayNewAds'
+    'todayNewAds',
+    'systemHealth'
 ));
 
     }

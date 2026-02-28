@@ -50,6 +50,7 @@ use App\Models\VerificationRequest;
 use App\Models\TempMedia;
 use App\Services\CachingService;
 use App\Services\FileService;
+use App\Services\AuthEventService;
 use App\Services\HelperService;
 use App\Services\NotificationService;
 use App\Services\Payment\PaymentService;
@@ -60,6 +61,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -204,6 +207,20 @@ class ApiController extends Controller
         return null;
     }
 
+    private function phoneNotRegisteredResponse(): void
+    {
+        AuthEventService::log('phone_not_registered', [
+            'intent' => request()->input('intent', request()->input('auth_intent', 'login')),
+            'endpoint' => request()->path(),
+        ], 'warning', (string) (request()->input('identifier') ?? request()->input('number') ?? request()->input('mobile')));
+
+        ResponseService::errorResponse(
+            __('Broj telefona nije registrovan. Prvo kreirajte račun.'),
+            ['reason' => 'phone_not_registered'],
+            config('constants.RESPONSE_CODE.PHONE_NOT_REGISTERED')
+        );
+    }
+
     public function getSystemSettings(Request $request)
     {
         try {
@@ -276,6 +293,13 @@ class ApiController extends Controller
             $firebase_id = $request->firebase_id;
             $authIntent = $request->input('auth_intent', 'login');
             $phoneInput = $this->normalizePhoneInput($request->country_code, $request->mobile);
+            $eventIdentifier = $type === 'phone'
+                ? $phoneInput['full']
+                : (string) ($request->email ?? $firebase_id);
+            AuthEventService::log('signup_attempt', [
+                'type' => $type,
+                'intent' => $authIntent,
+            ], 'info', $eventIdentifier);
 
             if ($type === 'phone' && $phoneInput['full'] === '') {
                 ResponseService::validationError(__('Unesite ispravan broj telefona.'));
@@ -332,6 +356,10 @@ class ApiController extends Controller
                         ResponseService::validationError(
                             __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
                         );
+                    }
+
+                    if (! $existingPhoneUser && $authIntent === 'login') {
+                        $this->phoneNotRegisteredResponse();
                     }
 
                     DB::beginTransaction();
@@ -419,12 +447,20 @@ class ApiController extends Controller
             if ($auth && !empty($auth->email) && filter_var($auth->email, FILTER_VALIDATE_EMAIL)) {
                 NotificationService::sendNewDeviceLoginEmail($auth, $request);
             }
+            AuthEventService::log('signup_success', [
+                'type' => $type,
+                'intent' => $authIntent,
+                'user_id' => $auth->id ?? null,
+            ], 'success', $eventIdentifier, $auth->id ?? null);
 
             ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
         } catch (Throwable $th) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
+            AuthEventService::log('signup_failed', [
+                'error' => $th->getMessage(),
+            ], 'error', (string) ($request->input('email') ?? $request->input('mobile') ?? $request->input('firebase_id')));
             ResponseService::logErrorResponse($th, 'API Controller -> Signup');
             ResponseService::errorResponse();
         }
@@ -435,6 +471,8 @@ class ApiController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'identifier' => 'required|string|min:3|max:191',
+                'identifier_type' => 'nullable|in:auto,email_username,phone',
+                'country_code' => 'nullable|string|max:8',
             ]);
 
             if ($validator->fails()) {
@@ -444,6 +482,53 @@ class ApiController extends Controller
             $identifier = trim((string) $request->input('identifier', ''));
             if ($identifier === '') {
                 ResponseService::validationError(__('Invalid Login Credentials'));
+            }
+            AuthEventService::log('login_identifier_attempt', [
+                'identifier_type' => $request->input('identifier_type', 'auto'),
+            ], 'info', $identifier);
+
+            $identifierType = (string) $request->input('identifier_type', 'auto');
+            if ($identifierType === 'phone') {
+                $phone = $this->normalizePhoneInput($request->input('country_code'), $identifier);
+                if ($phone['full'] === '') {
+                    ResponseService::validationError(__('Unesite ispravan broj telefona.'));
+                }
+
+                $user = $this->findPhoneConflict(
+                    $phone['country'],
+                    $phone['mobile'],
+                    null,
+                    false,
+                    true
+                );
+
+                if (! $user) {
+                    $this->phoneNotRegisteredResponse();
+                }
+
+                if (! $user->hasRole('User')) {
+                    ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+                }
+
+                if (! empty($user->deleted_at)) {
+                    ResponseService::errorResponse(
+                        __('Your account has been deactivated.'),
+                        null,
+                        config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                    );
+                }
+                AuthEventService::log('login_identifier_resolved', [
+                    'identifier_type' => 'phone',
+                    'user_id' => $user->id,
+                ], 'success', $phone['full'], $user->id);
+
+                ResponseService::successResponse(__('Data Fetched Successfully'), [
+                    'user_id' => $user->id,
+                    'identifier_type' => 'phone',
+                    'country_code' => $phone['country'] ?: null,
+                    'mobile' => $phone['mobile'],
+                    'phone' => $phone['full'],
+                ]);
             }
 
             $identifierLower = Str::lower($identifier);
@@ -481,6 +566,10 @@ class ApiController extends Controller
             if (! $user || empty($user->email)) {
                 ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
             }
+            AuthEventService::log('login_identifier_resolved', [
+                'identifier_type' => $isEmail ? 'email' : 'username',
+                'user_id' => $user->id,
+            ], 'success', $identifier, $user->id);
 
             ResponseService::successResponse(__('Data Fetched Successfully'), [
                 'user_id' => $user->id,
@@ -488,6 +577,9 @@ class ApiController extends Controller
                 'identifier_type' => $isEmail ? 'email' : 'username',
             ]);
         } catch (Throwable $th) {
+            AuthEventService::log('login_identifier_failed', [
+                'error' => $th->getMessage(),
+            ], 'error', (string) $request->input('identifier'));
             ResponseService::logErrorResponse($th, 'API Controller -> resolveLoginIdentifier');
             ResponseService::errorResponse();
         }
@@ -5243,7 +5335,51 @@ public function getChatMessages(Request $request)
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            ContactUs::create($request->all());
+            $payload = [
+                'name' => trim((string) $request->input('name')),
+                'email' => trim((string) $request->input('email')),
+                'subject' => trim((string) $request->input('subject')),
+                'message' => trim((string) $request->input('message')),
+                'phone' => trim((string) $request->input('phone', '')),
+            ];
+
+            ContactUs::create($payload);
+
+            $mailTo = (string) config('mail.contact_to', 'info@lmx.ba');
+            $fromAddress = (string) (config('mail.from.address') ?: 'info@lmx.ba');
+            $fromName = (string) (config('mail.from.name') ?: config('app.name', 'LMX'));
+            $replyTo = filter_var($payload['email'], FILTER_VALIDATE_EMAIL) ? $payload['email'] : null;
+            $phoneLine = $payload['phone'] !== '' ? "\nTelefon: {$payload['phone']}" : '';
+
+            $emailSubject = sprintf('[LMX Kontakt] %s', $payload['subject']);
+            $emailBody = "Nova poruka sa kontakt forme:\n\n"
+                ."Ime: {$payload['name']}\n"
+                ."E-mail: {$payload['email']}"
+                .$phoneLine
+                ."\nNaslov: {$payload['subject']}\n\n"
+                ."Poruka:\n{$payload['message']}";
+
+            try {
+                Mail::raw($emailBody, function ($mail) use ($mailTo, $fromAddress, $fromName, $replyTo, $payload, $emailSubject) {
+                    $mail->to($mailTo)
+                        ->from($fromAddress, $fromName)
+                        ->subject($emailSubject);
+
+                    if ($replyTo) {
+                        $mail->replyTo($replyTo, $payload['name']);
+                    }
+                });
+            } catch (Throwable $mailException) {
+                Log::warning('Contact form email delivery failed', [
+                    'to' => $mailTo,
+                    'from' => $fromAddress,
+                    'sender_email' => $payload['email'],
+                    'error' => $mailException->getMessage(),
+                ]);
+
+                ResponseService::errorResponse(__('Poruka je sačuvana, ali slanje e-maila nije uspjelo. Pokušajte ponovo.'));
+            }
+
             ResponseService::successResponse(__('Contact Us Stored Successfully'));
 
         } catch (Throwable $th) {
@@ -6207,6 +6343,7 @@ public function getMyReview(Request $request)
             $requestNumber = $request->number;
             $trimmedNumber = ltrim($requestNumber, '+');
             $toNumber = '+'.$trimmedNumber;
+            AuthEventService::log('otp_send_attempt', [], 'info', $toNumber);
 
             // Fetch Twilio credentials from settings
             $twilioSettings = Setting::whereIn('name', [
@@ -6244,9 +6381,13 @@ public function getMyReview(Request $request)
                 'from' => $fromNumber,
                 'body' => "Your OTP is: $otp. It expires in 10 minutes.",
             ]);
+            AuthEventService::log('otp_send_success', [], 'success', $toNumber);
 
             return ResponseService::successResponse(__('OTP sent successfully.'));
         } catch (Throwable $th) {
+            AuthEventService::log('otp_send_failed', [
+                'error' => $th->getMessage(),
+            ], 'error', (string) $request->input('number'));
             ResponseService::logErrorResponse($th, 'OTP Controller -> getOtp');
 
             return ResponseService::errorResponse();
@@ -6272,24 +6413,31 @@ public function getMyReview(Request $request)
             $requestNumber = $request->number;
             $trimmedNumber = ltrim($requestNumber, '+');
             $toNumber = '+'.$trimmedNumber;
+            AuthEventService::log('otp_verify_attempt', [
+                'intent' => $request->input('intent', 'login'),
+            ], 'info', $toNumber);
 
             $otpRecord = NumberOtp::where('number', $toNumber)->first();
 
             if (! $otpRecord) {
+                AuthEventService::log('otp_verify_failed', ['reason' => 'otp_not_found'], 'warning', $toNumber);
                 return ResponseService::errorResponse(__('OTP not found.'));
             }
             if (now()->isAfter($otpRecord->expire_at)) {
+                AuthEventService::log('otp_verify_failed', ['reason' => 'otp_expired'], 'warning', $toNumber);
                 return ResponseService::validationError(__('OTP has expired.'));
             }
 
             if ($otpRecord->attempts >= 3) {
                 $otpRecord->delete();
+                AuthEventService::log('otp_verify_failed', ['reason' => 'max_attempts_reached'], 'warning', $toNumber);
 
                 return ResponseService::validationError(__('OTP expired after 3 failed attempts.'));
             }
 
             if ($otpRecord->otp != $request->otp) {
                 $otpRecord->increment('attempts');
+                AuthEventService::log('otp_verify_failed', ['reason' => 'invalid_otp'], 'warning', $toNumber);
 
                 return ResponseService::validationError(__('Invalid OTP.'));
             }
@@ -6334,6 +6482,10 @@ public function getMyReview(Request $request)
                 ]);
 
                 $authUser->refresh();
+                AuthEventService::log('otp_verify_success', [
+                    'intent' => 'profile_verification',
+                    'user_id' => $authUser->id,
+                ], 'success', $toNumber, $authUser->id);
                 return ResponseService::successResponse(__('Broj telefona je uspješno verificiran.'), $authUser);
             }
 
@@ -6361,8 +6513,11 @@ public function getMyReview(Request $request)
             }
 
             if (! $user) {
-                $defaultCountryCode = $loginCountryCode ?: null;
+                if ($intent === 'login') {
+                    $this->phoneNotRegisteredResponse();
+                }
 
+                $defaultCountryCode = $loginCountryCode ?: null;
                 $normalizedForStore = $this->normalizePhoneInput($defaultCountryCode, $trimmedNumber);
                 $mobileToStore = $normalizedForStore['mobile'] !== ''
                     ? $normalizedForStore['mobile']
@@ -6374,7 +6529,6 @@ public function getMyReview(Request $request)
                     'type' => 'phone',
                     'phone_verified_at' => now(),
                 ]);
-
                 $user->assignRole('User');
             }
 
@@ -6395,9 +6549,17 @@ public function getMyReview(Request $request)
 
             $token = $auth->createToken($auth->name ?? '')->plainTextToken;
             $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
+            AuthEventService::log('otp_verify_success', [
+                'intent' => $intent,
+                'user_id' => $auth->id,
+            ], 'success', $toNumber, $auth->id);
 
             return ResponseService::successResponse(__('User logged-in successfully'), $auth, ['token' => $token]);
         } catch (Throwable $th) {
+            AuthEventService::log('otp_verify_failed', [
+                'reason' => 'exception',
+                'error' => $th->getMessage(),
+            ], 'error', (string) $request->input('number'));
             ResponseService::logErrorResponse($th, 'OTP Controller -> verifyOtp');
 
             return ResponseService::errorResponse();

@@ -132,6 +132,50 @@
     </div>
 </div>
 
+@php
+    $healthStatus = $systemHealth['status'] ?? 'yellow';
+    $healthBadgeClass = $healthStatus === 'green' ? 'success' : ($healthStatus === 'red' ? 'danger' : 'warning');
+@endphp
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-1">{{ __('System Health') }}</h5>
+                        <p class="text-muted mb-0">{{ __('Provjera baze, redis-a, queue-a, maila i storage-a') }}</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill bg-{{ $healthBadgeClass }}">
+                            {{ strtoupper((string) $healthStatus) }}
+                        </span>
+                        <span class="badge rounded-pill bg-light text-dark">
+                            {{ __('Response') }}: {{ $systemHealth['response_time_ms'] ?? 0 }}ms
+                        </span>
+                    </div>
+                </div>
+                <div class="row">
+                    @foreach(($systemHealth['checks'] ?? []) as $checkKey => $check)
+                        @php
+                            $checkStatus = $check['status'] ?? 'warning';
+                            $checkClass = $checkStatus === 'up' ? 'success' : ($checkStatus === 'down' ? 'danger' : 'warning');
+                        @endphp
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                            <div class="border rounded p-2 h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <strong class="text-uppercase">{{ $checkKey }}</strong>
+                                    <span class="badge rounded-pill bg-{{ $checkClass }}">{{ strtoupper($checkStatus) }}</span>
+                                </div>
+                                <small class="text-muted d-block mt-2">{{ $check['message'] ?? '-' }}</small>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
         <div class="row mb-3 d-flex">
             <div class="col-lg-4 col-md-6 col-sm-12">
                 <div class="row">

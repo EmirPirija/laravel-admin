@@ -9,11 +9,13 @@ use App\Models\User;
 use App\Models\UserFcmToken;
 use App\Models\UserPurchasedPackage;
 use App\Services\BootstrapTableService;
+use App\Services\AuditLogService;
 use App\Services\HelperService;
 use App\Services\NotificationService;
 use App\Services\ResponseService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
@@ -22,6 +24,16 @@ class CustomersController extends Controller {
     public function index() {
         ResponseService::noAnyPermissionThenRedirect(['customer-list', 'customer-update']);
         $packages = Package::all()->where('status', 1);
+        $usersBase = User::role('User')->withTrashed();
+        $userStats = [
+            'total' => (clone $usersBase)->count(),
+            'active' => User::role('User')->whereNull('deleted_at')->count(),
+            'inactive' => User::role('User')->whereNull('deleted_at')->where('status', 0)->count(),
+            'deleted' => User::role('User')->onlyTrashed()->count(),
+            'verified' => User::role('User')->whereNull('deleted_at')->where(function ($q) {
+                $q->whereNotNull('phone_verified_at')->orWhereNotNull('email_verified_at');
+            })->count(),
+        ];
         $settings = Setting::whereIn('name', ['currency_symbol', 'currency_symbol_position','free_ad_listing'])
         ->pluck('value', 'name');
         $currency_symbol = $settings['currency_symbol'] ?? '';
@@ -34,13 +46,16 @@ class CustomersController extends Controller {
             return $data->type == "advertisement";
         });
 
-        return view('customer.index', compact('packages', 'itemListingPackage', 'advertisementPackage','currency_symbol','currency_symbol_position','free_ad_listing'));
+        return view('customer.index', compact('packages', 'itemListingPackage', 'advertisementPackage','currency_symbol','currency_symbol_position','free_ad_listing', 'userStats'));
     }
 
     public function update(Request $request) {
         try {
             ResponseService::noPermissionThenSendJson('customer-update');
             User::where('id', $request->id)->update(['status' => $request->status]);
+            AuditLogService::log('customer_status_change', User::class, $request->id, [
+                'status' => (int) $request->status,
+            ]);
             $message = $request->status ? "Customer Activated Successfully" : "Customer Deactivated Successfully";
             ResponseService::successResponse($message);
         } catch (Throwable) {
@@ -113,6 +128,10 @@ class CustomersController extends Controller {
                     "data-user-id"   => $row->id
                 ]
             );
+
+            if (Auth::user()->can('customer-delete')) {
+                $operate .= BootstrapTableService::deleteButton(route('customer.destroy', $row->id), null, null, null, ' ms-1');
+            }
             
             $tempRow['operate'] = $operate;
             $rows[] = $tempRow;
@@ -175,6 +194,11 @@ class CustomersController extends Controller {
                     ['id' => $userPackage->id]
                 );
             }
+            AuditLogService::log('customer_package_assigned', UserPurchasedPackage::class, $userPackage->id, [
+                'user_id' => $request->user_id,
+                'package_id' => $request->package_id,
+                'payment_gateway' => $request->payment_gateway,
+            ]);
 
             DB::commit();
             ResponseService::successResponse('Package assigned to user Successfully');
@@ -261,12 +285,43 @@ class CustomersController extends Controller {
                 );
             }
 
+            AuditLogService::log('customer_package_cancelled', UserPurchasedPackage::class, $userPackage->id, [
+                'user_id' => $userPackage->user_id,
+                'package_id' => $userPackage->package_id,
+            ]);
+
             DB::commit();
             ResponseService::successResponse(__('Package cancelled successfully'));
         } catch (Throwable $th) {
             DB::rollback();
             ResponseService::logErrorResponse($th, "CustomersController --> cancelPackage");
             ResponseService::errorResponse();
+        }
+    }
+
+    public function destroy($id)
+    {
+        ResponseService::noPermissionThenSendJson('customer-delete');
+
+        try {
+            $user = User::withTrashed()->role('User')->findOrFail($id);
+            if ((int) $user->id === (int) auth()->id()) {
+                ResponseService::errorResponse(__('Ne možete obrisati vlastiti profil iz admin panela.'));
+            }
+
+            if (!$user->trashed()) {
+                $user->delete();
+            }
+
+            AuditLogService::log('customer_profile_deleted', User::class, $user->id, [
+                'email' => $user->email,
+                'mobile' => $user->mobile,
+            ]);
+
+            ResponseService::successResponse(__('Korisnički profil je uspješno obrisan.'));
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'CustomersController -> destroy');
+            ResponseService::errorResponse(__('Brisanje korisnika nije uspjelo.'));
         }
     }
 }

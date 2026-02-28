@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ContactInboxController;
 use App\Http\Controllers\MembershipPackageController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CustomersController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PlaceController;
@@ -448,8 +450,21 @@ Route::prefix('package/membership')->name('package.membership.')->middleware(['a
         Route::delete("/{id}/delete", [PlaceController::class, 'destroyCity'])->name('city.destroy');
     });
     Route::group(['prefix' => 'contact-us'], static function () {
-        Route::get('/', [Controller::class, 'contactUsUIndex'])->name('contact-us.index');
-        Route::get('/show', [Controller::class, 'contactUsShow'])->name('contact-us.show');
+        Route::get('/', [ContactInboxController::class, 'index'])->name('contact-us.index');
+        Route::get('/show', [ContactInboxController::class, 'show'])->name('contact-us.show');
+        Route::post('/{id}/status', [ContactInboxController::class, 'updateStatus'])->name('contact-us.update-status');
+    });
+
+    Route::group(['prefix' => 'monitoring'], static function () {
+        Route::get('/audit-logs', [MonitoringController::class, 'auditIndex'])->name('monitoring.audit.index');
+        Route::get('/audit-logs/show', [MonitoringController::class, 'auditShow'])->name('monitoring.audit.show');
+
+        Route::get('/auth-events', [MonitoringController::class, 'authEventsIndex'])->name('monitoring.auth.index');
+        Route::get('/auth-events/show', [MonitoringController::class, 'authEventsShow'])->name('monitoring.auth.show');
+
+        Route::get('/failed-jobs', [MonitoringController::class, 'failedJobsIndex'])->name('monitoring.failed.index');
+        Route::get('/failed-jobs/show', [MonitoringController::class, 'failedJobsShow'])->name('monitoring.failed.show');
+        Route::post('/failed-jobs/{id}/retry', [MonitoringController::class, 'retryFailedJob'])->name('monitoring.failed.retry');
     });
     /*** Area Module : END ***/
 });

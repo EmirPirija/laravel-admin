@@ -8,6 +8,7 @@ use App\Models\PackageTranslation;
 use App\Models\PaymentTransaction;
 use App\Models\UserFcmToken;
 use App\Models\UserPurchasedPackage;
+use App\Services\AuditLogService;
 use App\Services\BootstrapTableService;
 use App\Services\CachingService;
 use App\Services\FileService;
@@ -98,6 +99,12 @@ class PackageController extends Controller {
                     ]);
                 }
             }
+            AuditLogService::log('package_created', Package::class, $package->id, [
+                'package_type' => 'item_listing',
+                'final_price' => $package->final_price,
+                'duration' => $package->duration,
+                'item_limit' => $package->item_limit,
+            ]);
             ResponseService::successResponse('Package Successfully Added', $data);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "PackageController -> store method");
@@ -203,6 +210,12 @@ class PackageController extends Controller {
                     ]
                 );
             }
+            AuditLogService::log('package_updated', Package::class, $package->id, [
+                'package_type' => 'item_listing',
+                'final_price' => $package->final_price,
+                'duration' => $package->duration,
+                'item_limit' => $package->item_limit,
+            ]);
 
             ResponseService::successResponse("Package Successfully Update");
         } catch (Throwable $th) {
@@ -313,6 +326,12 @@ class PackageController extends Controller {
                     ]);
                 }
             }
+            AuditLogService::log('package_created', Package::class, $package->id, [
+                'package_type' => 'advertisement',
+                'final_price' => $package->final_price,
+                'duration' => $package->duration,
+                'item_limit' => $package->item_limit,
+            ]);
             ResponseService::successResponse('Package Successfully Added');
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "PackageController -> store method");
@@ -386,6 +405,12 @@ class PackageController extends Controller {
                     ]
                 );
             }
+            AuditLogService::log('package_updated', Package::class, $package->id, [
+                'package_type' => 'advertisement',
+                'final_price' => $package->final_price,
+                'duration' => $package->duration,
+                'item_limit' => $package->item_limit,
+            ]);
             ResponseService::successResponse("Package Successfully Update");
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "PackageController ->  update");
@@ -507,6 +532,10 @@ class PackageController extends Controller {
             $transaction = PaymentTransaction::findOrFail($id);
             $transaction->update([
                 'payment_status' => $request->payment_status,
+            ]);
+            AuditLogService::log('bank_transfer_status_change', PaymentTransaction::class, $transaction->id, [
+                'payment_status' => $request->payment_status,
+                'user_id' => $transaction->user_id,
             ]);
 
             $userTokens = UserFcmToken::where('user_id', $transaction->user_id)->pluck('fcm_token')->toArray();

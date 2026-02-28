@@ -291,11 +291,32 @@
                 <div class="sidebar-new-title">{{ __('Web') }}</div>
                 <li class="sidebar-item">
                     <a href="{{ route('contact-us.index') }}" class='sidebar-link'>
-                        <i class="bi bi-person-bounding-box"></i>
-                        <span class="menu-item">{{ __('User Queries') }}</span>
+                        <i class="bi bi-envelope-open"></i>
+                        <span class="menu-item">{{ __('Kontakt Inbox') }}</span>
                     </a>
                 </li>
                 @endcanany
+                @can('settings-update')
+                    <div class="sidebar-new-title">{{ __('Monitoring') }}</div>
+                    <li class="sidebar-item">
+                        <a href="{{ route('monitoring.audit.index') }}" class='sidebar-link'>
+                            <i class="bi bi-journal-text"></i>
+                            <span class="menu-item">{{ __('Audit Log') }}</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="{{ route('monitoring.auth.index') }}" class='sidebar-link'>
+                            <i class="bi bi-shield-lock"></i>
+                            <span class="menu-item">{{ __('Auth Event Log') }}</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="{{ route('monitoring.failed.index') }}" class='sidebar-link'>
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span class="menu-item">{{ __('Failed Jobs') }}</span>
+                        </a>
+                    </li>
+                @endcan
                 @canany(['settings-update'])
                     <div class="sidebar-new-title">{{ __('System Settings') }}</div>
                     @can('settings-update')

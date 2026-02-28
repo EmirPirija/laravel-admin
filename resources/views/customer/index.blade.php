@@ -17,6 +17,49 @@
 
 @section('content')
     <section class="section">
+        <div class="row mb-3">
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">{{ __('Ukupno korisnika') }}</div>
+                        <div class="h3 mb-0">{{ $userStats['total'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">{{ __('Aktivni korisnici') }}</div>
+                        <div class="h3 mb-0 text-success">{{ $userStats['active'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-2 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">{{ __('Neaktivni') }}</div>
+                        <div class="h3 mb-0 text-warning">{{ $userStats['inactive'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-2 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">{{ __('Verifikovani') }}</div>
+                        <div class="h3 mb-0 text-info">{{ $userStats['verified'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-2 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">{{ __('Obrisani') }}</div>
+                        <div class="h3 mb-0 text-danger">{{ $userStats['deleted'] ?? 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-body">
                 <div class="row">

@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Models\State;
 use App\Models\User;
 use App\Models\UserFcmToken;
+use App\Services\AuditLogService;
 use App\Services\BootstrapTableService;
 use App\Services\FileService;
 use App\Services\HelperService;
@@ -169,9 +170,15 @@ class ItemController extends Controller
         try {
             ResponseService::noPermissionThenSendJson('advertisement-update');
             $item = Item::with('user')->withTrashed()->findOrFail($id);
+            $oldStatus = $item->status;
             $item->update([
                 ...$request->all(),
                 'rejected_reason' => ($request->status == 'soft rejected' || $request->status == 'permanent rejected') ? $request->rejected_reason : '',
+            ]);
+            AuditLogService::log('advertisement_approval_status_change', Item::class, $item->id, [
+                'from' => $oldStatus,
+                'to' => $request->status,
+                'rejected_reason' => $request->rejected_reason,
             ]);
             $user_token = UserFcmToken::where('user_id', $item->user->id)->pluck('fcm_token')->toArray();
             if (! empty($user_token)) {
@@ -194,6 +201,10 @@ class ItemController extends Controller
                 FileService::delete($gallery_image->getRawOriginal('image'));
             }
             FileService::delete($item->getRawOriginal('image'));
+            AuditLogService::log('advertisement_deleted_by_admin', Item::class, $item->id, [
+                'name' => $item->name,
+                'user_id' => $item->user_id,
+            ]);
 
             $item->forceDelete();
 

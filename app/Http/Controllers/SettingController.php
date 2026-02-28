@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PaymentConfiguration;
 use App\Models\Setting;
 use App\Models\SettingTranslation;
+use App\Services\AuditLogService;
 use App\Services\CachingService;
 use App\Services\FileService;
 use App\Services\HelperService;
@@ -359,6 +360,10 @@ class SettingController extends Controller
                 }
             }
             CachingService::removeCache(config('constants.CACHE.SETTINGS'));
+            AuditLogService::log('system_settings_updated', Setting::class, null, [
+                'updated_keys_count' => count($data ?? []),
+                'has_files' => count($request->files->all()) > 0,
+            ]);
             ResponseService::successResponse('Settings Updated Successfully');
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "Setting Controller -> store");
@@ -410,6 +415,9 @@ class SettingController extends Controller
             $serviceWorkerFile = str_replace(array_keys($updateFileStrings), $updateFileStrings, $serviceWorkerFile);
             file_put_contents(public_path('firebase-messaging-sw.js'), $serviceWorkerFile);
             CachingService::removeCache(config('constants.CACHE.SETTINGS'));
+            AuditLogService::log('firebase_settings_updated', Setting::class, null, [
+                'project_id' => $request->projectId,
+            ]);
             ResponseService::successResponse('Settings Updated Successfully');
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "Settings Controller -> updateFirebaseSettings");
@@ -482,6 +490,9 @@ class SettingController extends Controller
                     ]);
                 }
             }
+            AuditLogService::log('payment_settings_updated', PaymentConfiguration::class, null, [
+                'gateways' => array_keys((array) $request->gateway),
+            ]);
             ResponseService::successResponse('Settings Updated Successfully');
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, "Settings Controller -> updateFirebaseSettings");
