@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\AuthEventLog;
+use App\Models\SiteLiveSession;
+use App\Models\SitePageEvent;
 use App\Services\AuditLogService;
 use App\Services\ResponseService;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -250,6 +253,226 @@ class MonitoringController extends Controller
             ResponseService::logErrorResponse($th, 'MonitoringController -> retryFailedJob');
             ResponseService::errorResponse(__('Retry nije uspio. Pokušajte ponovo.'));
         }
+    }
+
+    public function liveTrafficIndex()
+    {
+        ResponseService::noPermissionThenRedirect('settings-update');
+        $summary = $this->buildLiveTrafficSummary();
+        return view('monitoring.live-traffic', compact('summary'));
+    }
+
+    public function liveTrafficSummary()
+    {
+        ResponseService::noPermissionThenSendJson('settings-update');
+        return response()->json([
+            'error' => false,
+            'data' => $this->buildLiveTrafficSummary(),
+        ]);
+    }
+
+    public function liveTrafficShow(Request $request)
+    {
+        ResponseService::noPermissionThenSendJson('settings-update');
+
+        if (!Schema::hasTable('site_live_sessions')) {
+            return response()->json([
+                'total' => 0,
+                'rows' => [],
+            ]);
+        }
+
+        $offset = (int) $request->input('offset', 0);
+        $limit = (int) $request->input('limit', 10);
+        $sort = (string) $request->input('sort', 'last_seen_at');
+        $order = strtoupper((string) $request->input('order', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+        $status = (string) $request->input('status', 'online');
+
+        $allowedSort = ['id', 'page_path', 'device_type', 'ip_address', 'first_seen_at', 'last_seen_at', 'heartbeat_count'];
+        if (!in_array($sort, $allowedSort, true)) {
+            $sort = 'last_seen_at';
+        }
+
+        $activeSince = now()->subMinutes(2);
+        $recentSince = now()->subHours(24);
+
+        $sql = SiteLiveSession::query()->with('user:id,name,email');
+        if ($status === 'online') {
+            $sql->where('last_seen_at', '>=', $activeSince);
+        } elseif ($status === 'recent') {
+            $sql->where('last_seen_at', '>=', $recentSince);
+        }
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $sql->where(function ($q) use ($search) {
+                $q->where('page_path', 'LIKE', "%{$search}%")
+                    ->orWhere('visitor_id', 'LIKE', "%{$search}%")
+                    ->orWhere('session_id', 'LIKE', "%{$search}%")
+                    ->orWhere('ip_address', 'LIKE', "%{$search}%")
+                    ->orWhereHas('user', function ($userQ) use ($search) {
+                        $userQ->where('name', 'LIKE', "%{$search}%")
+                            ->orWhere('email', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        $total = (clone $sql)->count();
+        $now = now();
+
+        $rows = $sql->orderBy($sort, $order)->skip($offset)->take($limit)->get()->map(function (SiteLiveSession $row) use ($now) {
+            $firstSeen = $row->first_seen_at;
+            $lastSeen = $row->last_seen_at;
+
+            return [
+                'id' => $row->id,
+                'user_name' => $row->user?->name ?: __('Gost'),
+                'user_email' => $row->user?->email ?: '-',
+                'page_path' => $row->page_path ?: '/',
+                'device_type' => $row->device_type ?: '-',
+                'ip_address' => $row->ip_address ?: '-',
+                'visitor_id' => Str::limit($row->visitor_id, 24),
+                'session_id' => Str::limit($row->session_id, 24),
+                'heartbeat_count' => (int) $row->heartbeat_count,
+                'first_seen_at' => optional($firstSeen)->format('Y-m-d H:i:s'),
+                'last_seen_at' => optional($lastSeen)->format('Y-m-d H:i:s'),
+                'active_for' => $firstSeen ? $firstSeen->diffForHumans($now) : '-',
+                'idle_for' => $lastSeen ? $lastSeen->diffForHumans($now) : '-',
+            ];
+        })->values();
+
+        return response()->json([
+            'total' => $total,
+            'rows' => $rows,
+        ]);
+    }
+
+    private function buildLiveTrafficSummary(): array
+    {
+        if (!Schema::hasTable('site_live_sessions')) {
+            return [
+                'online_now' => 0,
+                'online_users' => 0,
+                'online_guests' => 0,
+                'views_last_24h' => 0,
+                'unique_visitors_last_24h' => 0,
+                'active_pages' => [],
+                'top_pages_last_24h' => [],
+                'device_breakdown_last_24h' => [],
+                'referrer_breakdown_last_24h' => [],
+                'hourly_trend_last_24h' => [],
+                'generated_at' => now()->toDateTimeString(),
+            ];
+        }
+
+        $activeSince = now()->subMinutes(2);
+        $reportSince = now()->subHours(24);
+
+        $activeQuery = SiteLiveSession::query()
+            ->where('last_seen_at', '>=', $activeSince);
+
+        $onlineNow = (clone $activeQuery)->count();
+        $onlineUsers = (clone $activeQuery)->whereNotNull('user_id')->count();
+        $onlineGuests = max(0, $onlineNow - $onlineUsers);
+
+        $activePages = (clone $activeQuery)
+            ->selectRaw("COALESCE(NULLIF(page_path, ''), '/') as page_path, COUNT(*) as visitors")
+            ->groupBy('page_path')
+            ->orderByDesc('visitors')
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'page_path' => $row->page_path,
+                'visitors' => (int) $row->visitors,
+            ])
+            ->values()
+            ->all();
+
+        $views24h = 0;
+        $uniqueVisitors24h = 0;
+        $topPages24h = [];
+        $deviceBreakdown24h = [];
+        $referrerBreakdown24h = [];
+        $hourlyTrend24h = [];
+
+        if (Schema::hasTable('site_page_events')) {
+            $eventsBase = SitePageEvent::query()->where('occurred_at', '>=', $reportSince);
+            $views24h = (clone $eventsBase)->where('event_type', 'view')->count();
+            $uniqueVisitors24h = (clone $eventsBase)->distinct('visitor_id')->count('visitor_id');
+
+            $topPages24h = (clone $eventsBase)
+                ->where('event_type', 'view')
+                ->selectRaw("COALESCE(NULLIF(page_path, ''), '/') as page_path, COUNT(*) as views")
+                ->groupBy('page_path')
+                ->orderByDesc('views')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => [
+                    'page_path' => $row->page_path,
+                    'views' => (int) $row->views,
+                ])
+                ->values()
+                ->all();
+
+            $deviceBreakdown24h = (clone $eventsBase)
+                ->selectRaw("COALESCE(NULLIF(device_type, ''), 'unknown') as device_type, COUNT(*) as total")
+                ->groupBy('device_type')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => [
+                    'device_type' => $row->device_type,
+                    'total' => (int) $row->total,
+                ])
+                ->values()
+                ->all();
+
+            $referrerBreakdown24h = (clone $eventsBase)
+                ->whereNotNull('referrer_url')
+                ->where('referrer_url', '!=', '')
+                ->selectRaw('referrer_url, COUNT(*) as total')
+                ->groupBy('referrer_url')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => [
+                    'referrer_url' => Str::limit($row->referrer_url, 80),
+                    'total' => (int) $row->total,
+                ])
+                ->values()
+                ->all();
+
+            $rawTrend = (clone $eventsBase)
+                ->selectRaw("DATE_FORMAT(occurred_at, '%Y-%m-%d %H:00:00') as bucket, COUNT(*) as total")
+                ->groupBy('bucket')
+                ->orderBy('bucket')
+                ->get()
+                ->pluck('total', 'bucket')
+                ->all();
+
+            $period = CarbonPeriod::create($reportSince->copy()->startOfHour(), '1 hour', now()->startOfHour());
+            foreach ($period as $bucket) {
+                $key = $bucket->format('Y-m-d H:00:00');
+                $hourlyTrend24h[] = [
+                    'hour' => $bucket->format('H:00'),
+                    'total' => (int) ($rawTrend[$key] ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'online_now' => (int) $onlineNow,
+            'online_users' => (int) $onlineUsers,
+            'online_guests' => (int) $onlineGuests,
+            'views_last_24h' => (int) $views24h,
+            'unique_visitors_last_24h' => (int) $uniqueVisitors24h,
+            'active_pages' => $activePages,
+            'top_pages_last_24h' => $topPages24h,
+            'device_breakdown_last_24h' => $deviceBreakdown24h,
+            'referrer_breakdown_last_24h' => $referrerBreakdown24h,
+            'hourly_trend_last_24h' => $hourlyTrend24h,
+            'generated_at' => now()->toDateTimeString(),
+        ];
     }
 
     private function rateLimitSignalsBaseQuery()

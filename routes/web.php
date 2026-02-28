@@ -471,6 +471,10 @@ Route::prefix('package/membership')->name('package.membership.')->middleware(['a
     });
 
     Route::group(['prefix' => 'monitoring'], static function () {
+        Route::get('/live-traffic', [MonitoringController::class, 'liveTrafficIndex'])->name('monitoring.live.index');
+        Route::get('/live-traffic/summary', [MonitoringController::class, 'liveTrafficSummary'])->name('monitoring.live.summary');
+        Route::get('/live-traffic/show', [MonitoringController::class, 'liveTrafficShow'])->name('monitoring.live.show');
+
         Route::get('/audit-logs', [MonitoringController::class, 'auditIndex'])->name('monitoring.audit.index');
         Route::get('/audit-logs/show', [MonitoringController::class, 'auditShow'])->name('monitoring.audit.show');
 

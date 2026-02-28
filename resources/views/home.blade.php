@@ -92,6 +92,28 @@
         </div>
     </div>
 
+    <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <a href="{{ route('monitoring.live.index') }}">
+            <div class="card h-100">
+                <div class="item_for_sale d-flex">
+                    <div class="curtain"></div>
+                    <div class="row w-100">
+                        <div class="col-4 col-md-12">
+                            <div class="svg_icon align-items-center d-flex justify-content-center me-3">
+                                <span class="fa fa-signal text-white fa-2x"></span>
+                            </div>
+                        </div>
+                        <div class="col-8 col-md-12">
+                            <div class="total_number">{{ (int) ($liveTrafficSnapshot['online_now'] ?? 0) }}</div>
+                            <div class="card_title">{{ __('Live Online') }}</div>
+                            <div class="small text-muted">{{ __('Top stranica') }}: {{ $liveTrafficSnapshot['top_page'] ?? '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
     {{-- opcionalno --}}
     <div class="col-lg-3 col-md-6 col-12 mb-3">
         <div class="card h-100">

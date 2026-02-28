@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\FollowPreferenceController;
 use App\Http\Controllers\Api\BulkAdController;
 use App\Http\Controllers\Api\ShopOperationsController;
 use App\Http\Controllers\Api\SystemHealthController;
+use App\Http\Controllers\Api\LiveTrafficController;
 use App\Http\Controllers\ItemController;
 
 
@@ -38,6 +39,7 @@ use App\Http\Controllers\ItemController;
 Route::post('track/view', [ItemStatisticsController::class, 'trackView']);
 Route::post('track/search-impressions', [ItemStatisticsController::class, 'trackBatchSearchImpressions']);
 Route::post('track/search-click', [ItemStatisticsController::class, 'trackSearchClick']);
+Route::post('track/live-session', [LiveTrafficController::class, 'track'])->middleware('throttle:120,1');
 Route::get('share/{token}', [ItemStatisticsController::class, 'handleShareClick']);
 Route::post('item-statistics/track-view', [ItemStatisticsController::class, 'trackView']);
 Route::post('item-statistics/track-contact', [ItemStatisticsController::class, 'trackContact']);

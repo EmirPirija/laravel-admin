@@ -17,6 +17,7 @@ use App\Models\ItemVisitorSession;
 use App\Models\ItemSearchImpression;
 use App\Models\ItemContactEvent;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Carbon;
 
@@ -87,9 +88,27 @@ $todayStats = Cache::remember("dashboard:today-stats:{$todayKey}", 60, function 
 });
 
 // (Opcionalno “i sl”)
-        $todayNewUsers = User::role('User')->where('created_at', '>=', $today)->count();
+$todayNewUsers = User::role('User')->where('created_at', '>=', $today)->count();
         $todayNewAds   = Item::where('created_at', '>=', $today)->count();
         $systemHealth = app(SystemHealthService::class)->check();
+        $liveTrafficSnapshot = [
+            'online_now' => 0,
+            'top_page' => '-',
+        ];
+
+        if (Schema::hasTable('site_live_sessions')) {
+            $activeSince = now()->subMinutes(2);
+            $liveTrafficSnapshot['online_now'] = (int) DB::table('site_live_sessions')
+                ->where('last_seen_at', '>=', $activeSince)
+                ->count();
+
+            $liveTrafficSnapshot['top_page'] = DB::table('site_live_sessions')
+                ->where('last_seen_at', '>=', $activeSince)
+                ->selectRaw("COALESCE(NULLIF(page_path, ''), '/') as page_path, COUNT(*) as total")
+                ->groupBy('page_path')
+                ->orderByDesc('total')
+                ->value('page_path') ?: '-';
+        }
 
 return view('home', compact(
     'category_item_count',
@@ -102,7 +121,8 @@ return view('home', compact(
     'todayStats',
     'todayNewUsers',
     'todayNewAds',
-    'systemHealth'
+    'systemHealth',
+    'liveTrafficSnapshot'
 ));
 
     }

@@ -299,6 +299,12 @@
                 @can('settings-update')
                     <div class="sidebar-new-title">{{ __('Monitoring') }}</div>
                     <li class="sidebar-item">
+                        <a href="{{ route('monitoring.live.index') }}" class='sidebar-link'>
+                            <i class="bi bi-broadcast-pin"></i>
+                            <span class="menu-item">{{ __('Live Traffic') }}</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
                         <a href="{{ route('monitoring.audit.index') }}" class='sidebar-link'>
                             <i class="bi bi-journal-text"></i>
                             <span class="menu-item">{{ __('Audit Log') }}</span>
