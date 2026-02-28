@@ -31,6 +31,8 @@ class User extends Authenticatable {
         'address',
         'notification',
         'country_code',
+        'email_normalized',
+        'phone_normalized',
         'show_personal_details',
         'is_verified',
         'auto_approve_item',
@@ -194,6 +196,65 @@ public function updateSellerLevel(): void
         'response_time_avg' => 'integer',
         'use_svg_avatar' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $user): void {
+            $normalizedEmail = self::normalizeEmail($user->email);
+            $normalizedCountry = self::normalizeDigits($user->country_code);
+            $normalizedMobile = self::normalizeDigits($user->mobile);
+
+            $user->email = $normalizedEmail;
+            $user->country_code = $normalizedCountry;
+            $user->mobile = $normalizedMobile;
+            $user->email_normalized = $normalizedEmail;
+            $user->phone_normalized = self::normalizePhone($normalizedCountry, $normalizedMobile);
+        });
+
+        static::deleting(function (self $user): void {
+            if ($user->isForceDeleting()) {
+                return;
+            }
+
+            $fallbackEmail = null;
+            if (!empty($user->email)) {
+                $fallbackEmail = "deleted+{$user->id}@deleted.lmx.local";
+            }
+
+            $user->forceFill([
+                'email' => $fallbackEmail,
+                'country_code' => null,
+                'mobile' => null,
+                'email_normalized' => null,
+                'phone_normalized' => null,
+            ])->saveQuietly();
+        });
+    }
+
+    private static function normalizeEmail(?string $email): ?string
+    {
+        $normalized = mb_strtolower(trim((string) ($email ?? '')));
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private static function normalizePhone(?string $countryCode, ?string $mobile): ?string
+    {
+        $mobileDigits = self::normalizeDigits($mobile) ?? '';
+        if ($mobileDigits === '') {
+            return null;
+        }
+
+        $countryDigits = self::normalizeDigits($countryCode) ?? '';
+        $normalized = $countryDigits.$mobileDigits;
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private static function normalizeDigits(?string $value): ?string
+    {
+        $normalized = preg_replace('/\D+/', '', (string) ($value ?? '')) ?? '';
+        return $normalized !== '' ? $normalized : null;
+    }
 
 
     public function getProfileAttribute($image) {

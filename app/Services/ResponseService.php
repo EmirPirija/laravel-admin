@@ -12,6 +12,26 @@ use Throwable;
 
 class ResponseService
 {
+    private static function resolveErrorHttpStatus(string|int|null $code = null): int
+    {
+        $map = [
+            config('constants.RESPONSE_CODE.VALIDATION_ERROR') => 422,
+            config('constants.RESPONSE_CODE.PHONE_NOT_REGISTERED') => 404,
+            config('constants.RESPONSE_CODE.UNAUTHORIZED') => 401,
+            config('constants.RESPONSE_CODE.FORBIDDEN') => 403,
+            config('constants.RESPONSE_CODE.INVALID_LOGIN') => 401,
+            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT') => 403,
+            config('constants.RESPONSE_CODE.NOT_FOUND') => 404,
+            config('constants.RESPONSE_CODE.CONFLICT') => 409,
+        ];
+
+        if ($code !== null && array_key_exists($code, $map)) {
+            return $map[$code];
+        }
+
+        return 500;
+    }
+
     /**
      * @param $permission
      * @return Application|RedirectResponse|Redirector|true
@@ -33,7 +53,13 @@ class ResponseService
     public static function noPermissionThenSendJson($permission)
     {
         if (!Auth::user()->can($permission)) {
-            self::errorResponse("You Don't have enough permissions");
+            self::errorResponse(
+                "You Don't have enough permissions",
+                null,
+                config('constants.RESPONSE_CODE.FORBIDDEN'),
+                null,
+                403
+            );
         }
         return true;
     }
@@ -123,7 +149,13 @@ class ResponseService
     public static function noAnyPermissionThenSendJson(array $permissions)
     {
         if (!Auth::user()->canany($permissions)) {
-            self::errorResponse("You Don't have enough permissions");
+            self::errorResponse(
+                "You Don't have enough permissions",
+                null,
+                config('constants.RESPONSE_CODE.FORBIDDEN'),
+                null,
+                403
+            );
         }
         return true;
     }
@@ -135,14 +167,20 @@ class ResponseService
      * @param null $code
      * @return void
      */
-    public static function successResponse(string|null $message = "Success", $data = null, array $customData = array(), $code = null): void
+    public static function successResponse(
+        string|null $message = "Success",
+        $data = null,
+        array $customData = array(),
+        $code = null,
+        int $httpStatus = 200
+    ): void
     {
         response()->json(array_merge([
             'error'   => false,
             'message' => trans($message),
             'data'    => $data,
             'code'    => $code ?? config('constants.RESPONSE_CODE.SUCCESS')
-        ], $customData))->send();
+        ], $customData), $httpStatus)->send();
         exit();
     }
 
@@ -168,15 +206,22 @@ class ResponseService
      * @param null $e
      * @return void
      */
-    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int $code = null, $e = null)
+    public static function errorResponse(
+        string $message = 'Error Occurred',
+        $data = null,
+        string|int $code = null,
+        $e = null,
+        ?int $httpStatus = null
+    )
     {
+        $resolvedHttpStatus = $httpStatus ?? self::resolveErrorHttpStatus($code);
         response()->json([
             'error'   => true,
             'message' => trans($message),
             'data'    => $data,
             'code'    => $code ?? config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
             'details' => (!empty($e) && is_object($e)) ? $e->getMessage() . ' --> ' . $e->getFile() . ' At Line : ' . $e->getLine() : ''
-        ])->send();
+        ], $resolvedHttpStatus)->send();
         exit();
     }
 
@@ -202,7 +247,7 @@ class ResponseService
      * @param null $code
      * @return void
      */
-    public static function warningResponse(string $message = 'Error Occurred', $data = null, $code = null)
+    public static function warningResponse(string $message = 'Error Occurred', $data = null, $code = null, int $httpStatus = 200)
     {
         response()->json([
             'error'   => false,
@@ -210,7 +255,7 @@ class ResponseService
             'code'    => $code,
             'message' => trans($message),
             'data'    => $data,
-        ])->send();
+        ], $httpStatus)->send();
         exit();
     }
 
@@ -222,7 +267,51 @@ class ResponseService
      */
     public static function validationError(string $message = 'Error Occurred', $data = null)
     {
-        self::errorResponse($message, $data, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+        self::errorResponse($message, $data, config('constants.RESPONSE_CODE.VALIDATION_ERROR'), null, 422);
+    }
+
+    public static function conflictResponse(string $message = 'Conflict Occurred', $data = null, $code = null): void
+    {
+        self::errorResponse(
+            $message,
+            $data,
+            $code ?? config('constants.RESPONSE_CODE.CONFLICT'),
+            null,
+            409
+        );
+    }
+
+    public static function notFoundResponse(string $message = 'Data not found', $data = null): void
+    {
+        self::errorResponse(
+            $message,
+            $data,
+            config('constants.RESPONSE_CODE.NOT_FOUND'),
+            null,
+            404
+        );
+    }
+
+    public static function unauthorizedResponse(string $message = 'Unauthorized', $data = null): void
+    {
+        self::errorResponse(
+            $message,
+            $data,
+            config('constants.RESPONSE_CODE.UNAUTHORIZED'),
+            null,
+            401
+        );
+    }
+
+    public static function forbiddenResponse(string $message = "You Don't have enough permissions", $data = null): void
+    {
+        self::errorResponse(
+            $message,
+            $data,
+            config('constants.RESPONSE_CODE.FORBIDDEN'),
+            null,
+            403
+        );
     }
 
     /**

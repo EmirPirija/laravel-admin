@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 
+use App\Http\Controllers\Api\Concerns\HandlesAuthIdentity;
 use App\Http\Resources\ItemCollection;
 use App\Models\Area;
 use App\Events\UserRealtimeNotification;
@@ -66,6 +67,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Unique;
 use Stichoza\GoogleTranslate\GoogleTranslate;
@@ -80,6 +82,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 class ApiController extends Controller
 {
+    use HandlesAuthIdentity;
+
     private string $uploadFolder;
 
     public function __construct()
@@ -90,137 +94,11 @@ class ApiController extends Controller
         }
     }
 
-    protected static function booted()
+protected static function booted()
 {
     static::saved(fn() => Cache::flush());   // brzo rješenje
     static::deleted(fn() => Cache::flush());
 }
-
-    private function normalizePhoneDigits($value): string
-    {
-        return preg_replace('/\D+/', '', (string) ($value ?? '')) ?? '';
-    }
-
-    private function normalizePhoneInput(?string $countryCode, ?string $mobile): array
-    {
-        $normalizedCountry = $this->normalizePhoneDigits($countryCode);
-        $normalizedMobile = $this->normalizePhoneDigits($mobile);
-
-        if ($normalizedMobile === '') {
-            return [
-                'country' => $normalizedCountry,
-                'mobile' => '',
-                'full' => '',
-            ];
-        }
-
-        $mobilePart = $normalizedMobile;
-        if ($normalizedCountry !== '' && Str::startsWith($normalizedMobile, $normalizedCountry)) {
-            $mobilePart = substr($normalizedMobile, strlen($normalizedCountry)) ?: $normalizedMobile;
-        }
-
-        $full = $normalizedCountry !== ''
-            ? (Str::startsWith($normalizedMobile, $normalizedCountry) ? $normalizedMobile : $normalizedCountry.$mobilePart)
-            : $normalizedMobile;
-
-        return [
-            'country' => $normalizedCountry,
-            'mobile' => $mobilePart,
-            'full' => $full,
-        ];
-    }
-
-    private function normalizedUserPhone(User $user): string
-    {
-        $mobile = $this->normalizePhoneDigits($user->mobile);
-        $country = $this->normalizePhoneDigits($user->country_code);
-
-        if ($mobile === '') {
-            return '';
-        }
-
-        if ($country !== '' && Str::startsWith($mobile, $country)) {
-            return $mobile;
-        }
-
-        return $country !== '' ? $country.$mobile : $mobile;
-    }
-
-    private function findPhoneConflict(
-        ?string $countryCode,
-        ?string $mobile,
-        ?int $excludeUserId = null,
-        bool $onlyVerified = false,
-        bool $withTrashed = false
-    ): ?User {
-        $normalized = $this->normalizePhoneInput($countryCode, $mobile);
-        if ($normalized['full'] === '') {
-            return null;
-        }
-
-        $mobileCandidates = array_values(array_unique(array_filter([
-            $normalized['mobile'],
-            $normalized['full'],
-            '+'.$normalized['mobile'],
-            '+'.$normalized['full'],
-        ])));
-
-        $countryCandidates = array_values(array_unique(array_filter([
-            $normalized['country'],
-            '+'.$normalized['country'],
-        ])));
-
-        $query = User::query();
-        if ($withTrashed) {
-            $query->withTrashed();
-        }
-
-        if ($excludeUserId) {
-            $query->where('id', '!=', $excludeUserId);
-        }
-
-        if ($onlyVerified) {
-            $query->whereNotNull('phone_verified_at');
-        }
-
-        $query->where(function ($outer) use ($mobileCandidates, $countryCandidates, $normalized) {
-            if (! empty($mobileCandidates)) {
-                $outer->whereIn('mobile', $mobileCandidates);
-            }
-
-            if ($normalized['mobile'] !== '' && ! empty($countryCandidates)) {
-                $outer->orWhere(function ($withCountry) use ($normalized, $countryCandidates) {
-                    $withCountry
-                        ->where('mobile', $normalized['mobile'])
-                        ->whereIn('country_code', $countryCandidates);
-                });
-            }
-        });
-
-        $candidates = $query->get();
-
-        foreach ($candidates as $candidate) {
-            if ($this->normalizedUserPhone($candidate) === $normalized['full']) {
-                return $candidate;
-            }
-        }
-
-        return null;
-    }
-
-    private function phoneNotRegisteredResponse(): void
-    {
-        AuthEventService::log('phone_not_registered', [
-            'intent' => request()->input('intent', request()->input('auth_intent', 'login')),
-            'endpoint' => request()->path(),
-        ], 'warning', (string) (request()->input('identifier') ?? request()->input('number') ?? request()->input('mobile')));
-
-        ResponseService::errorResponse(
-            __('Broj telefona nije registrovan. Prvo kreirajte račun.'),
-            ['reason' => 'phone_not_registered'],
-            config('constants.RESPONSE_CODE.PHONE_NOT_REGISTERED')
-        );
-    }
 
     public function getSystemSettings(Request $request)
     {
@@ -278,6 +156,7 @@ class ApiController extends Controller
             $validator = Validator::make($request->all(), [
                 'type' => 'required|in:email,google,phone,apple',
                 'firebase_id' => 'required',
+                'email' => 'required_if:type,email,google,apple|nullable|email:rfc,dns|max:191',
                 'mobile' => 'required_if:type,phone|string|max:32',
                 'country_code' => 'nullable|string|max:8',
                 'auth_intent' => 'nullable|in:login,register',
@@ -293,10 +172,11 @@ class ApiController extends Controller
             $type = $request->type;
             $firebase_id = $request->firebase_id;
             $authIntent = $request->input('auth_intent', 'login');
+            $normalizedEmail = $this->normalizeEmail($request->email);
             $phoneInput = $this->normalizePhoneInput($request->country_code, $request->mobile);
             $eventIdentifier = $type === 'phone'
                 ? $phoneInput['full']
-                : (string) ($request->email ?? $firebase_id);
+                : (string) ($normalizedEmail ?: $firebase_id);
             AuthEventService::log('signup_attempt', [
                 'type' => $type,
                 'intent' => $authIntent,
@@ -317,12 +197,19 @@ class ApiController extends Controller
                 ->first();
 
             if (! empty($socialLogin->user->deleted_at)) {
-                ResponseService::errorResponse(__('User is deactivated. Please Contact the administrator'));
+                ResponseService::errorResponse(
+                    __('User is deactivated. Please Contact the administrator'),
+                    null,
+                    config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'),
+                    null,
+                    403
+                );
             }
 
             if ($type === 'phone' && $authIntent === 'register' && ! empty($socialLogin)) {
-                ResponseService::validationError(
-                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                ResponseService::conflictResponse(
+                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
+                    ['reason' => 'phone_already_registered']
                 );
             }
 
@@ -342,20 +229,29 @@ class ApiController extends Controller
                     );
 
                     if ($existingPhoneUser && ! $existingPhoneUser->hasRole('User')) {
-                        ResponseService::errorResponse(__('Invalid Login Credentials'));
+                        ResponseService::errorResponse(
+                            __('Invalid Login Credentials'),
+                            null,
+                            config('constants.RESPONSE_CODE.INVALID_LOGIN'),
+                            null,
+                            403
+                        );
                     }
 
                     if ($existingPhoneUser && $existingPhoneUser->trashed()) {
                         ResponseService::errorResponse(
                             __('Your account has been deactivated.'),
                             null,
-                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'),
+                            null,
+                            403
                         );
                     }
 
                     if ($existingPhoneUser && $authIntent === 'register') {
-                        ResponseService::validationError(
-                            __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                        ResponseService::conflictResponse(
+                            __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
+                            ['reason' => 'phone_already_registered']
                         );
                     }
 
@@ -380,26 +276,73 @@ class ApiController extends Controller
                         $user->assignRole('User');
                     }
                 } else {
-                    $unique = ['email' => $request->email];
-                    $existingUser = User::withTrashed()->where($unique)->first();
+                    if ($normalizedEmail === '') {
+                        ResponseService::validationError(__('Unesite ispravan e-mail.'));
+                    }
+
+                    $request->merge(['email' => $normalizedEmail]);
+                    $existingUser = User::withTrashed()
+                        ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+                        ->first();
 
                     if ($existingUser && $existingUser->trashed()) {
                         ResponseService::errorResponse(
                             __('Your account has been deactivated.'),
                             null,
-                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                            config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'),
+                            null,
+                            403
+                        );
+                    }
+
+                    if ($existingUser && ! $existingUser->hasRole('User')) {
+                        ResponseService::errorResponse(
+                            __('Invalid Login Credentials'),
+                            null,
+                            config('constants.RESPONSE_CODE.INVALID_LOGIN'),
+                            null,
+                            403
+                        );
+                    }
+
+                    $firebaseTypeConflict = SocialLogin::query()
+                        ->where('type', $type)
+                        ->where('firebase_id', $firebase_id)
+                        ->when($existingUser, fn($q) => $q->where('user_id', '!=', $existingUser->id))
+                        ->first();
+
+                    if ($firebaseTypeConflict) {
+                        ResponseService::conflictResponse(
+                            __('Ovaj nalog je već povezan sa drugim korisnikom.'),
+                            ['reason' => 'account_already_linked']
                         );
                     }
 
                     DB::beginTransaction();
-                    $user = User::updateOrCreate([...$unique], [
+                    $payload = [
                         ...$request->all(),
+                        'email' => $normalizedEmail,
                         'region_code' => $request->region_code ?? null,
                         'profile' => $request->hasFile('profile')
                             ? $request->file('profile')->store('user_profile', 'public')
                             : $request->profile,
-                    ]);
-                    $user->assignRole('User');
+                    ];
+
+                    if (empty($payload['password'])) {
+                        $payload['password'] = Hash::make(Str::random(40));
+                    }
+
+                    if ($existingUser) {
+                        $existingUser->fill($payload);
+                        $existingUser->save();
+                        $user = $existingUser;
+                    } else {
+                        $user = User::create($payload);
+                    }
+
+                    if (! $user->hasRole('User')) {
+                        $user->assignRole('User');
+                    }
                 }
 
                 SocialLogin::updateOrCreate([
@@ -421,7 +364,9 @@ class ApiController extends Controller
                 ResponseService::errorResponse(
                     __('Invalid Login Credentials'),
                     null,
-                    config('constants.RESPONSE_CODE.INVALID_LOGIN')
+                    config('constants.RESPONSE_CODE.INVALID_LOGIN'),
+                    null,
+                    403
                 );
             }
 
@@ -458,6 +403,9 @@ class ApiController extends Controller
         } catch (Throwable $th) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
+            }
+            if ($this->isUniqueConstraintViolation($th)) {
+                $this->throwIdentityConflictFromException($th);
             }
             AuthEventService::log('signup_failed', [
                 'error' => $th->getMessage(),
@@ -508,14 +456,22 @@ class ApiController extends Controller
                 }
 
                 if (! $user->hasRole('User')) {
-                    ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+                    ResponseService::errorResponse(
+                        __('Invalid Login Credentials'),
+                        null,
+                        config('constants.RESPONSE_CODE.VALIDATION_ERROR'),
+                        null,
+                        403
+                    );
                 }
 
                 if (! empty($user->deleted_at)) {
                     ResponseService::errorResponse(
                         __('Your account has been deactivated.'),
                         null,
-                        config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT')
+                        config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'),
+                        null,
+                        403
                     );
                 }
                 AuthEventService::log('login_identifier_resolved', [
@@ -565,7 +521,13 @@ class ApiController extends Controller
             $user = $query->first();
 
             if (! $user || empty($user->email)) {
-                ResponseService::errorResponse(__('Invalid Login Credentials'), null, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+                ResponseService::errorResponse(
+                    __('Invalid Login Credentials'),
+                    null,
+                    config('constants.RESPONSE_CODE.NOT_FOUND'),
+                    null,
+                    404
+                );
             }
             AuthEventService::log('login_identifier_resolved', [
                 'identifier_type' => $isEmail ? 'email' : 'username',
@@ -661,8 +623,10 @@ class ApiController extends Controller
                     );
 
                     if (! empty($conflict)) {
-                        ResponseService::validationError(
-                            __('Ovaj broj je već verificiran na drugom računu.')
+                        ResponseService::conflictResponse(
+                            __('Ovaj broj je već verificiran na drugom računu.'),
+                            ['reason' => 'phone_already_verified_elsewhere'],
+                            config('constants.RESPONSE_CODE.CONFLICT')
                         );
                     }
                 }
@@ -694,6 +658,9 @@ class ApiController extends Controller
             $app_user->update($data);
             ResponseService::successResponse(__('Profile Updated Successfully'), $app_user);
         } catch (Throwable $th) {
+            if ($this->isUniqueConstraintViolation($th)) {
+                $this->throwIdentityConflictFromException($th);
+            }
             ResponseService::logErrorResponse($th, 'API Controller -> updateProfile');
             ResponseService::errorResponse();
         }
@@ -6335,17 +6302,72 @@ public function getMyReview(Request $request)
         try {
             $validator = Validator::make($request->all(), [
                 'number' => 'required|string',
+                'intent' => 'nullable|in:login,register,profile_verification',
+                'mobile' => 'nullable|string|max:32',
+                'country_code' => 'nullable|string|max:8',
             ]);
 
             if ($validator->fails()) {
                 return ResponseService::validationError($validator->errors()->first());
             }
 
-            // Format the phone number properly
-            $requestNumber = $request->number;
+            $intent = (string) $request->input('intent', 'login');
+            $requestNumber = (string) $request->input('number', '');
             $trimmedNumber = ltrim($requestNumber, '+');
-            $toNumber = '+'.$trimmedNumber;
+            $normalizedPhone = $this->normalizePhoneInput(
+                $request->input('country_code'),
+                $request->input('mobile', $trimmedNumber)
+            );
+
+            if ($normalizedPhone['mobile'] === '') {
+                return ResponseService::validationError(__('Unesite ispravan broj telefona.'));
+            }
+
+            $toNumber = '+'.ltrim($normalizedPhone['full'] ?: $trimmedNumber, '+');
             AuthEventService::log('otp_send_attempt', [], 'info', $toNumber);
+
+            $existingUser = $this->findPhoneConflict(
+                $normalizedPhone['country'],
+                $normalizedPhone['mobile'],
+                null,
+                false,
+                true
+            );
+
+            if ($intent === 'login' && empty($existingUser)) {
+                $this->phoneNotRegisteredResponse();
+            }
+
+            if ($intent === 'register' && ! empty($existingUser)) {
+                return ResponseService::conflictResponse(
+                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
+                    ['reason' => 'phone_already_registered'],
+                    config('constants.RESPONSE_CODE.CONFLICT')
+                );
+            }
+
+            if ($intent === 'profile_verification') {
+                if (! Auth::check()) {
+                    return ResponseService::unauthorizedResponse(__('Unauthorized'));
+                }
+
+                $authUser = Auth::user();
+                $conflict = $this->findPhoneConflict(
+                    $normalizedPhone['country'],
+                    $normalizedPhone['mobile'],
+                    $authUser->id,
+                    true,
+                    false
+                );
+
+                if (! empty($conflict)) {
+                    return ResponseService::conflictResponse(
+                        __('Ovaj broj je već verificiran na drugom računu.'),
+                        ['reason' => 'phone_already_verified_elsewhere'],
+                        config('constants.RESPONSE_CODE.CONFLICT')
+                    );
+                }
+            }
 
             // Fetch Twilio credentials from settings
             $twilioSettings = Setting::whereIn('name', [
@@ -6471,8 +6493,10 @@ public function getMyReview(Request $request)
                 );
 
                 if (! empty($conflict)) {
-                    return ResponseService::validationError(
-                        __('Ovaj broj je već verificiran na drugom računu.')
+                    return ResponseService::conflictResponse(
+                        __('Ovaj broj je već verificiran na drugom računu.'),
+                        ['reason' => 'phone_already_verified_elsewhere'],
+                        config('constants.RESPONSE_CODE.CONFLICT')
                     );
                 }
 
@@ -6509,8 +6533,10 @@ public function getMyReview(Request $request)
             );
 
             if ($intent === 'register' && ! empty($user)) {
-                return ResponseService::validationError(
-                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.')
+                return ResponseService::conflictResponse(
+                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
+                    ['reason' => 'phone_already_registered'],
+                    config('constants.RESPONSE_CODE.CONFLICT')
                 );
             }
 

@@ -14,6 +14,12 @@ return [
         'VALIDATION_ERROR' => 102,
         'EXCEPTION_ERROR'  => 103,
         'PHONE_NOT_REGISTERED' => 104,
+        'FORBIDDEN' => 105,
+        'UNAUTHORIZED' => 106,
+        'NOT_FOUND' => 107,
+        'CONFLICT' => 108,
+        'INVALID_LOGIN' => 109,
+        'DEACTIVATED_ACCOUNT' => 110,
         'SUCCESS'          => 200,
     ],
     'CACHE'            => [
