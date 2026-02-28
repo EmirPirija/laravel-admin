@@ -13,6 +13,7 @@ use App\Services\AuditLogService;
 use App\Services\HelperService;
 use App\Services\NotificationService;
 use App\Services\ResponseService;
+use App\Services\UserDeletionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 class CustomersController extends Controller {
+    public function __construct(private readonly UserDeletionService $userDeletionService)
+    {
+    }
+
     public function index() {
         ResponseService::noAnyPermissionThenRedirect(['customer-list', 'customer-update']);
         $packages = Package::all()->where('status', 1);
@@ -309,16 +314,16 @@ class CustomersController extends Controller {
                 ResponseService::errorResponse(__('Ne možete obrisati vlastiti profil iz admin panela.'));
             }
 
-            if (!$user->trashed()) {
-                $user->delete();
-            }
-
-            AuditLogService::log('customer_profile_deleted', User::class, $user->id, [
+            $snapshot = [
                 'email' => $user->email,
                 'mobile' => $user->mobile,
-            ]);
+            ];
 
-            ResponseService::successResponse(__('Korisnički profil je uspješno obrisan.'));
+            $this->userDeletionService->forceDeleteUser($user);
+
+            AuditLogService::log('customer_profile_force_deleted', User::class, $id, $snapshot);
+
+            ResponseService::successResponse(__('Korisnički profil je trajno obrisan.'));
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'CustomersController -> destroy');
             ResponseService::errorResponse(__('Brisanje korisnika nije uspjelo.'));

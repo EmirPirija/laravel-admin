@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\UserDeletionService;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
 class AdminController extends Controller
 {
+    public function __construct(private readonly UserDeletionService $userDeletionService)
+    {
+    }
+
     /**
      * Dohvati korisnike sa filterima i paginacijom
      * JAVNO DOSTUPNO - bez admin provjere
@@ -193,7 +198,7 @@ class AdminController extends Controller
             return response()->json(['error' => 'Nemate dozvolu'], 403);
         }
 
-        $user = User::findOrFail($id);
+        $user = User::withTrashed()->findOrFail($id);
         
         if ($user->id === $request->user()->id) {
             return response()->json(['error' => 'Ne možete obrisati sebe'], 400);
@@ -203,11 +208,11 @@ class AdminController extends Controller
             return response()->json(['error' => 'Ne možete obrisati admina'], 400);
         }
 
-        $user->delete();
+        $this->userDeletionService->forceDeleteUser($user);
 
         return response()->json([
             'success' => true,
-            'message' => 'Korisnik obrisan'
+            'message' => 'Korisnik trajno obrisan'
         ]);
     }
 }

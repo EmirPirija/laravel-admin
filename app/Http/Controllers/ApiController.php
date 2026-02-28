@@ -55,6 +55,7 @@ use App\Services\HelperService;
 use App\Services\NotificationService;
 use App\Services\Payment\PaymentService;
 use App\Services\ResponseService;
+use App\Services\UserDeletionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
@@ -4912,7 +4913,8 @@ public function getChatMessages(Request $request)
     public function deleteUser()
     {
         try {
-            User::findOrFail(Auth::user()->id)->forceDelete();
+            $user = User::withTrashed()->findOrFail(Auth::user()->id);
+            app(UserDeletionService::class)->forceDeleteUser($user);
             ResponseService::successResponse(__('User Deleted Successfully'));
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> deleteUser');
