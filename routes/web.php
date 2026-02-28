@@ -323,6 +323,27 @@ Route::prefix('package/membership')->name('package.membership.')->middleware(['a
         Route::put('/language/update/{id}/{type}', [LanguageController::class, 'updatelanguage'])->name('updatelanguage');
         Route::get('languageedit/{id}/{type}', [LanguageController::class, 'editLanguage'])->name('languageedit');
     });
+    Route::get('auto-translate/{id}/{type}/{locale}', static function ($id, $type, $locale) {
+        Log::info("Auto-translate started", [
+            'id' => $id,
+            'type' => $type,
+            'locale' => $locale,
+        ]);
+
+        Artisan::queue('custom:translate-missing', [
+            'type' => $type,
+            'locale' => $locale,
+        ]);
+
+        Log::info("Auto-translate command queued", [
+            'id' => $id,
+            'type' => $type,
+            'locale' => $locale,
+        ]);
+
+        return redirect()->route('languageedit', ['id' => $id, 'type' => $type])
+            ->with('success', 'Auto translation queued.');
+    })->name('auto-translate');
     Route::post('/language/set-default', [LanguageController::class, 'setDefaultLanguage'])
     ->name('settings.set-default-language');
     Route::resource('language', LanguageController::class);
@@ -474,58 +495,3 @@ Route::get('/area-translations/{city}', [PlaceController::class, 'loadCityAreas'
 Route::put('/area-translations/update', [PlaceController::class, 'updateAreasTranslations'])->name('areas.translation.update');
 
 Route::get('/product-details/{slug}', [SettingController::class, 'webPageURL'])->name('deep-link');
-Route::get('/migrate', static function () {
-    Artisan::call('migrate');
-    echo Artisan::output();
-});
-
-Route::get('/migrate-rollback', static function () {
-    Artisan::call('migrate:rollback');
-    echo "done";
-});
-
-Route::get('/seeder', static function () {
-    Artisan::call('db:seed --class=SystemUpgradeSeeder');
-    return redirect()->back();
-});
-
-Route::get('clear', static function () {
-    Artisan::call('config:clear');
-    Artisan::call('view:clear');
-    Artisan::call('cache:clear');
-    Artisan::call('optimize:clear');
-    Artisan::call('debugbar:clear');
-    return redirect()->back();
-});
-
-Route::get('storage-link', static function () {
-    Artisan::call('storage:link');
-});
-
-
-
-Route::get('auto-translate/{id}/{type}/{locale}', function ($id, $type, $locale) {
-    // Log when job is triggered
-    Log::info("Auto-translate started", [
-        'id' => $id,
-        'type' => $type,
-        'locale' => $locale,
-    ]);
-
-    // Build artisan command with arguments
-    $artisan = base_path('artisan');
-    $command = "php {$artisan} custom:translate-missing {$type} {$locale} >> " . storage_path('logs/translate.log') . " 2>&1 &";
-
-    // Run command in background
-    exec($command);
-
-    // Log immediately after dispatching
-    Log::info("Auto-translate command dispatched", [
-        'id' => $id,
-        'type' => $type,
-        'locale' => $locale,
-    ]);
-
-    return redirect()->route('languageedit', ['id' => $id, 'type' => $type])
-        ->with('success', 'Auto translation started in background.');
-})->name('auto-translate');
