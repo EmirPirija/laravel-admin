@@ -2096,18 +2096,28 @@ public function getItem(Request $request)
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
-        if (
-            $this->normalizeLocationSourceValue($request->input('location_source')) === 'map' &&
-            !$this->requestHasAnyValidCoordinatePair($request)
-        ) {
-            ResponseService::validationError('Za odabrani način "Tačan pin na mapi" označite pin na mapi.');
-        }
 
         DB::beginTransaction();
 
         try {
 
             $item = Item::owner()->findOrFail($request->id);
+            $normalizedLocationSource = $this->normalizeLocationSourceValue($request->input('location_source'));
+            if (
+                $normalizedLocationSource === 'map' &&
+                !$this->requestHasAnyValidCoordinatePair($request)
+            ) {
+                $existingLat = $item->getRawOriginal('latitude');
+                $existingLng = $item->getRawOriginal('longitude');
+                if ($this->isValidCoordinatePair($existingLat, $existingLng)) {
+                    $request->merge([
+                        'latitude' => (float) $existingLat,
+                        'longitude' => (float) $existingLng,
+                    ]);
+                } else {
+                    ResponseService::validationError('Za odabrani način "Tačan pin na mapi" označite pin na mapi.');
+                }
+            }
             $auto_approve_item = Setting::where('name', 'auto_approve_edited_item')->value('value') ?? 0;
             if ($auto_approve_item == 1) {
                 $status = 'approved';
@@ -6064,86 +6074,157 @@ public function getMyReview(Request $request)
 
     public function sendVerificationRequest(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'verification_field' => 'sometimes|array',
+            'verification_field.*' => 'sometimes',
+            'verification_field_files' => 'nullable|array',
+            'verification_field_files.*' => 'nullable|file|mimes:jpeg,png,jpg,pdf,doc|max:7168',
+            'verification_field_translations' => 'nullable|json',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        $user = Auth::user();
+        if (empty($user)) {
+            ResponseService::unauthorizedResponse(__('Unauthorized'));
+        }
+
         try {
-
-            $validator = Validator::make($request->all(), [
-                'verification_field' => 'sometimes|array',
-                'verification_field.*' => 'sometimes',
-                'verification_field_files' => 'nullable|array',
-                'verification_field_files.*' => 'nullable|mimes:jpeg,png,jpg,pdf,doc|max:7168',
-                'verification_field_translations' => 'nullable|json',
-
-            ]);
-
-            if ($validator->fails()) {
-                ResponseService::validationError($validator->errors()->first());
-            }
             DB::beginTransaction();
 
-            $user = Auth::user();
-            $verificationRequest = VerificationRequest::updateOrCreate([
-                'user_id' => $user->id,
-            ], ['status' => 'pending']);
+            $verificationRequest = VerificationRequest::firstOrCreate(
+                ['user_id' => $user->id],
+                ['status' => 'pending']
+            );
+            $verificationRequest->status = 'pending';
+            $verificationRequest->rejection_reason = null;
+            $verificationRequest->save();
 
-            $user = auth()->user();
-            if ($request->verification_field) {
-                $itemCustomFieldValues = [];
-                foreach ($request->verification_field as $id => $value) {
-                    $itemCustomFieldValues[] = [
-                        'user_id' => $user->id,
-                        'verification_field_id' => $id,
-                        'verification_request_id' => $verificationRequest->id,
-                        'value' => $value,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                if (count($itemCustomFieldValues) > 0) {
-                    VerificationFieldValue::upsert($itemCustomFieldValues, ['user_id', 'verification_fields_id'], ['value', 'updated_at']);
-                }
-            }
+            $validFieldIds = VerificationField::query()->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $validFieldIdMap = array_fill_keys($validFieldIds, true);
 
-            if ($request->verification_field_files) {
-                $itemCustomFieldValues = [];
-                foreach ($request->verification_field_files as $fieldId => $file) {
-                    $itemCustomFieldValues[] = [
-                        'user_id' => $user->id,
-                        'verification_field_id' => $fieldId,
-                        'verification_request_id' => $verificationRequest->id,
-                        'value' => ! empty($file) ? FileService::upload($file, 'verification_field_files') : '',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                if (count($itemCustomFieldValues) > 0) {
-                    VerificationFieldValue::upsert($itemCustomFieldValues, ['user_id', 'verification_field_id'], ['value', 'updated_at']);
-                }
-            }
-            if ($request->has('verification_field_translations')) {
-                $fieldTranslations = json_decode($request->input('verification_field_translations'), true, 512, JSON_THROW_ON_ERROR);
-                $translatedEntries = [];
+            $baseFieldIdsToKeep = [];
 
-                foreach ($fieldTranslations as $languageId => $fieldsById) {
-                    foreach ($fieldsById as $fieldId => $translatedValue) {
-                        $translatedEntries[] = [
+            $verificationFields = $request->input('verification_field', []);
+            if (is_array($verificationFields)) {
+                foreach ($verificationFields as $fieldId => $value) {
+                    $fieldId = (int) $fieldId;
+                    if ($fieldId <= 0 || !isset($validFieldIdMap[$fieldId])) {
+                        continue;
+                    }
+
+                    $baseFieldIdsToKeep[] = $fieldId;
+                    $normalizedValue = is_array($value)
+                        ? implode(',', array_values(array_filter(array_map(
+                            static fn ($entry) => trim((string) $entry),
+                            $value
+                        ), static fn ($entry) => $entry !== '')))
+                        : trim((string) $value);
+
+                    VerificationFieldValue::updateOrCreate(
+                        [
                             'user_id' => $user->id,
                             'verification_field_id' => $fieldId,
                             'verification_request_id' => $verificationRequest->id,
-                            'language_id' => $languageId,
-                            'value' => is_array($translatedValue) ? implode(',', $translatedValue) : $translatedValue,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
+                            'language_id' => null,
+                        ],
+                        ['value' => $normalizedValue]
+                    );
+                }
+            }
+
+            $verificationFiles = $request->file('verification_field_files', []);
+            if (is_array($verificationFiles)) {
+                foreach ($verificationFiles as $fieldId => $file) {
+                    $fieldId = (int) $fieldId;
+                    if ($fieldId <= 0 || !isset($validFieldIdMap[$fieldId]) || empty($file)) {
+                        continue;
+                    }
+
+                    $baseFieldIdsToKeep[] = $fieldId;
+                    $uploadedPath = FileService::upload($file, 'verification_field_files');
+
+                    VerificationFieldValue::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'verification_field_id' => $fieldId,
+                            'verification_request_id' => $verificationRequest->id,
+                            'language_id' => null,
+                        ],
+                        ['value' => (string) $uploadedPath]
+                    );
+                }
+            }
+
+            $baseFieldIdsToKeep = array_values(array_unique($baseFieldIdsToKeep));
+            $baseValueQuery = VerificationFieldValue::query()
+                ->where('user_id', $user->id)
+                ->where('verification_request_id', $verificationRequest->id)
+                ->whereNull('language_id');
+
+            if (!empty($baseFieldIdsToKeep)) {
+                $baseValueQuery->whereNotIn('verification_field_id', $baseFieldIdsToKeep)->delete();
+            } else {
+                $baseValueQuery->delete();
+            }
+
+            if ($request->has('verification_field_translations')) {
+                $translationPayload = $request->input('verification_field_translations');
+                if (!is_array($translationPayload)) {
+                    $translationPayload = json_decode((string) $translationPayload, true, 512, JSON_THROW_ON_ERROR);
+                }
+                if (!is_array($translationPayload)) {
+                    $translationPayload = [];
+                }
+
+                $translationKeysToKeep = [];
+
+                foreach ($translationPayload as $languageId => $fieldsById) {
+                    $languageId = (int) $languageId;
+                    if ($languageId <= 0 || !is_array($fieldsById)) {
+                        continue;
+                    }
+
+                    foreach ($fieldsById as $fieldId => $translatedValue) {
+                        $fieldId = (int) $fieldId;
+                        if ($fieldId <= 0 || !isset($validFieldIdMap[$fieldId])) {
+                            continue;
+                        }
+
+                        $normalizedTranslatedValue = is_array($translatedValue)
+                            ? implode(',', array_values(array_filter(array_map(
+                                static fn ($entry) => trim((string) $entry),
+                                $translatedValue
+                            ), static fn ($entry) => $entry !== '')))
+                            : trim((string) $translatedValue);
+
+                        VerificationFieldValue::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'verification_field_id' => $fieldId,
+                                'verification_request_id' => $verificationRequest->id,
+                                'language_id' => $languageId,
+                            ],
+                            ['value' => $normalizedTranslatedValue]
+                        );
+
+                        $translationKeysToKeep["{$languageId}:{$fieldId}"] = true;
                     }
                 }
 
-                if (! empty($translatedEntries)) {
-                    // upsert to avoid duplicates — if necessary
-                    VerificationFieldValue::upsert(
-                        $translatedEntries,
-                        ['user_id', 'verification_field_id'],
-                        ['value', 'updated_at', 'language_id']
-                    );
+                $existingTranslationRows = VerificationFieldValue::query()
+                    ->where('user_id', $user->id)
+                    ->where('verification_request_id', $verificationRequest->id)
+                    ->whereNotNull('language_id')
+                    ->get(['id', 'language_id', 'verification_field_id']);
+
+                foreach ($existingTranslationRows as $row) {
+                    $rowKey = ((int) $row->language_id) . ':' . ((int) $row->verification_field_id);
+                    if (!isset($translationKeysToKeep[$rowKey])) {
+                        $row->delete();
+                    }
                 }
             }
 
@@ -6151,7 +6232,10 @@ public function getMyReview(Request $request)
 
             ResponseService::successResponse(__('Verification request submitted successfully.'));
         } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'API Controller -> SendVerificationRequest');
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            ResponseService::logErrorResponse($th, 'API Controller -> sendVerificationRequest');
             ResponseService::errorResponse();
         }
     }
@@ -6164,7 +6248,11 @@ public function getMyReview(Request $request)
             ])->owner()->first();
 
             if (empty($verificationRequest)) {
-                ResponseService::errorResponse('No Request found');
+                ResponseService::successResponse(__('Verification request fetched successfully.'), [
+                    'status' => 'not applied',
+                    'rejection_reason' => '',
+                    'verification_fields' => [],
+                ]);
             }
 
             $response = $verificationRequest->toArray();
@@ -6175,83 +6263,149 @@ public function getMyReview(Request $request)
             $currentLanguage = Language::where('code', $contentLangCode)->first();
             $currentLangId = $currentLanguage->id ?? 1;
 
-            foreach ($verificationRequest->verification_field_values as $verificationFieldValue) {
-                if (
-                    $verificationFieldValue->relationLoaded('verification_field') &&
-                    ! empty($verificationFieldValue->verification_field)
-                ) {
+            $groupedFieldValues = $verificationRequest->verification_field_values
+                ->filter(static fn ($row) => !empty($row?->verification_field))
+                ->groupBy('verification_field_id');
 
-                    // if (empty($verificationFieldValue->language_id) || $verificationFieldValue->language_id = null) {
-                    //     $verificationFieldValue->language_id = $currentLangId;
-                    // }
-
-                    $field = $verificationFieldValue->verification_field;
-                    $tempRow = $field->toArray();
-
-                    $rawValue = $verificationFieldValue->value;
-
-                    // Normalize value to array
-                    $normalizedValue = [];
-                    if ($field->type === 'fileinput') {
-                        $normalizedValue = ! empty($rawValue) ? [url(Storage::url($rawValue))] : [];
-                    } elseif (is_array($rawValue)) {
-                        $normalizedValue = $rawValue;
-                    } elseif (is_string($rawValue)) {
-                        $decoded = json_decode($rawValue, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $normalizedValue = $decoded;
-                        } else {
-                            $normalizedValue = [$rawValue];
-                        }
-                    } elseif (! empty($rawValue)) {
-                        $normalizedValue = [$rawValue];
-                    }
-
-                    // Set normalized value
-                    $tempRow['value'] = array_map('trim', explode(',', $normalizedValue[0]));
-
-                    // Set verification_field_value with normalized value
-                    $tempRow['verification_field_value'] = $verificationFieldValue->toArray();
-                    unset($tempRow['verification_field_value']['verification_field']);
-                    $tempRow['verification_field_value']['value'] = $normalizedValue;
-                    $tempRow['verification_field_value']['language_id'] = $verificationFieldValue->language_id;
-                    // Handle translated_selected_values
-                    $selected = [];
-                    $type = $field->type ?? null;
-                    $allPossibleValues = $field->values ?? [];
-
-                    // Fetch translated values (if available)
-                    $translatedValues = [];
-                    if (! empty($field->translations)) {
-                        $translation = collect($field->translations)->firstWhere('language_id', $currentLangId);
-                        $translatedValues = $translation['value'] ?? [];
-                    }
-                    if (empty($translatedValues)) {
-                        $translatedValues = $allPossibleValues;
-                    }
-
-                    if (in_array($type, ['checkbox', 'radio', 'dropdown'])) {
-                        foreach ($normalizedValue as $val) {
-                            $index = array_search($val, $allPossibleValues);
-                            $translatedVal = ($index !== false && isset($translatedValues[$index]))
-                                ? $translatedValues[$index]
-                                : $val;
-                            $selected[] = $translatedVal;
-                        }
-                    } elseif (in_array($type, ['textbox', 'number'])) {
-                        $selected = $normalizedValue;
-                    }
-                    $tempRow['language_id'] = $verificationFieldValue->language_id;
-                    $tempRow['translated_selected_values'] = $selected;
-                    $response['verification_fields'][] = $tempRow;
+            foreach ($groupedFieldValues as $fieldRows) {
+                $verificationFieldValue = $fieldRows->firstWhere('language_id', $currentLangId);
+                if (empty($verificationFieldValue)) {
+                    $verificationFieldValue = $fieldRows->first(static fn ($row) => empty($row->language_id));
                 }
+                if (empty($verificationFieldValue)) {
+                    $verificationFieldValue = $fieldRows->first();
+                }
+                if (empty($verificationFieldValue) || empty($verificationFieldValue->verification_field)) {
+                    continue;
+                }
+
+                $field = $verificationFieldValue->verification_field;
+                $tempRow = $field->toArray();
+                $normalizedValue = $this->normalizeVerificationFieldRawValue(
+                    $verificationFieldValue->value,
+                    $field->type ?? null
+                );
+
+                $allPossibleValues = is_array($field->values) ? $field->values : [];
+                $translatedValues = $allPossibleValues;
+                if (!empty($field->translations)) {
+                    $translation = collect($field->translations)->firstWhere('language_id', $currentLangId);
+                    if (!empty($translation?->value) && is_array($translation->value)) {
+                        $translatedValues = $translation->value;
+                    }
+                }
+
+                $tempRow['value'] = $normalizedValue;
+                $tempRow['language_id'] = $verificationFieldValue->language_id;
+                $tempRow['translated_selected_values'] = $this->mapVerificationSelectedValues(
+                    $normalizedValue,
+                    $allPossibleValues,
+                    $translatedValues,
+                    $field->type ?? null
+                );
+
+                $fieldValuePayload = $verificationFieldValue->toArray();
+                unset($fieldValuePayload['verification_field']);
+                $fieldValuePayload['value'] = $normalizedValue;
+                $tempRow['verification_field_value'] = $fieldValuePayload;
+
+                $response['verification_fields'][] = $tempRow;
             }
 
             ResponseService::successResponse(__('Verification request fetched successfully.'), $response);
         } catch (Throwable $th) {
-            ResponseService::logErrorResponse($th, 'API Controller -> SendVerificationRequest');
+            ResponseService::logErrorResponse($th, 'API Controller -> getVerificationRequest');
             ResponseService::errorResponse();
         }
+    }
+
+    private function normalizeVerificationFieldRawValue($rawValue, ?string $fieldType = null): array
+    {
+        if ($rawValue === null || $rawValue === '') {
+            return [];
+        }
+
+        if ($fieldType === 'fileinput') {
+            if (is_array($rawValue)) {
+                return array_values(array_filter(array_map(
+                    fn ($entry) => $this->normalizeVerificationFileValue($entry),
+                    $rawValue
+                )));
+            }
+
+            $fileValue = $this->normalizeVerificationFileValue($rawValue);
+            return $fileValue ? [$fileValue] : [];
+        }
+
+        if (is_array($rawValue)) {
+            return array_values(array_filter(array_map(
+                static fn ($entry) => trim((string) $entry),
+                $rawValue
+            ), static fn ($entry) => $entry !== ''));
+        }
+
+        if (is_string($rawValue)) {
+            $trimmed = trim($rawValue);
+            if ($trimmed === '') {
+                return [];
+            }
+
+            $decoded = json_decode($trimmed, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return array_values(array_filter(array_map(
+                    static fn ($entry) => trim((string) $entry),
+                    $decoded
+                ), static fn ($entry) => $entry !== ''));
+            }
+
+            if (str_contains($trimmed, ',')) {
+                return array_values(array_filter(array_map(
+                    static fn ($entry) => trim((string) $entry),
+                    explode(',', $trimmed)
+                ), static fn ($entry) => $entry !== ''));
+            }
+
+            return [$trimmed];
+        }
+
+        return [trim((string) $rawValue)];
+    }
+
+    private function normalizeVerificationFileValue($value): ?string
+    {
+        $rawValue = trim((string) $value);
+        if ($rawValue === '') {
+            return null;
+        }
+
+        if (str_starts_with($rawValue, 'http://') || str_starts_with($rawValue, 'https://')) {
+            return $rawValue;
+        }
+
+        return url(Storage::url($rawValue));
+    }
+
+    private function mapVerificationSelectedValues(
+        array $selectedRawValues,
+        array $allPossibleValues,
+        array $translatedValues,
+        ?string $fieldType = null
+    ): array {
+        if (!in_array($fieldType, ['checkbox', 'radio', 'dropdown'], true)) {
+            return $selectedRawValues;
+        }
+
+        $selected = [];
+        foreach ($selectedRawValues as $value) {
+            $index = array_search($value, $allPossibleValues, true);
+            if ($index !== false && array_key_exists($index, $translatedValues)) {
+                $selected[] = $translatedValues[$index];
+            } else {
+                $selected[] = $value;
+            }
+        }
+
+        return $selected;
     }
 
     public function seoSettings(Request $request)
@@ -6877,12 +7031,14 @@ public function getMyReview(Request $request)
     public function getLocationFromCoordinates(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
-            'lang' => 'nullable|string',
-            'search' => 'nullable|string',
-            'place_id' => 'nullable|string',
-            'session_id' => 'nullable|string',
+            'lat' => 'nullable|numeric|between:-90,90',
+            'lng' => 'nullable|numeric|between:-180,180',
+            'long' => 'nullable|numeric|between:-180,180',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'lang' => 'nullable|string|max:10',
+            'search' => 'nullable|string|max:250',
+            'place_id' => 'nullable|string|max:255',
+            'session_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -6890,34 +7046,85 @@ public function getMyReview(Request $request)
         }
 
         try {
-            $lat = $request->lat;
-            $lng = $request->lng;
-            $lang = $request->lang ?? 'en';
-            $search = $request->search;
-            $placeId = $request->place_id;
+            $lat = $this->parseCoordinateValue($request->input('lat'));
+            $lng = $this->parseCoordinateValue($request->input('lng'));
+            if ($lng === null) {
+                $lng = $this->parseCoordinateValue($request->input('long'));
+            }
+            if ($lng === null) {
+                $lng = $this->parseCoordinateValue($request->input('longitude'));
+            }
+
+            $lang = trim((string) ($request->input('lang') ?? 'en'));
+            if ($lang === '') {
+                $lang = 'en';
+            }
+            $search = trim((string) ($request->input('search') ?? ''));
+            $placeId = trim((string) ($request->input('place_id') ?? ''));
+            $sessionId = trim((string) ($request->input('session_id') ?? ''));
             $mapProvider = Setting::where('name', 'map_provider')->value('value') ?? 'free_api';
 
             // Determine current language ID
             $contentLangCode = $request->header('Content-Language') ?? app()->getLocale();
-            $currentLanguage = Language::where('code', $contentLangCode)->first();
-            $currentLangId = $currentLanguage->id ?? 1;
+            $currentLangId = (int) (Language::where('code', $contentLangCode)->value('id') ?? 1);
+
+            $resolveTranslatedName = static function ($model, int $languageId, string $fallbackField = 'name'): ?string {
+                if (empty($model)) {
+                    return null;
+                }
+
+                $fallback = $model->{$fallbackField} ?? null;
+                if (!isset($model->translations) || !is_iterable($model->translations)) {
+                    return $fallback;
+                }
+
+                $translation = collect($model->translations)->firstWhere('language_id', $languageId);
+                return !empty($translation?->name) ? $translation->name : $fallback;
+            };
+
+            $resolveCountryTranslatedName = static function ($country, int $languageId): ?string {
+                if (empty($country)) {
+                    return null;
+                }
+
+                $fallback = $country->name ?? null;
+                $translations = null;
+
+                if (isset($country->nameTranslations) && is_iterable($country->nameTranslations)) {
+                    $translations = $country->nameTranslations;
+                } elseif (isset($country->translations) && is_iterable($country->translations)) {
+                    $translations = $country->translations;
+                }
+
+                if (empty($translations)) {
+                    return $fallback;
+                }
+
+                $translation = collect($translations)->firstWhere('language_id', $languageId);
+                return !empty($translation?->name) ? $translation->name : $fallback;
+            };
 
             /**
              * 🔍 Handle search query
              */
-            if ($search) {
+            if ($search !== '') {
                 if ($mapProvider === 'google_places') {
                     $apiKey = Setting::where('name', 'place_api_key')->value('value');
                     if (! $apiKey) {
                         return ResponseService::errorResponse(__('Google Maps API key not set'));
                     }
 
-                    $response = Http::get('https://maps.googleapis.com/maps/api/place/autocomplete/json', [
+                    $googleParams = [
                         'key' => $apiKey,
                         'input' => $search,
                         'language' => $lang,
-                        'sessiontoken' => $request->session_id, // ✅ added
-                    ]);
+                    ];
+                    if ($sessionId !== '') {
+                        $googleParams['sessiontoken'] = $sessionId;
+                    }
+
+                    $response = Http::timeout(8)->retry(2, 250)
+                        ->get('https://maps.googleapis.com/maps/api/place/autocomplete/json', $googleParams);
 
                     return $response->successful()
                         ? ResponseService::successResponse(__('Location fetched from Google API'), $response->json())
@@ -6929,25 +7136,29 @@ public function getMyReview(Request $request)
                         'translations' => fn ($q) => $q->where('language_id', $currentLangId),
                         'city.translations' => fn ($q) => $q->where('language_id', $currentLangId),
                         'city.state.translations' => fn ($q) => $q->where('language_id', $currentLangId),
-                        'city.state.country.nametranslations' => fn ($q) => $q->where('language_id', $currentLangId),
+                        'city.state.country.nameTranslations' => fn ($q) => $q->where('language_id', $currentLangId),
                     ])
                         ->where('name', 'like', "%{$search}%")
                         ->limit(10)
                         ->get();
 
                     if ($areas->isNotEmpty()) {
-                        return ResponseService::successResponse(__('Matching areas found'), $areas->map(function ($area) {
+                        return ResponseService::successResponse(__('Matching areas found'), $areas->map(function ($area) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
+                            $city = $area->city;
+                            $state = $city?->state;
+                            $country = $state?->country;
+
                             return [
                                 'area_id' => $area->id,
                                 'area' => $area->name,
                                 'area_translation' => optional($area->translations->first())->name ?? $area->name,
-                                'city_id' => optional($area->city)->id,
-                                'city' => optional($area->city)->name,
-                                'city_translation' => optional($area->city->translations->first())->name ?? optional($area->city)->name,
-                                'state' => optional($area->city->state)->name,
-                                'state_translation' => optional($area->city->state->translations->first())->name ?? optional($area->city->state)->name,
-                                'country' => optional($area->city->state->country)->name,
-                                'country_translation' => optional($area->city->state->country->nametranslations->first())->name ?? optional($area->city->state->country)->name,
+                                'city_id' => $city?->id,
+                                'city' => $city?->name,
+                                'city_translation' => $resolveTranslatedName($city, $currentLangId) ?? $city?->name,
+                                'state' => $state?->name,
+                                'state_translation' => $resolveTranslatedName($state, $currentLangId) ?? $state?->name,
+                                'country' => $country?->name,
+                                'country_translation' => $resolveCountryTranslatedName($country, $currentLangId) ?? $country?->name,
                                 'latitude' => $area->latitude,
                                 'longitude' => $area->longitude,
                             ];
@@ -6958,7 +7169,7 @@ public function getMyReview(Request $request)
                     $cities = City::with([
                         'translations' => fn ($q) => $q->where('language_id', $currentLangId),
                         'state.translations' => fn ($q) => $q->where('language_id', $currentLangId),
-                        'state.country.nametranslations' => fn ($q) => $q->where('language_id', $currentLangId),
+                        'state.country.nameTranslations' => fn ($q) => $q->where('language_id', $currentLangId),
                     ])
                         ->where('name', 'like', "%{$search}%")
                         ->orWhereHas('state', fn ($q) => $q->where('name', 'like', "%{$search}%"))
@@ -6967,15 +7178,18 @@ public function getMyReview(Request $request)
                         ->get();
 
                     if ($cities->isNotEmpty()) {
-                        return ResponseService::successResponse(__('Matching cities found'), $cities->map(function ($city) {
+                        return ResponseService::successResponse(__('Matching cities found'), $cities->map(function ($city) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
+                            $state = $city->state;
+                            $country = $state?->country;
+
                             return [
                                 'city_id' => $city->id,
                                 'city' => $city->name,
-                                'city_translation' => optional($city->translations->first())->name ?? $city->name,
-                                'state' => optional($city->state)->name,
-                                'state_translation' => optional($city->state->translations->first())->name ?? optional($city->state)->name,
-                                'country' => optional($city->state->country)->name,
-                                'country_translation' => optional($city->state->country->nametranslations->first())->name ?? optional($city->state->country)->name,
+                                'city_translation' => $resolveTranslatedName($city, $currentLangId) ?? $city->name,
+                                'state' => $state?->name,
+                                'state_translation' => $resolveTranslatedName($state, $currentLangId) ?? $state?->name,
+                                'country' => $country?->name,
+                                'country_translation' => $resolveCountryTranslatedName($country, $currentLangId) ?? $country?->name,
                                 'latitude' => $city->latitude,
                                 'longitude' => $city->longitude,
                             ];
@@ -7036,30 +7250,34 @@ public function getMyReview(Request $request)
             /**
              * 📍 Get location by coordinates
              */
-            if (! empty($lat) && ! empty($lng)) {
+            if ($lat !== null && $lng !== null) {
                 if ($mapProvider === 'google_places') {
                     $apiKey = Setting::where('name', 'place_api_key')->value('value');
                     if (! $apiKey) {
                         return ResponseService::errorResponse(__('Google Maps API key not set'));
                     }
 
-                    $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
+                    $googleParams = [
                         'latlng' => "{$lat},{$lng}",
                         'key' => $apiKey,
                         'language' => $lang,
-                        'sessiontoken' => $request->session_id, // ✅ added
-                    ]);
+                    ];
+                    if ($sessionId !== '') {
+                        $googleParams['sessiontoken'] = $sessionId;
+                    }
+
+                    $response = Http::timeout(8)->retry(2, 250)
+                        ->get('https://maps.googleapis.com/maps/api/geocode/json', $googleParams);
 
                     return $response->successful()
                         ? ResponseService::successResponse(__('Location fetched from Google API'), $response->json())
                         : ResponseService::errorResponse(__('Failed to fetch from Google Maps API'));
 
                 } else {
-
                     $closestCity = City::with([
                         'translations' => fn ($q) => $q->where('language_id', $currentLangId),
                         'state.translations' => fn ($q) => $q->where('language_id', $currentLangId),
-                        'state.country.nametranslations' => fn ($q) => $q->where('language_id', $currentLangId),
+                        'state.country.nameTranslations' => fn ($q) => $q->where('language_id', $currentLangId),
                     ])
                         ->whereNotNull('latitude')
                         ->whereNotNull('longitude')
@@ -7075,6 +7293,37 @@ public function getMyReview(Request $request)
                         ->first();
 
                     if (! $closestCity) {
+                        $closestMunicipality = BihMunicipality::query()
+                            ->whereNotNull('latitude')
+                            ->whereNotNull('longitude')
+                            ->selectRaw('
+                                id, name, latitude, longitude, region_id,
+                                (6371 * acos(cos(radians(?))
+                                    * cos(radians(latitude))
+                                    * cos(radians(longitude) - radians(?))
+                                    + sin(radians(?))
+                                    * sin(radians(latitude)))) AS distance
+                            ', [$lat, $lng, $lat])
+                            ->orderBy('distance', 'asc')
+                            ->first();
+
+                        if ($closestMunicipality) {
+                            return ResponseService::successResponse(__('Location fetched from local database'), [
+                                'city_id' => null,
+                                'city' => $closestMunicipality->name,
+                                'city_translation' => $closestMunicipality->name,
+                                'state' => optional($closestMunicipality->region)->name,
+                                'state_translation' => optional($closestMunicipality->region)->name,
+                                'country' => 'Bosna i Hercegovina',
+                                'country_translation' => 'Bosna i Hercegovina',
+                                'area_id' => null,
+                                'area' => null,
+                                'area_translation' => null,
+                                'latitude' => $closestMunicipality->latitude,
+                                'longitude' => $closestMunicipality->longitude,
+                            ]);
+                        }
+
                         return ResponseService::errorResponse(__('No nearby city found'));
                     }
 
@@ -7095,14 +7344,17 @@ public function getMyReview(Request $request)
                         ->orderBy('distance', 'asc')
                         ->first();
 
+                    $closestState = $closestCity->state;
+                    $closestCountry = $closestState?->country;
+
                     return ResponseService::successResponse(__('Location fetched from local database'), [
                         'city_id' => $closestCity->id,
                         'city' => $closestCity->name,
-                        'city_translation' => optional($closestCity->translations->first())->name ?? $closestCity->name,
-                        'state' => optional($closestCity->state)->name,
-                        'state_translation' => optional($closestCity->state->translations->first())->name ?? optional($closestCity->state)->name,
-                        'country' => optional($closestCity->state->country)->name,
-                        'country_translation' => optional($closestCity->state->country->nametranslations->first())->name ?? optional($closestCity->state->country)->name,
+                        'city_translation' => $resolveTranslatedName($closestCity, $currentLangId) ?? $closestCity->name,
+                        'state' => $closestState?->name,
+                        'state_translation' => $resolveTranslatedName($closestState, $currentLangId) ?? $closestState?->name,
+                        'country' => $closestCountry?->name,
+                        'country_translation' => $resolveCountryTranslatedName($closestCountry, $currentLangId) ?? $closestCountry?->name,
                         'area_id' => optional($closestArea)->id,
                         'area' => optional($closestArea)->name,
                         'area_translation' => optional($closestArea?->translations?->first())->name ?? $closestArea?->name,
@@ -7121,11 +7373,17 @@ public function getMyReview(Request $request)
                     if (! $apiKey) {
                         return ResponseService::errorResponse(__('Google Maps API key not set'));
                     }
-                    $sessionParam = $request->session_id ? "&sessiontoken={$request->session_id}" : '';
-                    $url = "https://maps.googleapis.com/maps/api/geocode/json?place_id={$placeId}&key={$apiKey}&language={$lang}{$sessionParam}";
+                    $googleParams = [
+                        'place_id' => $placeId,
+                        'key' => $apiKey,
+                        'language' => $lang,
+                    ];
+                    if ($sessionId !== '') {
+                        $googleParams['sessiontoken'] = $sessionId;
+                    }
 
-                    // $url = "https://maps.googleapis.com/maps/api/geocode/json?place_id={$placeId}&key={$apiKey}&language={$lang}";
-                    $response = Http::get($url);
+                    $response = Http::timeout(8)->retry(2, 250)
+                        ->get('https://maps.googleapis.com/maps/api/geocode/json', $googleParams);
 
                     return $response->successful()
                         ? ResponseService::successResponse(__('Location fetched from place_id'), $response->json())
@@ -7135,6 +7393,7 @@ public function getMyReview(Request $request)
                 }
             }
 
+            return ResponseService::validationError(__('Please provide search text, coordinates or place_id.'));
         } catch (\Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> getLocationFromCoordinates');
 
