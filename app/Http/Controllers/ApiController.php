@@ -15,6 +15,7 @@ use App\Models\Blog;
 use App\Models\Category;
 use App\Models\Chat;
 use App\Models\City;
+use App\Models\BihMunicipality;
 use App\Models\ContactUs;
 use App\Models\Country;
 use App\Models\CustomField;
@@ -1941,6 +1942,14 @@ public function getItem(Request $request)
         $items = $result instanceof \Illuminate\Pagination\LengthAwarePaginator 
             ? $result->getCollection() 
             : $result;
+
+        $shouldAttemptLocationRepair =
+            !empty($request->id) || !empty($request->slug);
+        if ($shouldAttemptLocationRepair) {
+            foreach ($items as $item) {
+                $this->repairItemCoordinatesIfFallback($item);
+            }
+        }
  
         // Dohvati sve jedinstvene user_id-ove
         $userIds = $items->pluck('user_id')->unique()->filter()->values()->toArray();
@@ -2153,8 +2162,28 @@ public function getItem(Request $request)
                 $data['scarcity_enabled'] = (bool) $item->scarcity_enabled;
             }
             unset($data['is_scarcity_enabled']);
+
+            $hasLocationInput = $request->hasAny([
+                'latitude',
+                'longitude',
+                'location_latitude',
+                'location_longitude',
+                'address',
+                'city',
+                'state',
+                'country',
+                'area_id',
+                'location_source',
+            ]);
+            if ($hasLocationInput) {
+                $resolvedCoords = $this->resolveListingCoordinates($request, $item);
+                $data['latitude'] = $resolvedCoords['lat'];
+                $data['longitude'] = $resolvedCoords['lng'];
+            }
+
             // image: upload file OR temp_main_image_id
             $tempMainImageId = $request->input('temp_main_image_id');
+            $mainImageId = $request->input('main_image_id');
             if (!empty($tempMainImageId) && !$request->hasFile('image')) {
                 $temp = TempMedia::where('id', $tempMainImageId)->where('type', 'image')->first();
                 if ($temp) {
@@ -2164,6 +2193,22 @@ public function getItem(Request $request)
                     }
                     $data['image'] = $this->moveTempMediaToPermanent($temp->path, $this->uploadFolder);
                     $temp->delete();
+                }
+            } elseif (!empty($mainImageId) && !$request->hasFile('image')) {
+                $mainImageFromGallery = ItemImages::query()
+                    ->where('item_id', $item->id)
+                    ->where('id', $mainImageId)
+                    ->first();
+                if ($mainImageFromGallery) {
+                    $currentMainImagePath = $item->getRawOriginal('image');
+                    $galleryImagePath = $mainImageFromGallery->getRawOriginal('image');
+
+                    if (!empty($currentMainImagePath) && $currentMainImagePath !== $galleryImagePath) {
+                        FileService::delete($currentMainImagePath);
+                    }
+
+                    $data['image'] = $galleryImagePath;
+                    $mainImageFromGallery->delete();
                 }
             } elseif ($request->hasFile('image')) {
                 $data['image'] = FileService::compressAndReplaceWithWatermark(
@@ -6909,23 +6954,70 @@ public function getMyReview(Request $request)
                         ->limit(10)
                         ->get();
 
-                    if ($cities->isEmpty()) {
-                        return ResponseService::errorResponse(__('No matching location found'));
+                    if ($cities->isNotEmpty()) {
+                        return ResponseService::successResponse(__('Matching cities found'), $cities->map(function ($city) {
+                            return [
+                                'city_id' => $city->id,
+                                'city' => $city->name,
+                                'city_translation' => optional($city->translations->first())->name ?? $city->name,
+                                'state' => optional($city->state)->name,
+                                'state_translation' => optional($city->state->translations->first())->name ?? optional($city->state)->name,
+                                'country' => optional($city->state->country)->name,
+                                'country_translation' => optional($city->state->country->nametranslations->first())->name ?? optional($city->state->country)->name,
+                                'latitude' => $city->latitude,
+                                'longitude' => $city->longitude,
+                            ];
+                        }));
                     }
 
-                    return ResponseService::successResponse(__('Matching cities found'), $cities->map(function ($city) {
-                        return [
-                            'city_id' => $city->id,
-                            'city' => $city->name,
-                            'city_translation' => optional($city->translations->first())->name ?? $city->name,
-                            'state' => optional($city->state)->name,
-                            'state_translation' => optional($city->state->translations->first())->name ?? optional($city->state)->name,
-                            'country' => optional($city->state->country)->name,
-                            'country_translation' => optional($city->state->country->nametranslations->first())->name ?? optional($city->state->country)->name,
-                            'latitude' => $city->latitude,
-                            'longitude' => $city->longitude,
-                        ];
-                    }));
+                    $municipalities = BihMunicipality::query()
+                        ->where('name', 'like', "%{$search}%")
+                        ->with(['region:id,code,name', 'region.entity:id,code,name,short_name'])
+                        ->limit(10)
+                        ->get();
+
+                    if ($municipalities->isNotEmpty()) {
+                        return ResponseService::successResponse(__('Matching municipalities found'), $municipalities->map(function ($municipality) {
+                            return [
+                                'city_id' => null,
+                                'city' => $municipality->name,
+                                'city_translation' => $municipality->name,
+                                'state' => optional($municipality->region)->name,
+                                'state_translation' => optional($municipality->region)->name,
+                                'country' => 'Bosna i Hercegovina',
+                                'country_translation' => 'Bosna i Hercegovina',
+                                'area_id' => null,
+                                'area' => null,
+                                'area_translation' => null,
+                                'latitude' => $municipality->latitude,
+                                'longitude' => $municipality->longitude,
+                            ];
+                        }));
+                    }
+
+                    $nominatimCoordinates = $this->resolveCoordinatesViaNominatim([
+                        $search,
+                        "{$search}, Bosna i Hercegovina",
+                        "{$search}, BiH",
+                    ]);
+                    if ($nominatimCoordinates) {
+                        return ResponseService::successResponse(__('Location fetched from geocoder'), [
+                            'city_id' => null,
+                            'city' => $search,
+                            'city_translation' => $search,
+                            'state' => null,
+                            'state_translation' => null,
+                            'country' => 'Bosna i Hercegovina',
+                            'country_translation' => 'Bosna i Hercegovina',
+                            'area_id' => null,
+                            'area' => null,
+                            'area_translation' => null,
+                            'latitude' => $nominatimCoordinates['lat'],
+                            'longitude' => $nominatimCoordinates['lng'],
+                        ]);
+                    }
+
+                    return ResponseService::errorResponse(__('No matching location found'));
                 }
             }
 
@@ -7512,43 +7604,41 @@ public function getMyReview(Request $request)
         return is_array($decoded) ? $decoded : $default;
     }
 
-    private function resolveListingCoordinates(Request $request): array
+    private function parseCoordinateValue($value): ?float
     {
-        $lat = $request->input('latitude');
-        $lng = $request->input('longitude');
-
-        if (is_numeric($lat) && is_numeric($lng)) {
-            return [
-                'lat' => (float) $lat,
-                'lng' => (float) $lng,
-            ];
+        if ($value === null || $value === '') {
+            return null;
         }
 
-        $areaId = $request->input('area_id');
-        if (!empty($areaId)) {
-            $area = Area::query()->find($areaId);
-            if ($area && is_numeric($area->latitude) && is_numeric($area->longitude)) {
-                return [
-                    'lat' => (float) $area->latitude,
-                    'lng' => (float) $area->longitude,
-                ];
-            }
+        if (is_string($value)) {
+            $value = str_replace(',', '.', trim($value));
         }
 
-        $cityName = trim((string) $request->input('city', ''));
-        if ($cityName !== '') {
-            $city = City::query()
-                ->whereRaw('LOWER(name) = ?', [Str::lower($cityName)])
-                ->first();
-
-            if ($city && is_numeric($city->latitude) && is_numeric($city->longitude)) {
-                return [
-                    'lat' => (float) $city->latitude,
-                    'lng' => (float) $city->longitude,
-                ];
-            }
+        if (!is_numeric($value)) {
+            return null;
         }
 
+        return (float) $value;
+    }
+
+    private function isValidCoordinatePair($lat, $lng): bool
+    {
+        $latNum = $this->parseCoordinateValue($lat);
+        $lngNum = $this->parseCoordinateValue($lng);
+        if ($latNum === null || $lngNum === null) {
+            return false;
+        }
+        if ($latNum < -90 || $latNum > 90 || $lngNum < -180 || $lngNum > 180) {
+            return false;
+        }
+        if (abs($latNum) < 0.0001 && abs($lngNum) < 0.0001) {
+            return false;
+        }
+        return true;
+    }
+
+    private function getDefaultListingCoordinates(): array
+    {
         $defaultLat = Setting::query()->where('name', 'default_latitude')->value('value');
         $defaultLng = Setting::query()->where('name', 'default_longitude')->value('value');
 
@@ -7556,6 +7646,283 @@ public function getMyReview(Request $request)
             'lat' => is_numeric($defaultLat) ? (float) $defaultLat : 43.8563,
             'lng' => is_numeric($defaultLng) ? (float) $defaultLng : 18.4131,
         ];
+    }
+
+    private function normalizeLocationToken(?string $value): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', (string) $value));
+    }
+
+    private function coordinateDistanceMeters(float $latA, float $lngA, float $latB, float $lngB): float
+    {
+        $earthRadius = 6371000;
+        $dLat = deg2rad($latB - $latA);
+        $dLng = deg2rad($lngB - $lngA);
+        $a = sin($dLat / 2) ** 2 +
+            cos(deg2rad($latA)) * cos(deg2rad($latB)) * sin($dLng / 2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
+    private function resolveCoordinatesFromBihMunicipality(array $candidateNames): ?array
+    {
+        $tokens = collect($candidateNames)
+            ->map(fn ($token) => $this->normalizeLocationToken($token))
+            ->filter(fn ($token) => $token !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach ($tokens as $token) {
+            $exact = BihMunicipality::query()
+                ->whereRaw('LOWER(name) = ?', [Str::lower($token)])
+                ->first();
+
+            if ($exact && $this->isValidCoordinatePair($exact->latitude, $exact->longitude)) {
+                return [
+                    'lat' => (float) $exact->latitude,
+                    'lng' => (float) $exact->longitude,
+                ];
+            }
+        }
+
+        foreach ($tokens as $token) {
+            $partial = BihMunicipality::query()
+                ->where('name', 'like', "%{$token}%")
+                ->orderBy('is_popular', 'desc')
+                ->first();
+
+            if ($partial && $this->isValidCoordinatePair($partial->latitude, $partial->longitude)) {
+                return [
+                    'lat' => (float) $partial->latitude,
+                    'lng' => (float) $partial->longitude,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveCoordinatesFromCityTable(string $cityName, string $stateName = ''): ?array
+    {
+        if ($cityName === '') {
+            return null;
+        }
+
+        $query = City::query()->whereRaw('LOWER(name) = ?', [Str::lower($cityName)]);
+        if ($stateName !== '') {
+            $query->whereHas('state', function ($stateQuery) use ($stateName) {
+                $stateQuery->whereRaw('LOWER(name) = ?', [Str::lower($stateName)]);
+            });
+        }
+
+        $city = $query->first();
+        if (!$city) {
+            $city = City::query()->where('name', 'like', "%{$cityName}%")->first();
+        }
+
+        if ($city && $this->isValidCoordinatePair($city->latitude, $city->longitude)) {
+            return [
+                'lat' => (float) $city->latitude,
+                'lng' => (float) $city->longitude,
+            ];
+        }
+
+        return null;
+    }
+
+    private function resolveCoordinatesViaNominatim(array $queries): ?array
+    {
+        $sanitizedQueries = collect($queries)
+            ->map(fn ($query) => $this->normalizeLocationToken($query))
+            ->filter(fn ($query) => $query !== '')
+            ->unique()
+            ->take(5)
+            ->values()
+            ->all();
+
+        if (empty($sanitizedQueries)) {
+            return null;
+        }
+
+        foreach ($sanitizedQueries as $query) {
+            try {
+                $response = Http::timeout(4)
+                    ->acceptJson()
+                    ->withHeaders([
+                        'User-Agent' => 'LMX-Web-LocationResolver/1.0',
+                    ])
+                    ->get('https://nominatim.openstreetmap.org/search', [
+                        'format' => 'jsonv2',
+                        'addressdetails' => 1,
+                        'countrycodes' => 'ba',
+                        'limit' => 5,
+                        'q' => $query,
+                    ]);
+            } catch (\Throwable $th) {
+                continue;
+            }
+
+            if (!$response->successful()) {
+                continue;
+            }
+
+            $results = $response->json();
+            if (!is_array($results) || empty($results)) {
+                continue;
+            }
+
+            foreach ($results as $result) {
+                $lat = $this->parseCoordinateValue($result['lat'] ?? null);
+                $lng = $this->parseCoordinateValue($result['lon'] ?? ($result['lng'] ?? null));
+                if ($this->isValidCoordinatePair($lat, $lng)) {
+                    return ['lat' => (float) $lat, 'lng' => (float) $lng];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function buildCoordinateSearchQueries(Request $request): array
+    {
+        $address = $this->normalizeLocationToken($request->input('address'));
+        $city = $this->normalizeLocationToken($request->input('city'));
+        $state = $this->normalizeLocationToken($request->input('state'));
+        $country = $this->normalizeLocationToken($request->input('country'));
+
+        $queries = [
+            $address,
+            implode(', ', array_filter([$city, $state, $country])),
+            implode(', ', array_filter([$city, $country])),
+            implode(', ', array_filter([$state, $country])),
+            $city,
+            $state,
+        ];
+
+        return array_values(array_filter(array_unique($queries)));
+    }
+
+    private function resolveListingCoordinates(Request $request, ?Item $existingItem = null): array
+    {
+        $directCandidates = [
+            [$request->input('latitude'), $request->input('longitude')],
+            [$request->input('lat'), $request->input('lng')],
+            [$request->input('lat'), $request->input('long')],
+            [$request->input('location_latitude'), $request->input('location_longitude')],
+            [$request->input('location_lat'), $request->input('location_lng')],
+        ];
+
+        foreach ($directCandidates as [$latRaw, $lngRaw]) {
+            if ($this->isValidCoordinatePair($latRaw, $lngRaw)) {
+                return [
+                    'lat' => (float) $this->parseCoordinateValue($latRaw),
+                    'lng' => (float) $this->parseCoordinateValue($lngRaw),
+                ];
+            }
+        }
+
+        $areaId = $request->input('area_id');
+        if (!empty($areaId)) {
+            $area = Area::query()->find($areaId);
+            if ($area && $this->isValidCoordinatePair($area->latitude, $area->longitude)) {
+                return [
+                    'lat' => (float) $area->latitude,
+                    'lng' => (float) $area->longitude,
+                ];
+            }
+        }
+
+        $cityName = $this->normalizeLocationToken($request->input('city'));
+        $stateName = $this->normalizeLocationToken($request->input('state'));
+        $address = $this->normalizeLocationToken($request->input('address'));
+        $addressPrimaryToken = '';
+        if ($address !== '') {
+            $addressPrimaryToken = $this->normalizeLocationToken(explode(',', $address)[0] ?? '');
+        }
+
+        $municipalityCoordinates = $this->resolveCoordinatesFromBihMunicipality([
+            $cityName,
+            $stateName,
+            $addressPrimaryToken,
+        ]);
+        if ($municipalityCoordinates) {
+            return $municipalityCoordinates;
+        }
+
+        $cityCoordinates = $this->resolveCoordinatesFromCityTable($cityName, $stateName);
+        if ($cityCoordinates) {
+            return $cityCoordinates;
+        }
+
+        $nominatimCoordinates = $this->resolveCoordinatesViaNominatim(
+            $this->buildCoordinateSearchQueries($request)
+        );
+        if ($nominatimCoordinates) {
+            return $nominatimCoordinates;
+        }
+
+        if (
+            $existingItem &&
+            $this->isValidCoordinatePair(
+                $existingItem->getRawOriginal('latitude'),
+                $existingItem->getRawOriginal('longitude')
+            )
+        ) {
+            return [
+                'lat' => (float) $existingItem->getRawOriginal('latitude'),
+                'lng' => (float) $existingItem->getRawOriginal('longitude'),
+            ];
+        }
+
+        return $this->getDefaultListingCoordinates();
+    }
+
+    private function repairItemCoordinatesIfFallback(Item $item): void
+    {
+        $currentLat = $this->parseCoordinateValue($item->getRawOriginal('latitude') ?? $item->latitude);
+        $currentLng = $this->parseCoordinateValue($item->getRawOriginal('longitude') ?? $item->longitude);
+
+        $resolverRequest = new Request([
+            'city' => $item->city,
+            'state' => $item->state,
+            'country' => $item->country,
+            'address' => $item->address,
+            'area_id' => $item->area_id,
+        ]);
+        $resolved = $this->resolveListingCoordinates($resolverRequest, $item);
+        if (!$this->isValidCoordinatePair($resolved['lat'] ?? null, $resolved['lng'] ?? null)) {
+            return;
+        }
+
+        if ($this->isValidCoordinatePair($currentLat, $currentLng)) {
+            $distance = $this->coordinateDistanceMeters(
+                (float) $currentLat,
+                (float) $currentLng,
+                (float) $resolved['lat'],
+                (float) $resolved['lng']
+            );
+
+            $defaultCoords = $this->getDefaultListingCoordinates();
+            $distanceFromDefault = $this->coordinateDistanceMeters(
+                (float) $currentLat,
+                (float) $currentLng,
+                (float) $defaultCoords['lat'],
+                (float) $defaultCoords['lng']
+            );
+
+            $looksLikeDefaultFallback = $distanceFromDefault < 3500;
+            if (!$looksLikeDefaultFallback || $distance < 10000) {
+                return;
+            }
+        }
+
+        $item->forceFill([
+            'latitude' => (float) $resolved['lat'],
+            'longitude' => (float) $resolved['lng'],
+        ])->saveQuietly();
+        $item->setAttribute('latitude', (float) $resolved['lat']);
+        $item->setAttribute('longitude', (float) $resolved['lng']);
     }
 
 
