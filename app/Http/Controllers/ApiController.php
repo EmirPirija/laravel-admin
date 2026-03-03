@@ -6066,8 +6066,10 @@ public function getMyReview(Request $request)
             $fields = VerificationField::all();
             ResponseService::successResponse(__('Verification Field Fetched Successfully'), $fields);
         } catch (Throwable $th) {
-            DB::rollBack();
-            ResponseService::logErrorResponse($th, 'API Controller -> addVerificationFieldValues');
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            ResponseService::logErrorResponse($th, 'API Controller -> getVerificationFields');
             ResponseService::errorResponse();
         }
     }
