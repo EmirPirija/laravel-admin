@@ -69,6 +69,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Unique;
 use Stichoza\GoogleTranslate\GoogleTranslate;
@@ -7048,6 +7049,12 @@ public function getMyReview(Request $request)
         }
 
         try {
+            $requestId = trim((string) ($request->header('X-Request-Id') ?? ''));
+            if ($requestId === '') {
+                $requestId = (string) Str::uuid();
+            }
+            $startedAt = microtime(true);
+
             $lat = $this->parseCoordinateValue($request->input('lat'));
             $lng = $this->parseCoordinateValue($request->input('lng'));
             if ($lng === null) {
@@ -7065,10 +7072,154 @@ public function getMyReview(Request $request)
             $placeId = trim((string) ($request->input('place_id') ?? ''));
             $sessionId = trim((string) ($request->input('session_id') ?? ''));
             $mapProvider = Setting::where('name', 'map_provider')->value('value') ?? 'free_api';
+            $scope = $search !== '' ? 'search' : (($lat !== null && $lng !== null) ? 'coordinates' : ($placeId !== '' ? 'place_id' : 'generic'));
+            $rateLimitConfig = $this->getLocationLookupRateLimitConfig($scope);
+            $rateLimitKey = $this->buildLocationRateLimitKey($request, $scope);
+
+            if (RateLimiter::tooManyAttempts($rateLimitKey, $rateLimitConfig['max_attempts'])) {
+                $retryAfter = RateLimiter::availableIn($rateLimitKey);
+                Log::warning('location.lookup.rate_limited', [
+                    'request_id' => $requestId,
+                    'scope' => $scope,
+                    'ip' => $request->ip(),
+                    'user_id' => optional($request->user())->id,
+                    'retry_after_seconds' => $retryAfter,
+                    'max_attempts' => $rateLimitConfig['max_attempts'],
+                ]);
+
+                return ResponseService::errorResponse(
+                    __('Too many location requests. Please try again shortly.'),
+                    [
+                        'retry_after_seconds' => $retryAfter,
+                        'request_id' => $requestId,
+                    ],
+                    'LOCATION_LOOKUP_RATE_LIMITED',
+                    null,
+                    429
+                );
+            }
+
+            RateLimiter::hit($rateLimitKey, $rateLimitConfig['decay_seconds']);
 
             // Determine current language ID
             $contentLangCode = $request->header('Content-Language') ?? app()->getLocale();
             $currentLangId = (int) (Language::where('code', $contentLangCode)->value('id') ?? 1);
+            $cacheTtlSeconds = $this->resolveLocationLookupCacheTtlSeconds($scope);
+            $cacheKey = $this->buildLocationLookupCacheKey([
+                'scope' => $scope,
+                'map_provider' => $mapProvider,
+                'lang' => $lang,
+                'language_id' => $currentLangId,
+                'search' => Str::lower($search),
+                'place_id' => Str::lower($placeId),
+                'lat' => $lat !== null ? round((float) $lat, 5) : null,
+                'lng' => $lng !== null ? round((float) $lng, 5) : null,
+            ]);
+            $isCacheable = !($mapProvider === 'google_places' && $sessionId !== '');
+            $cacheHit = false;
+
+            if ($isCacheable) {
+                $cachedResult = Cache::get($cacheKey);
+                if (is_array($cachedResult) && array_key_exists('data', $cachedResult)) {
+                    $cacheHit = true;
+                    $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+                    Log::info('location.lookup.cache_hit', [
+                        'request_id' => $requestId,
+                        'scope' => $scope,
+                        'source' => $cachedResult['source'] ?? 'cache',
+                        'ip' => $request->ip(),
+                        'user_id' => optional($request->user())->id,
+                        'duration_ms' => $durationMs,
+                    ]);
+
+                    return ResponseService::successResponse(
+                        $cachedResult['message'] ?? __('Location fetched from cache'),
+                        $cachedResult['data'],
+                        [
+                            'trace_id' => $requestId,
+                            'meta' => [
+                                'scope' => $scope,
+                                'source' => $cachedResult['source'] ?? 'cache',
+                                'cache_hit' => true,
+                                'duration_ms' => $durationMs,
+                            ],
+                        ]
+                    );
+                }
+            }
+
+            $successResponse = function (string $message, $payload, string $source = 'unknown', bool $allowCache = true) use (
+                $isCacheable,
+                $cacheKey,
+                $cacheTtlSeconds,
+                $request,
+                $requestId,
+                $scope,
+                $startedAt,
+                $cacheHit
+            ) {
+                $normalizedPayload = $payload;
+                if ($payload instanceof \Illuminate\Support\Collection) {
+                    $normalizedPayload = $payload->values()->toArray();
+                } elseif ($payload instanceof \Illuminate\Contracts\Support\Arrayable) {
+                    $normalizedPayload = $payload->toArray();
+                }
+
+                if ($allowCache && $isCacheable) {
+                    Cache::put($cacheKey, [
+                        'message' => $message,
+                        'source' => $source,
+                        'data' => $normalizedPayload,
+                    ], now()->addSeconds($cacheTtlSeconds));
+                }
+
+                $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+                Log::info('location.lookup.success', [
+                    'request_id' => $requestId,
+                    'scope' => $scope,
+                    'source' => $source,
+                    'cache_hit' => $cacheHit,
+                    'ip' => $request->ip(),
+                    'user_id' => optional($request->user())->id,
+                    'duration_ms' => $durationMs,
+                ]);
+
+                return ResponseService::successResponse(
+                    $message,
+                    $normalizedPayload,
+                    [
+                        'trace_id' => $requestId,
+                        'meta' => [
+                            'scope' => $scope,
+                            'source' => $source,
+                            'cache_hit' => $cacheHit,
+                            'duration_ms' => $durationMs,
+                        ],
+                    ]
+                );
+            };
+
+            $errorResponse = function (string $message, int $status = 500, string $code = 'LOCATION_LOOKUP_FAILED', ?array $data = null) use ($request, $requestId, $scope, $startedAt) {
+                $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+                Log::warning('location.lookup.failed', [
+                    'request_id' => $requestId,
+                    'scope' => $scope,
+                    'status' => $status,
+                    'code' => $code,
+                    'message' => $message,
+                    'ip' => $request->ip(),
+                    'user_id' => optional($request->user())->id,
+                    'duration_ms' => $durationMs,
+                ]);
+
+                $payload = array_merge($data ?? [], [
+                    'request_id' => $requestId,
+                    'scope' => $scope,
+                    'duration_ms' => $durationMs,
+                ]);
+
+                return ResponseService::errorResponse($message, $payload, $code, null, $status);
+            };
 
             $resolveTranslatedName = static function ($model, int $languageId, string $fallbackField = 'name'): ?string {
                 if (empty($model)) {
@@ -7113,7 +7264,7 @@ public function getMyReview(Request $request)
                 if ($mapProvider === 'google_places') {
                     $apiKey = Setting::where('name', 'place_api_key')->value('value');
                     if (! $apiKey) {
-                        return ResponseService::errorResponse(__('Google Maps API key not set'));
+                        return $errorResponse(__('Google Maps API key not set'), 500, 'GOOGLE_MAPS_API_KEY_MISSING');
                     }
 
                     $googleParams = [
@@ -7129,8 +7280,8 @@ public function getMyReview(Request $request)
                         ->get('https://maps.googleapis.com/maps/api/place/autocomplete/json', $googleParams);
 
                     return $response->successful()
-                        ? ResponseService::successResponse(__('Location fetched from Google API'), $response->json())
-                        : ResponseService::errorResponse(__('Failed to fetch from Google Maps API'));
+                        ? $successResponse(__('Location fetched from Google API'), $response->json(), 'google_places_search', false)
+                        : $errorResponse(__('Failed to fetch from Google Maps API'), 502, 'GOOGLE_MAPS_UPSTREAM_FAILED');
 
                 } else {
                     // Search Areas with translations
@@ -7145,7 +7296,7 @@ public function getMyReview(Request $request)
                         ->get();
 
                     if ($areas->isNotEmpty()) {
-                        return ResponseService::successResponse(__('Matching areas found'), $areas->map(function ($area) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
+                        return $successResponse(__('Matching areas found'), $areas->map(function ($area) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
                             $city = $area->city;
                             $state = $city?->state;
                             $country = $state?->country;
@@ -7164,7 +7315,7 @@ public function getMyReview(Request $request)
                                 'latitude' => $area->latitude,
                                 'longitude' => $area->longitude,
                             ];
-                        }));
+                        }), 'local_area_search');
                     }
 
                     // Search Cities with translations
@@ -7180,7 +7331,7 @@ public function getMyReview(Request $request)
                         ->get();
 
                     if ($cities->isNotEmpty()) {
-                        return ResponseService::successResponse(__('Matching cities found'), $cities->map(function ($city) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
+                        return $successResponse(__('Matching cities found'), $cities->map(function ($city) use ($resolveTranslatedName, $resolveCountryTranslatedName, $currentLangId) {
                             $state = $city->state;
                             $country = $state?->country;
 
@@ -7195,7 +7346,7 @@ public function getMyReview(Request $request)
                                 'latitude' => $city->latitude,
                                 'longitude' => $city->longitude,
                             ];
-                        }));
+                        }), 'local_city_search');
                     }
 
                     $municipalities = BihMunicipality::query()
@@ -7205,7 +7356,7 @@ public function getMyReview(Request $request)
                         ->get();
 
                     if ($municipalities->isNotEmpty()) {
-                        return ResponseService::successResponse(__('Matching municipalities found'), $municipalities->map(function ($municipality) {
+                        return $successResponse(__('Matching municipalities found'), $municipalities->map(function ($municipality) {
                             return [
                                 'city_id' => null,
                                 'city' => $municipality->name,
@@ -7220,7 +7371,7 @@ public function getMyReview(Request $request)
                                 'latitude' => $municipality->latitude,
                                 'longitude' => $municipality->longitude,
                             ];
-                        }));
+                        }), 'local_municipality_search');
                     }
 
                     $nominatimCoordinates = $this->resolveCoordinatesViaNominatim([
@@ -7229,7 +7380,7 @@ public function getMyReview(Request $request)
                         "{$search}, BiH",
                     ]);
                     if ($nominatimCoordinates) {
-                        return ResponseService::successResponse(__('Location fetched from geocoder'), [
+                        return $successResponse(__('Location fetched from geocoder'), [
                             'city_id' => null,
                             'city' => $search,
                             'city_translation' => $search,
@@ -7242,10 +7393,10 @@ public function getMyReview(Request $request)
                             'area_translation' => null,
                             'latitude' => $nominatimCoordinates['lat'],
                             'longitude' => $nominatimCoordinates['lng'],
-                        ]);
+                        ], 'nominatim_search');
                     }
 
-                    return ResponseService::errorResponse(__('No matching location found'));
+                    return $errorResponse(__('No matching location found'), 404, 'LOCATION_NOT_FOUND');
                 }
             }
 
@@ -7256,7 +7407,7 @@ public function getMyReview(Request $request)
                 if ($mapProvider === 'google_places') {
                     $apiKey = Setting::where('name', 'place_api_key')->value('value');
                     if (! $apiKey) {
-                        return ResponseService::errorResponse(__('Google Maps API key not set'));
+                        return $errorResponse(__('Google Maps API key not set'), 500, 'GOOGLE_MAPS_API_KEY_MISSING');
                     }
 
                     $googleParams = [
@@ -7272,8 +7423,8 @@ public function getMyReview(Request $request)
                         ->get('https://maps.googleapis.com/maps/api/geocode/json', $googleParams);
 
                     return $response->successful()
-                        ? ResponseService::successResponse(__('Location fetched from Google API'), $response->json())
-                        : ResponseService::errorResponse(__('Failed to fetch from Google Maps API'));
+                        ? $successResponse(__('Location fetched from Google API'), $response->json(), 'google_reverse_geocode', false)
+                        : $errorResponse(__('Failed to fetch from Google Maps API'), 502, 'GOOGLE_MAPS_UPSTREAM_FAILED');
 
                 } else {
                     $closestCity = City::with([
@@ -7310,7 +7461,7 @@ public function getMyReview(Request $request)
                             ->first();
 
                         if ($closestMunicipality) {
-                            return ResponseService::successResponse(__('Location fetched from local database'), [
+                            return $successResponse(__('Location fetched from local database'), [
                                 'city_id' => null,
                                 'city' => $closestMunicipality->name,
                                 'city_translation' => $closestMunicipality->name,
@@ -7323,10 +7474,15 @@ public function getMyReview(Request $request)
                                 'area_translation' => null,
                                 'latitude' => $closestMunicipality->latitude,
                                 'longitude' => $closestMunicipality->longitude,
-                            ]);
+                            ], 'local_municipality_reverse');
                         }
 
-                        return ResponseService::errorResponse(__('No nearby city found'));
+                        $reverseGeocoded = $this->resolveReverseLocationViaNominatim($lat, $lng, $lang);
+                        if ($reverseGeocoded) {
+                            return $successResponse(__('Location fetched from geocoder'), $reverseGeocoded, 'nominatim_reverse');
+                        }
+
+                        return $errorResponse(__('No nearby city found'), 404, 'LOCATION_NOT_FOUND');
                     }
 
                     $closestArea = Area::with([
@@ -7349,7 +7505,7 @@ public function getMyReview(Request $request)
                     $closestState = $closestCity->state;
                     $closestCountry = $closestState?->country;
 
-                    return ResponseService::successResponse(__('Location fetched from local database'), [
+                    return $successResponse(__('Location fetched from local database'), [
                         'city_id' => $closestCity->id,
                         'city' => $closestCity->name,
                         'city_translation' => $resolveTranslatedName($closestCity, $currentLangId) ?? $closestCity->name,
@@ -7362,7 +7518,7 @@ public function getMyReview(Request $request)
                         'area_translation' => optional($closestArea?->translations?->first())->name ?? $closestArea?->name,
                         'latitude' => $closestCity->latitude,
                         'longitude' => $closestCity->longitude,
-                    ]);
+                    ], 'local_city_reverse');
                 }
             }
 
@@ -7373,7 +7529,7 @@ public function getMyReview(Request $request)
                 if ($mapProvider === 'google_places') {
                     $apiKey = Setting::where('name', 'place_api_key')->value('value');
                     if (! $apiKey) {
-                        return ResponseService::errorResponse(__('Google Maps API key not set'));
+                        return $errorResponse(__('Google Maps API key not set'), 500, 'GOOGLE_MAPS_API_KEY_MISSING');
                     }
                     $googleParams = [
                         'place_id' => $placeId,
@@ -7388,15 +7544,20 @@ public function getMyReview(Request $request)
                         ->get('https://maps.googleapis.com/maps/api/geocode/json', $googleParams);
 
                     return $response->successful()
-                        ? ResponseService::successResponse(__('Location fetched from place_id'), $response->json())
-                        : ResponseService::errorResponse(__('Failed to fetch from Google Maps API using place_id'));
+                        ? $successResponse(__('Location fetched from place_id'), $response->json(), 'google_place_id', false)
+                        : $errorResponse(__('Failed to fetch from Google Maps API using place_id'), 502, 'GOOGLE_MAPS_UPSTREAM_FAILED');
                 } else {
-                    return ResponseService::errorResponse(__('place_id is only supported with Google Maps provider'));
+                    return $errorResponse(__('place_id is only supported with Google Maps provider'), 422, 'PLACE_ID_UNSUPPORTED');
                 }
             }
 
-            return ResponseService::validationError(__('Please provide search text, coordinates or place_id.'));
+            return $errorResponse(__('Please provide search text, coordinates or place_id.'), 422, 'VALIDATION_ERROR');
         } catch (\Throwable $th) {
+            Log::error('location.lookup.exception', [
+                'message' => $th->getMessage(),
+                'line' => $th->getLine(),
+                'file' => $th->getFile(),
+            ]);
             ResponseService::logErrorResponse($th, 'API Controller -> getLocationFromCoordinates');
 
             return ResponseService::errorResponse(__('Failed to fetch location'));
@@ -7875,6 +8036,128 @@ public function getMyReview(Request $request)
         }
 
         return is_array($decoded) ? $decoded : $default;
+    }
+
+    private function getLocationLookupRateLimitConfig(string $scope): array
+    {
+        $scope = trim(Str::lower($scope));
+
+        $defaultByScope = [
+            'search' => ['max_attempts' => 45, 'decay_seconds' => 60],
+            'coordinates' => ['max_attempts' => 120, 'decay_seconds' => 60],
+            'place_id' => ['max_attempts' => 80, 'decay_seconds' => 60],
+            'generic' => ['max_attempts' => 60, 'decay_seconds' => 60],
+        ];
+
+        $selected = $defaultByScope[$scope] ?? $defaultByScope['generic'];
+        $maxAttempts = (int) env('LOCATION_LOOKUP_RATE_LIMIT_MAX', $selected['max_attempts']);
+        $decaySeconds = (int) env('LOCATION_LOOKUP_RATE_LIMIT_DECAY_SECONDS', $selected['decay_seconds']);
+
+        return [
+            'max_attempts' => max(1, $maxAttempts),
+            'decay_seconds' => max(1, $decaySeconds),
+        ];
+    }
+
+    private function buildLocationRateLimitKey(Request $request, string $scope): string
+    {
+        $scope = trim(Str::lower($scope));
+        $userId = optional($request->user())->id;
+        $actor = $userId ? 'user:' . (int) $userId : 'ip:' . (string) $request->ip();
+
+        return 'location_lookup:' . $scope . ':' . $actor;
+    }
+
+    private function resolveLocationLookupCacheTtlSeconds(string $scope): int
+    {
+        $scope = trim(Str::lower($scope));
+        $defaultByScope = [
+            'search' => 120,
+            'coordinates' => 300,
+            'place_id' => 300,
+            'generic' => 120,
+        ];
+
+        $defaultTtl = $defaultByScope[$scope] ?? $defaultByScope['generic'];
+        $ttl = (int) env('LOCATION_LOOKUP_CACHE_TTL_SECONDS', $defaultTtl);
+        return max(10, $ttl);
+    }
+
+    private function buildLocationLookupCacheKey(array $payload): string
+    {
+        ksort($payload);
+        return 'location_lookup:' . sha1(json_encode($payload));
+    }
+
+    private function resolveReverseLocationViaNominatim(float $lat, float $lng, string $lang = 'en'): ?array
+    {
+        try {
+            $response = Http::timeout(4)
+                ->acceptJson()
+                ->withHeaders([
+                    'User-Agent' => 'LMX-Web-LocationResolver/1.0',
+                ])
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'format' => 'jsonv2',
+                    'addressdetails' => 1,
+                    'zoom' => 12,
+                    'lat' => $lat,
+                    'lon' => $lng,
+                    'accept-language' => trim((string) $lang) ?: 'en',
+                ]);
+        } catch (\Throwable $th) {
+            return null;
+        }
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $result = $response->json();
+        if (!is_array($result)) {
+            return null;
+        }
+
+        $address = is_array($result['address'] ?? null) ? $result['address'] : [];
+        $city = collect([
+            $address['city'] ?? null,
+            $address['town'] ?? null,
+            $address['village'] ?? null,
+            $address['municipality'] ?? null,
+            $address['county'] ?? null,
+            $address['state_district'] ?? null,
+        ])->filter(static fn ($value) => !empty($value))->first();
+
+        $state = collect([
+            $address['state'] ?? null,
+            $address['region'] ?? null,
+            $address['state_district'] ?? null,
+            $address['county'] ?? null,
+        ])->filter(static fn ($value) => !empty($value))->first();
+
+        $country = trim((string) ($address['country'] ?? 'Bosna i Hercegovina'));
+        if ($city === null && $state === null) {
+            return null;
+        }
+
+        $resolvedCity = (string) ($city ?: $state ?: 'Bosna i Hercegovina');
+        $resolvedState = $state ? (string) $state : null;
+
+        return [
+            'city_id' => null,
+            'city' => $resolvedCity,
+            'city_translation' => $resolvedCity,
+            'state' => $resolvedState,
+            'state_translation' => $resolvedState,
+            'country' => $country,
+            'country_translation' => $country,
+            'area_id' => null,
+            'area' => null,
+            'area_translation' => null,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'display_name' => $result['display_name'] ?? null,
+        ];
     }
 
     private function parseCoordinateValue($value): ?float
