@@ -837,6 +837,12 @@ protected static function booted()
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
+        if (
+            $this->normalizeLocationSourceValue($request->input('location_source')) === 'map' &&
+            !$this->requestHasAnyValidCoordinatePair($request)
+        ) {
+            ResponseService::validationError('Za odabrani način "Tačan pin na mapi" označite pin na mapi.');
+        }
         $resolvedCoords = $this->resolveListingCoordinates($request);
         $request->merge([
             'latitude' => $resolvedCoords['lat'],
@@ -2089,6 +2095,12 @@ public function getItem(Request $request)
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
+        }
+        if (
+            $this->normalizeLocationSourceValue($request->input('location_source')) === 'map' &&
+            !$this->requestHasAnyValidCoordinatePair($request)
+        ) {
+            ResponseService::validationError('Za odabrani način "Tačan pin na mapi" označite pin na mapi.');
         }
 
         DB::beginTransaction();
@@ -7806,11 +7818,11 @@ public function getMyReview(Request $request)
     private function resolveListingCoordinates(Request $request, ?Item $existingItem = null): array
     {
         $directCandidates = [
+            [$request->input('location_latitude'), $request->input('location_longitude')],
+            [$request->input('location_lat'), $request->input('location_lng')],
             [$request->input('latitude'), $request->input('longitude')],
             [$request->input('lat'), $request->input('lng')],
             [$request->input('lat'), $request->input('long')],
-            [$request->input('location_latitude'), $request->input('location_longitude')],
-            [$request->input('location_lat'), $request->input('location_lng')],
         ];
 
         foreach ($directCandidates as [$latRaw, $lngRaw]) {
@@ -7876,6 +7888,30 @@ public function getMyReview(Request $request)
         }
 
         return $this->getDefaultListingCoordinates();
+    }
+
+    private function normalizeLocationSourceValue($value): string
+    {
+        return strtolower(trim((string) ($value ?? '')));
+    }
+
+    private function requestHasAnyValidCoordinatePair(Request $request): bool
+    {
+        $pairs = [
+            [$request->input('location_latitude'), $request->input('location_longitude')],
+            [$request->input('location_lat'), $request->input('location_lng')],
+            [$request->input('latitude'), $request->input('longitude')],
+            [$request->input('lat'), $request->input('lng')],
+            [$request->input('lat'), $request->input('long')],
+        ];
+
+        foreach ($pairs as [$latRaw, $lngRaw]) {
+            if ($this->isValidCoordinatePair($latRaw, $lngRaw)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function repairItemCoordinatesIfFallback(Item $item): void
