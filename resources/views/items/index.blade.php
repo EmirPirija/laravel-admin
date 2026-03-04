@@ -281,6 +281,31 @@
                 </div>
             </div>
         </div>
+        <div id="advertisementTimelineModal" class="modal fade" tabindex="-1" role="dialog"
+            aria-labelledby="advertisementTimelineModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="advertisementTimelineModalLabel">{{ __('Moderation Timeline') }}</h5>
+                            <div class="small text-muted">
+                                <span>{{ __('Advertisement') }}:</span>
+                                <strong id="timelineItemName">-</strong>
+                                <span class="ms-2">{{ __('Seller') }}:</span>
+                                <strong id="timelineSellerName">-</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="advertisementTimelineEmpty" class="text-muted small d-none">
+                            {{ __('No moderation events found for this advertisement.') }}
+                        </div>
+                        <div id="advertisementTimelineList" class="list-group list-group-flush"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="editStatusModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel1"
             aria-hidden="true">
             <div class="modal-dialog">

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\DispatchSellerPushNotificationJob;
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Country;
@@ -27,6 +29,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Str;
 use Throwable;
@@ -124,6 +127,9 @@ class ItemController extends Controller
                 }
                 if (Auth::user()->can('advertisement-update')) {
                     $operate .= BootstrapTableService::button('fa fa-wrench', route('advertisement.edit', $row->id), ['btn', 'btn-light-warning'], ['title' => __('Advertisement Update')]);
+                    $operate .= BootstrapTableService::button('fa fa-history', route('advertisement.timeline', $row->id), ['btn', 'btn-light-secondary', 'view-timeline'], [
+                        'title' => __('Moderation Timeline'),
+                    ]);
                     $operate .= BootstrapTableService::button('fa fa-comments', route('advertisement.message-seller', $row->id), ['btn', 'btn-light-primary', 'message-seller'], [
                         'title' => __('Message Seller'),
                     ]);
@@ -378,6 +384,108 @@ class ItemController extends Controller
         return $this->editForm($id);
     }
 
+    public function moderationTimeline(Request $request, $id)
+    {
+        ResponseService::noPermissionThenSendJson('advertisement-update');
+
+        try {
+            $limit = (int) $request->input('limit', 40);
+            $limit = max(10, min($limit, 150));
+
+            $item = Item::withTrashed()->with('user:id,name,email')->findOrFail($id);
+            $auditLogs = collect();
+            if (Schema::hasTable('audit_logs')) {
+                $auditLogs = AuditLog::query()
+                    ->with('actor:id,name,email')
+                    ->where('target_type', Item::class)
+                    ->where('target_id', (string) $item->id)
+                    ->orderByDesc('id')
+                    ->take($limit)
+                    ->get();
+            }
+
+            $events = $auditLogs
+                ->map(function (AuditLog $log) {
+                    $context = is_array($log->context) ? $log->context : [];
+                    $createdAt = optional($log->created_at)->toDateTimeString();
+
+                    return [
+                        'id' => (string) $log->id,
+                        'action' => (string) $log->action,
+                        'label' => $this->timelineActionLabel((string) $log->action),
+                        'description' => $this->timelineActionDescription((string) $log->action, $context),
+                        'actor_name' => $log->actor?->name ?: __('System'),
+                        'actor_email' => $log->actor?->email ?: '-',
+                        'ip_address' => $log->ip_address ?: '-',
+                        'context' => $this->sanitizeTimelineContext($context),
+                        'created_at' => $createdAt,
+                        'created_at_human' => optional($log->created_at)->diffForHumans(),
+                        'created_at_unix' => optional($log->created_at)->timestamp ?? 0,
+                    ];
+                });
+
+            $createdAt = optional($item->created_at)->toDateTimeString();
+            $events->push([
+                'id' => 'item-created-'.$item->id,
+                'action' => 'advertisement_created',
+                'label' => __('Advertisement Created'),
+                'description' => __('Seller created this advertisement'),
+                'actor_name' => $item->user?->name ?: __('Seller'),
+                'actor_email' => $item->user?->email ?: '-',
+                'ip_address' => '-',
+                'context' => [
+                    'status' => $item->status,
+                    'price' => $item->price,
+                    'category_id' => $item->category_id,
+                ],
+                'created_at' => $createdAt,
+                'created_at_human' => optional($item->created_at)->diffForHumans(),
+                'created_at_unix' => optional($item->created_at)->timestamp ?? 0,
+            ]);
+
+            if (! empty($item->deleted_at)) {
+                $deletedAt = optional($item->deleted_at)->toDateTimeString();
+                $events->push([
+                    'id' => 'item-soft-deleted-'.$item->id,
+                    'action' => 'advertisement_soft_deleted',
+                    'label' => __('Advertisement Deactivated'),
+                    'description' => __('Advertisement is currently deactivated (soft deleted)'),
+                    'actor_name' => __('System'),
+                    'actor_email' => '-',
+                    'ip_address' => '-',
+                    'context' => [],
+                    'created_at' => $deletedAt,
+                    'created_at_human' => optional($item->deleted_at)->diffForHumans(),
+                    'created_at_unix' => optional($item->deleted_at)->timestamp ?? 0,
+                ]);
+            }
+
+            $timeline = $events
+                ->sortByDesc(fn ($event) => (int) ($event['created_at_unix'] ?? 0))
+                ->values()
+                ->take($limit)
+                ->map(function ($event) {
+                    unset($event['created_at_unix']);
+                    return $event;
+                })
+                ->values();
+
+            ResponseService::successResponse('Moderation timeline loaded', [
+                'item' => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'status' => $item->status,
+                    'user_name' => $item->user?->name ?: '-',
+                    'user_email' => $item->user?->email ?: '-',
+                ],
+                'events' => $timeline,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemController -> moderationTimeline');
+            ResponseService::errorResponse('Unable to load moderation timeline');
+        }
+    }
+
     public function sendMessageToSeller(Request $request, $id)
     {
         ResponseService::noPermissionThenSendJson('advertisement-update');
@@ -432,44 +540,44 @@ class ItemController extends Controller
             ]);
             DB::commit();
 
-            $pushSent = false;
-            if ($request->boolean('send_push', true)) {
+            $pushDispatched = false;
+            $tokenCount = 0;
+            $shouldSendPush = $request->boolean('send_push', true);
+            if ($shouldSendPush) {
                 $userTokens = UserFcmToken::where('user_id', $seller->id)->pluck('fcm_token')->filter()->values()->all();
-                if (! empty($userTokens)) {
-                    try {
-                        NotificationService::sendFcmNotification(
-                            $userTokens,
-                            'Nova poruka od administracije',
-                            $chat->message,
-                            'chat',
-                            [
-                                'id' => $chat->id,
-                                'type' => 'chat',
-                                'chat_id' => $conversation->id,
-                                'item_offer_id' => $conversation->id,
-                                'sender_id' => $admin->id,
-                                'message' => $chat->message,
-                                'message_type' => 'text',
-                                'message_type_temp' => 'text',
-                                'user_id' => $admin->id,
-                                'user_name' => $admin->name,
-                                'user_profile' => $admin->profile,
-                                'user_type' => 'Admin',
-                                'item_id' => $item->id,
-                                'item_name' => $item->name,
-                                'item_image' => $item->image,
-                                'item_price' => $item->price,
-                                'item_offer_amount' => $conversation->amount ?? 0,
-                            ]
-                        );
-                        $pushSent = true;
-                    } catch (Throwable $notificationError) {
-                        logger()->warning('Failed to send seller chat push from admin panel', [
+                $tokenCount = count($userTokens);
+                if ($tokenCount > 0) {
+                    $pushDispatched = $this->queueSellerPushNotification(
+                        $userTokens,
+                        'Nova poruka od administracije',
+                        $chat->message,
+                        'chat',
+                        [
+                            'id' => $chat->id,
+                            'type' => 'chat',
+                            'chat_id' => $conversation->id,
+                            'item_offer_id' => $conversation->id,
+                            'sender_id' => $admin->id,
+                            'message' => $chat->message,
+                            'message_type' => 'text',
+                            'message_type_temp' => 'text',
+                            'user_id' => $admin->id,
+                            'user_name' => $admin->name,
+                            'user_profile' => $admin->profile,
+                            'user_type' => 'Admin',
+                            'item_id' => $item->id,
+                            'item_name' => $item->name,
+                            'item_image' => $item->image,
+                            'item_price' => $item->price,
+                            'item_offer_amount' => $conversation->amount ?? 0,
+                        ],
+                        [
+                            'action' => 'advertisement_admin_message_sent_to_seller',
                             'item_id' => $item->id,
                             'seller_id' => $seller->id,
-                            'error' => $notificationError->getMessage(),
-                        ]);
-                    }
+                            'chat_id' => $chat->id,
+                        ]
+                    );
                 }
             }
 
@@ -477,15 +585,37 @@ class ItemController extends Controller
                 'seller_id' => $seller->id,
                 'conversation_id' => $conversation->id,
                 'chat_id' => $chat->id,
-                'push_sent' => $pushSent,
+                'push_dispatched' => $pushDispatched,
+                'token_count' => $tokenCount,
             ]);
+
+            if ($shouldSendPush && $tokenCount === 0) {
+                ResponseService::warningResponse('Seller has no active push token', [
+                    'item_id' => $item->id,
+                    'seller_id' => $seller->id,
+                    'conversation_id' => $conversation->id,
+                    'chat_id' => $chat->id,
+                    'push_dispatched' => false,
+                ]);
+            }
+
+            if ($shouldSendPush && $tokenCount > 0 && ! $pushDispatched) {
+                ResponseService::warningResponse('Message saved, but push queue dispatch failed', [
+                    'item_id' => $item->id,
+                    'seller_id' => $seller->id,
+                    'conversation_id' => $conversation->id,
+                    'chat_id' => $chat->id,
+                    'push_dispatched' => false,
+                ]);
+            }
 
             ResponseService::successResponse('Seller message sent successfully', [
                 'item_id' => $item->id,
                 'seller_id' => $seller->id,
                 'conversation_id' => $conversation->id,
                 'chat_id' => $chat->id,
-                'push_sent' => $pushSent,
+                'push_dispatched' => $pushDispatched,
+                'token_count' => $tokenCount,
             ]);
         } catch (Throwable $th) {
             if (DB::transactionLevel() > 0) {
@@ -541,41 +671,38 @@ class ItemController extends Controller
                 ]);
             }
 
-            $pushSent = false;
+            $pushDispatched = false;
             $tokenCount = 0;
             if ($request->boolean('send_push', true)) {
                 $userTokens = UserFcmToken::where('user_id', $seller->id)->pluck('fcm_token')->filter()->values()->all();
                 $tokenCount = count($userTokens);
 
                 if ($tokenCount > 0) {
-                    try {
-                        NotificationService::sendFcmNotification(
-                            $userTokens,
-                            trim((string) $request->input('title')),
-                            trim((string) $request->input('message')),
-                            'notification',
-                            [
-                                'item_id' => $item->id,
-                                'item_name' => $item->name,
-                                'item_image' => $item->image,
-                                'source' => 'admin_advertisement_action',
-                            ]
-                        );
-                        $pushSent = true;
-                    } catch (Throwable $notificationError) {
-                        logger()->warning('Failed to send seller notification push from admin panel', [
+                    $pushDispatched = $this->queueSellerPushNotification(
+                        $userTokens,
+                        trim((string) $request->input('title')),
+                        trim((string) $request->input('message')),
+                        'notification',
+                        [
+                            'item_id' => $item->id,
+                            'item_name' => $item->name,
+                            'item_image' => $item->image,
+                            'source' => 'admin_advertisement_action',
+                        ],
+                        [
+                            'action' => 'advertisement_admin_notification_sent_to_seller',
                             'item_id' => $item->id,
                             'seller_id' => $seller->id,
-                            'error' => $notificationError->getMessage(),
-                        ]);
-                    }
+                            'notification_id' => $notificationRecord?->id,
+                        ]
+                    );
                 }
             }
 
             AuditLogService::log('advertisement_admin_notification_sent_to_seller', Item::class, $item->id, [
                 'seller_id' => $seller->id,
                 'notification_id' => $notificationRecord?->id,
-                'push_sent' => $pushSent,
+                'push_dispatched' => $pushDispatched,
                 'token_count' => $tokenCount,
             ]);
 
@@ -584,7 +711,16 @@ class ItemController extends Controller
                     'item_id' => $item->id,
                     'seller_id' => $seller->id,
                     'notification_id' => $notificationRecord?->id,
-                    'push_sent' => false,
+                    'push_dispatched' => false,
+                ]);
+            }
+
+            if ($request->boolean('send_push', true) && $tokenCount > 0 && ! $pushDispatched) {
+                ResponseService::warningResponse('Notification saved, but push queue dispatch failed', [
+                    'item_id' => $item->id,
+                    'seller_id' => $seller->id,
+                    'notification_id' => $notificationRecord?->id,
+                    'push_dispatched' => false,
                 ]);
             }
 
@@ -592,13 +728,93 @@ class ItemController extends Controller
                 'item_id' => $item->id,
                 'seller_id' => $seller->id,
                 'notification_id' => $notificationRecord?->id,
-                'push_sent' => $pushSent,
+                'push_dispatched' => $pushDispatched,
                 'token_count' => $tokenCount,
             ]);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'ItemController -> sendNotificationToSeller');
             ResponseService::errorResponse('Unable to send notification to seller');
         }
+    }
+
+    private function queueSellerPushNotification(
+        array $tokens,
+        string $title,
+        string $message,
+        string $type = 'notification',
+        array $customBodyFields = [],
+        array $meta = []
+    ): bool {
+        try {
+            DispatchSellerPushNotificationJob::dispatch(
+                $tokens,
+                $title,
+                $message,
+                $type,
+                $customBodyFields,
+                $meta
+            )->onQueue('notifications')->afterResponse();
+
+            return true;
+        } catch (Throwable $th) {
+            logger()->warning('Failed to dispatch seller push notification job', [
+                'meta' => $meta,
+                'error' => $th->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function timelineActionLabel(string $action): string
+    {
+        return match ($action) {
+            'advertisement_created_by_admin' => __('Advertisement Created By Admin'),
+            'advertisement_updated_by_admin' => __('Advertisement Updated By Admin'),
+            'advertisement_approval_status_change' => __('Status Change'),
+            'advertisement_admin_message_sent_to_seller' => __('Seller Message Sent'),
+            'advertisement_admin_notification_sent_to_seller' => __('Seller Notification Sent'),
+            'advertisement_deleted_by_admin' => __('Advertisement Permanently Deleted'),
+            default => Str::headline(str_replace('_', ' ', $action)),
+        };
+    }
+
+    private function timelineActionDescription(string $action, array $context = []): string
+    {
+        return match ($action) {
+            'advertisement_approval_status_change' => __('Status changed from :from to :to', [
+                'from' => $context['from'] ?? '-',
+                'to' => $context['to'] ?? '-',
+            ]),
+            'advertisement_admin_message_sent_to_seller' => __('Admin sent a direct message to seller. Conversation # :conversation', [
+                'conversation' => $context['conversation_id'] ?? '-',
+            ]),
+            'advertisement_admin_notification_sent_to_seller' => __('Admin sent seller notification. Notification # :notification', [
+                'notification' => $context['notification_id'] ?? '-',
+            ]),
+            'advertisement_updated_by_admin' => __('Admin updated this advertisement. Reason: :reason', [
+                'reason' => $context['admin_edit_reason'] ?? '-',
+            ]),
+            'advertisement_deleted_by_admin' => __('Advertisement permanently deleted from admin panel'),
+            default => __('Action recorded'),
+        };
+    }
+
+    private function sanitizeTimelineContext(array $context): array
+    {
+        return collect($context)
+            ->map(function ($value) {
+                if (is_string($value) && strlen($value) > 280) {
+                    return substr($value, 0, 280).'...';
+                }
+
+                if (is_array($value)) {
+                    return $this->sanitizeTimelineContext($value);
+                }
+
+                return $value;
+            })
+            ->toArray();
     }
 
     public function update(Request $request, $id)
@@ -627,6 +843,14 @@ class ItemController extends Controller
         DB::beginTransaction();
         try {
             $item = Item::findOrFail($id);
+            $oldSnapshot = [
+                'status' => $item->getRawOriginal('status') ?? $item->status,
+                'price' => $item->price,
+                'category_id' => $item->category_id,
+                'country' => $item->country,
+                'state' => $item->state,
+                'city' => $item->city,
+            ];
 
             $category = Category::findOrFail($request->category_id);
             $isJobCategory = $category->is_job_category;
@@ -719,6 +943,14 @@ class ItemController extends Controller
                 ItemCustomFieldValue::where('item_id', $item->id)->delete();
             }
             $item->update($data);
+            $newSnapshot = [
+                'status' => $item->getRawOriginal('status') ?? $item->status,
+                'price' => $item->price,
+                'category_id' => $item->category_id,
+                'country' => $item->country,
+                'state' => $item->state,
+                'city' => $item->city,
+            ];
             if ($request->custom_fields) {
                 foreach ($request->custom_fields as $key => $custom_field) {
                     $value = is_array($custom_field) ? $custom_field : [$custom_field];
@@ -796,12 +1028,18 @@ class ItemController extends Controller
 
             DB::commit();
             $isApproved = $item->status === 'approved';
-            $isNonExpired = $item->expired_at === null || $item->expired_at > now();
+            $isNonExpired = $item->expiry_date === null || $item->expiry_date > now();
             $isNotDeleted = $item->deleted_at === null;
             $user_token = UserFcmToken::where('user_id', $item->user->id)->pluck('fcm_token')->toArray();
             if (! empty($user_token)) {
                 NotificationService::sendFcmNotification($user_token, 'About '.$item->name, 'Your Advertisement is edited by admin', 'item-edit', ['id' => $request->id]);
             }
+
+            AuditLogService::log('advertisement_updated_by_admin', Item::class, $item->id, [
+                'admin_edit_reason' => trim((string) $request->input('admin_edit_reason')),
+                'from' => $oldSnapshot,
+                'to' => $newSnapshot,
+            ]);
 
             if ($isApproved && $isNonExpired && $isNotDeleted) {
                 ResponseService::successRedirectResponse('Advertisement Updated Successfully', route('advertisement.index'));
@@ -1076,6 +1314,12 @@ class ItemController extends Controller
             }
 
             $item = Item::create($data);
+            AuditLogService::log('advertisement_created_by_admin', Item::class, $item->id, [
+                'seller_id' => $user->id,
+                'status' => $item->status,
+                'price' => $item->price,
+                'category_id' => $item->category_id,
+            ]);
 
             if ($request->custom_fields) {
                 foreach ($request->custom_fields as $key => $custom_field) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\UserDeletionService;
 use App\Models\User;
+use App\Models\VerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -84,8 +85,27 @@ class AdminController extends Controller
 
         $users = $query->paginate($perPage);
 
+        $verificationStatuses = [];
+        $userIds = $users->getCollection()->pluck('id')->all();
+        if (Schema::hasTable('verification_requests') && !empty($userIds)) {
+            $verificationStatuses = VerificationRequest::query()
+                ->whereIn('user_id', $userIds)
+                ->orderByDesc('id')
+                ->get(['user_id', 'status', 'updated_at'])
+                ->unique('user_id')
+                ->mapWithKeys(function ($row) {
+                    return [
+                        (int) $row->user_id => [
+                            'status' => $row->status,
+                            'updated_at' => $row->updated_at,
+                        ],
+                    ];
+                })
+                ->toArray();
+        }
+
         // Transformiši rezultate
-        $users->getCollection()->transform(function ($user) {
+        $users->getCollection()->transform(function ($user) use ($verificationStatuses) {
             $data = [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -101,7 +121,15 @@ class AdminController extends Controller
             $data['avatar'] = $user->avatar ?? null;
             $data['svg_avatar'] = $user->svg_avatar ?? null;
             $data['last_seen'] = $user->last_seen ?? $user->updated_at;
-            $data['is_verified'] = $user->is_verified ?? false;
+            $verificationEntry = $verificationStatuses[(int) $user->id] ?? null;
+            $verificationStatus = $verificationEntry['status'] ?? null;
+            $isVerified = (bool) ($user->is_verified ?? false);
+            if (!$isVerified && is_string($verificationStatus)) {
+                $isVerified = strtolower(trim($verificationStatus)) === 'approved';
+            }
+            $data['is_verified'] = $isVerified;
+            $data['verification_status'] = $verificationStatus;
+            $data['verification_updated_at'] = $verificationEntry['updated_at'] ?? null;
             $data['total_ads'] = $user->items->count();
             $data['active_ads'] = $user->items->where('status', 'approved')->count();
             $data['pending_ads'] = $user->items->where('status', 'pending')->count();
@@ -150,7 +178,21 @@ class AdminController extends Controller
         $data['avatar'] = $user->avatar ?? null;
         $data['svg_avatar'] = $user->svg_avatar ?? null;
         $data['last_seen'] = $user->last_seen ?? $user->updated_at;
-        $data['is_verified'] = $user->is_verified ?? false;
+        $verificationRequest = null;
+        if (Schema::hasTable('verification_requests')) {
+            $verificationRequest = VerificationRequest::query()
+                ->where('user_id', $user->id)
+                ->latest('id')
+                ->first(['status', 'updated_at']);
+        }
+        $verificationStatus = $verificationRequest?->status;
+        $isVerified = (bool) ($user->is_verified ?? false);
+        if (!$isVerified && is_string($verificationStatus)) {
+            $isVerified = strtolower(trim($verificationStatus)) === 'approved';
+        }
+        $data['is_verified'] = $isVerified;
+        $data['verification_status'] = $verificationStatus;
+        $data['verification_updated_at'] = $verificationRequest?->updated_at;
         $data['total_ads'] = $user->items->count();
         $data['active_ads'] = $user->items->where('status', 'approved')->count();
         $data['items'] = $user->items;

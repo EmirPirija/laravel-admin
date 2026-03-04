@@ -243,6 +243,7 @@ Route::group(['prefix' => 'custom-fields'], static function () {
     Route::group(['prefix' => 'advertisement'], static function () {
         Route::put('/{id}/approval', [ItemController::class, 'updateItemApproval'])->name('advertisement.approval');
         Route::get('/requested', [ItemController::class, 'requestedItem'])->name('advertisement.requested.index');
+        Route::get('/{id}/timeline', [ItemController::class, 'moderationTimeline'])->name('advertisement.timeline');
         Route::post('/{id}/message-seller', [ItemController::class, 'sendMessageToSeller'])->name('advertisement.message-seller');
         Route::post('/{id}/notify-seller', [ItemController::class, 'sendNotificationToSeller'])->name('advertisement.notify-seller');
     });

@@ -60,6 +60,49 @@ window.verificationFieldValueEvents = {
     }
 }
 
+function escapeHtml(value) {
+    return $('<div>').text(value == null ? '' : String(value)).html();
+}
+
+function translateSafe(key) {
+    return typeof trans === 'function' ? trans(key) : key;
+}
+
+function renderAdvertisementTimelineEvents(events) {
+    if (!Array.isArray(events) || events.length === 0) {
+        return '';
+    }
+
+    return events.map(function (event) {
+        const label = escapeHtml(event.label || event.action || 'Event');
+        const actor = escapeHtml(event.actor_name || '-');
+        const actorEmail = escapeHtml(event.actor_email || '-');
+        const description = escapeHtml(event.description || '-');
+        const createdAt = escapeHtml(event.created_at || '-');
+        const createdAtHuman = escapeHtml(event.created_at_human || '');
+        const ipAddress = escapeHtml(event.ip_address || '-');
+        const context = event.context ? escapeHtml(JSON.stringify(event.context)) : '';
+
+        return `
+            <div class="list-group-item py-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="fw-semibold">${label}</div>
+                        <div class="small text-muted">${actor} (${actorEmail})</div>
+                    </div>
+                    <div class="text-end small text-muted">
+                        <div>${createdAt}</div>
+                        <div>${createdAtHuman}</div>
+                    </div>
+                </div>
+                <div class="small mt-2">${description}</div>
+                <div class="small text-muted mt-2">IP: ${ipAddress}</div>
+                ${context ? `<pre class="mt-2 mb-0 bg-light p-2 rounded small text-break">${context}</pre>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
 
 window.itemEvents = {
     'click .editdata': function (e, value, row) {
@@ -131,6 +174,43 @@ window.itemEvents = {
         $('#notify_seller_send_push').prop('checked', true);
         $('#notify_seller_store').prop('checked', true);
         $('#notifySellerModal').modal('show');
+    },
+
+    'click .view-timeline': function (e, value, row) {
+        e.preventDefault();
+        const actionUrl = $(e.currentTarget).attr('href');
+        const $timelineList = $('#advertisementTimelineList');
+        const $timelineEmpty = $('#advertisementTimelineEmpty');
+
+        $('#timelineItemName').text(row.name || '-');
+        $('#timelineSellerName').text((row.user && row.user.name) ? row.user.name : '-');
+        $timelineEmpty.addClass('d-none');
+        $timelineList.html(`
+            <div class="list-group-item py-4 text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                ${translateSafe('Loading timeline...')}
+            </div>
+        `);
+        $('#advertisementTimelineModal').modal('show');
+
+        ajaxRequest('GET', actionUrl, null, null, function (response) {
+            const events = response && response.data && response.data.events ? response.data.events : [];
+            if (!Array.isArray(events) || events.length === 0) {
+                $timelineList.empty();
+                $timelineEmpty.removeClass('d-none');
+                return;
+            }
+
+            $timelineEmpty.addClass('d-none');
+            $timelineList.html(renderAdvertisementTimelineEvents(events));
+        }, function (error) {
+            $timelineEmpty.removeClass('d-none');
+            $timelineList.html(`
+                <div class="list-group-item py-3 text-danger">
+                    ${escapeHtml((error && error.message) ? error.message : translateSafe('Unable to load moderation timeline'))}
+                </div>
+            `);
+        });
     }
 }
 
