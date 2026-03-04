@@ -81,18 +81,19 @@ window.itemEvents = {
                 <td>${value.name}</td>`;
 
             if (value.type == "fileinput") {
-                if (value.value != undefined) {
-                    if (value.value?.value.match(/\.(jpg|jpeg|png|svg)$/i)) {
-                        html += `<td><img src="${value.value?.value}" alt="Custom Field Files" class="w-25" onerror="onErrorImage(event)"></td>`
+                const fileValue = Array.isArray(value.value) ? (value.value[0] || '') : (value.value?.value || '');
+                if (fileValue) {
+                    if (/\.(jpg|jpeg|png|svg)$/i.test(fileValue)) {
+                        html += `<td><img src="${fileValue}" alt="Custom Field Files" class="w-25" onerror="onErrorImage(event)"></td>`
                     } else {
-                        html += `<td><a target="_blank" href="${value.value?.value}">View File</a></td>`
+                        html += `<td><a target="_blank" href="${fileValue}">View File</a></td>`
                     }
-
                 } else {
                     html += `<td></td>`
                 }
             } else {
-                html += `<td class="text-break">${value.value?.value || ''}</td>`
+                const displayValue = Array.isArray(value.value) ? value.value.join(', ') : (value.value?.value || '');
+                html += `<td class="text-break">${displayValue}</td>`
             }
 
             html += `</tr>`;
@@ -105,6 +106,31 @@ window.itemEvents = {
     'click .edit-status': function (e, value, row) {
         $('#status').val(row.status).trigger('change');
         $('#rejected_reason').val(row.rejected_reason);
+    },
+
+    'click .message-seller': function (e, value, row) {
+        e.preventDefault();
+        const actionUrl = $(e.currentTarget).attr('href');
+        $('#messageSellerForm').attr('action', actionUrl);
+        $('#messageSellerItemName').text(row.name || '-');
+        $('#messageSellerUserName').text((row.user && row.user.name) ? row.user.name : '-');
+        $('#seller_message').val('');
+        $('#seller_message_send_push').prop('checked', true);
+        $('#messageSellerModal').modal('show');
+    },
+
+    'click .notify-seller': function (e, value, row) {
+        e.preventDefault();
+        const actionUrl = $(e.currentTarget).attr('href');
+        $('#notifySellerForm').attr('action', actionUrl);
+        $('#notifySellerItemName').text(row.name || '-');
+        $('#notifySellerUserName').text((row.user && row.user.name) ? row.user.name : '-');
+        $('#notify_seller_title').val('');
+        $('#notify_seller_message').val('');
+        $('#notify_seller_image').val('');
+        $('#notify_seller_send_push').prop('checked', true);
+        $('#notify_seller_store').prop('checked', true);
+        $('#notifySellerModal').modal('show');
     }
 }
 

@@ -188,6 +188,99 @@
             </div>
             <!-- /.modal-content -->
         </div>
+        <div id="messageSellerModal" class="modal fade" tabindex="-1" role="dialog"
+            aria-labelledby="messageSellerModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="messageSellerModalLabel">{{ __('Message Seller') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="messageSellerForm" class="create-form" action="#" method="POST"
+                            data-success-function="messageSellerSuccess" data-parsley-validate>
+                            @csrf
+                            <div class="mb-2">
+                                <strong>{{ __('Advertisement') }}:</strong>
+                                <span id="messageSellerItemName">-</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>{{ __('Seller') }}:</strong>
+                                <span id="messageSellerUserName">-</span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="seller_message" class="form-label mandatory">{{ __('Message') }}</label>
+                                <textarea name="message" id="seller_message" rows="5" class="form-control" maxlength="255" required></textarea>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input type="hidden" name="send_push" value="0">
+                                <input class="form-check-input" type="checkbox" value="1" id="seller_message_send_push"
+                                    name="send_push" checked>
+                                <label class="form-check-label" for="seller_message_send_push">
+                                    {{ __('Send push notification') }}
+                                </label>
+                            </div>
+                            <input type="submit" value="{{ __('Send Message') }}" class="btn btn-primary">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="notifySellerModal" class="modal fade" tabindex="-1" role="dialog"
+            aria-labelledby="notifySellerModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="notifySellerModalLabel">{{ __('Notify Seller') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="notifySellerForm" class="create-form" action="#" method="POST"
+                            data-success-function="notifySellerSuccess" data-parsley-validate enctype="multipart/form-data">
+                            @csrf
+                            <div class="mb-2">
+                                <strong>{{ __('Advertisement') }}:</strong>
+                                <span id="notifySellerItemName">-</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>{{ __('Seller') }}:</strong>
+                                <span id="notifySellerUserName">-</span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notify_seller_title" class="form-label mandatory">{{ __('Title') }}</label>
+                                <input type="text" name="title" id="notify_seller_title" class="form-control" maxlength="120" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notify_seller_message" class="form-label mandatory">{{ __('Message') }}</label>
+                                <textarea name="message" id="notify_seller_message" rows="4" class="form-control" maxlength="2000" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notify_seller_image" class="form-label">{{ __('Image (optional)') }}</label>
+                                <input type="file" name="image" id="notify_seller_image" class="form-control"
+                                    accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input type="hidden" name="send_push" value="0">
+                                <input class="form-check-input" type="checkbox" value="1" id="notify_seller_send_push"
+                                    name="send_push" checked>
+                                <label class="form-check-label" for="notify_seller_send_push">
+                                    {{ __('Send push notification') }}
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input type="hidden" name="store_in_inbox" value="0">
+                                <input class="form-check-input" type="checkbox" value="1" id="notify_seller_store"
+                                    name="store_in_inbox" checked>
+                                <label class="form-check-label" for="notify_seller_store">
+                                    {{ __('Save as in-app notification') }}
+                                </label>
+                            </div>
+                            <input type="submit" value="{{ __('Send Notification') }}" class="btn btn-primary">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="editStatusModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel1"
             aria-hidden="true">
             <div class="modal-dialog">
@@ -228,6 +321,16 @@
     <script>
         function updateApprovalSuccess() {
             $('#editStatusModal').modal('hide');
+        }
+
+        function messageSellerSuccess() {
+            $('#messageSellerModal').modal('hide');
+            $('#messageSellerForm')[0].reset();
+        }
+
+        function notifySellerSuccess() {
+            $('#notifySellerModal').modal('hide');
+            $('#notifySellerForm')[0].reset();
         }
 
         // Custom queryParams function for items table to preserve filters during pagination
@@ -317,6 +420,7 @@
         $(document).ready(function() {
             // Global variable to track status filter mode
             window.itemStatusFilterMode = 'all'; // 'all', 'active', 'requested' - default to 'all'
+            const defaultMode = @json($defaultMode ?? 'all');
             
             // Global object to track intended filter values (to prevent Bootstrap Table from resetting them)
             window.intendedFilters = {
@@ -858,6 +962,12 @@
             
             // Initialize status dropdown on page load
             updateStatusDropdown();
+
+            if (defaultMode === 'active') {
+                $('#btn-active-ads').trigger('click');
+            } else if (defaultMode === 'requested') {
+                $('#btn-requested-ads').trigger('click');
+            }
             
             // Listen to Bootstrap Table refresh events to restore filter values
             $('#table_list').on('refresh.bs.table', function() {

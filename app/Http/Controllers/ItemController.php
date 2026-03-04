@@ -7,9 +7,12 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\CustomField;
 use App\Models\CustomFieldCategory;
+use App\Models\Chat;
 use App\Models\Item;
 use App\Models\ItemCustomFieldValue;
 use App\Models\ItemImages;
+use App\Models\ItemOffer;
+use App\Models\Notifications;
 use App\Models\Setting;
 use App\Models\State;
 use App\Models\User;
@@ -35,8 +38,9 @@ class ItemController extends Controller
     {
         ResponseService::noAnyPermissionThenRedirect(['advertisement-list', 'advertisement-update', 'advertisement-delete']);
         $countries = Country::all();
+        $defaultMode = 'all';
 
-        return view('items.index', compact('countries'));
+        return view('items.index', compact('countries', 'defaultMode'));
     }
 
     public function show($status, Request $request)
@@ -52,7 +56,11 @@ class ItemController extends Controller
                 $sql = $sql->search($request->search);
             }
             if (! empty($request->filter)) {
-                $filters = json_decode($request->filter, false, 512, JSON_THROW_ON_ERROR);
+                $filters = json_decode((string) $request->filter, false);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $filters = null;
+                }
+
                 if (is_object($filters) && count((array)$filters) > 0) {
                     // Handle status_not separately if present
                     $hasStatusNot = isset($filters->status_not);
@@ -97,12 +105,9 @@ class ItemController extends Controller
                         return $data->custom_field_id == $customField->id;
                     });
 
-                    if ($customField->type == 'fileinput' && ! empty($customField['value']->value)) {
-                        if (! is_array($customField->value)) {
-                            $customField['value'] = ! empty($customField->value) ? [url(Storage::url($customField->value))] : [];
-                        } else {
-                            $customField['value'] = null;
-                        }
+                    if ($customField->type === 'fileinput') {
+                        $filePath = $customField['value']->value ?? null;
+                        $customField['value'] = ! empty($filePath) ? [url(Storage::url($filePath))] : [];
                     }
 
                     return $customField;
@@ -119,6 +124,12 @@ class ItemController extends Controller
                 }
                 if (Auth::user()->can('advertisement-update')) {
                     $operate .= BootstrapTableService::button('fa fa-wrench', route('advertisement.edit', $row->id), ['btn', 'btn-light-warning'], ['title' => __('Advertisement Update')]);
+                    $operate .= BootstrapTableService::button('fa fa-comments', route('advertisement.message-seller', $row->id), ['btn', 'btn-light-primary', 'message-seller'], [
+                        'title' => __('Message Seller'),
+                    ]);
+                    $operate .= BootstrapTableService::button('fa fa-bell', route('advertisement.notify-seller', $row->id), ['btn', 'btn-light-info', 'notify-seller'], [
+                        'title' => __('Notify Seller'),
+                    ]);
                 }
                 if (Auth::user()->can('advertisement-delete')) {
                     $operate .= BootstrapTableService::deleteButton(route('advertisement.destroy', $row->id));
@@ -152,7 +163,7 @@ class ItemController extends Controller
 
         // Dohvati oglase sa svim potrebnim relacijama
         $items = Item::whereIn('id', $idArray)
-            ->with(['category', 'user', 'area', 'city', 'customFields']) // Dodaj relacije koje ti trebaju
+            ->with(['category', 'user', 'area', 'custom_fields', 'gallery_images'])
             ->get();
 
         return response()->json([
@@ -219,9 +230,9 @@ class ItemController extends Controller
     {
         ResponseService::noAnyPermissionThenRedirect(['advertisement-list', 'advertisement-update', 'advertisement-delete']);
         $countries = Country::all();
-        $cities = City::all();
+        $defaultMode = 'requested';
 
-        return view('items.requested_item', compact('countries', 'cities'));
+        return view('items.index', compact('countries', 'defaultMode'));
     }
 
     public function searchState(Request $request)
@@ -358,6 +369,236 @@ class ItemController extends Controller
         $selected_category = [$item->category_id];
 
         return view('items.update', compact('item', 'categories', 'custom_fields', 'selected_category', 'countries'));
+    }
+
+    public function edit($id)
+    {
+        ResponseService::noPermissionThenRedirect('advertisement-update');
+
+        return $this->editForm($id);
+    }
+
+    public function sendMessageToSeller(Request $request, $id)
+    {
+        ResponseService::noPermissionThenSendJson('advertisement-update');
+
+        $validator = Validator::make($request->all(), [
+            'message' => 'required|string|max:255',
+            'send_push' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        try {
+            $admin = Auth::user();
+            $item = Item::with(['user:id,name,profile'])->withTrashed()->findOrFail($id);
+            $seller = $item->user;
+
+            if (! $seller) {
+                ResponseService::notFoundResponse('Seller not found');
+            }
+            if ((int) $seller->id === (int) $admin->id) {
+                ResponseService::validationError('Cannot send a seller message to yourself');
+            }
+
+            DB::beginTransaction();
+            $conversation = ItemOffer::query()
+                ->where('item_id', $item->id)
+                ->where('seller_id', $seller->id)
+                ->where('buyer_id', $admin->id)
+                ->latest('id')
+                ->first();
+
+            if (! $conversation) {
+                $conversation = new ItemOffer();
+                $conversation->item_id = $item->id;
+                $conversation->seller_id = $seller->id;
+                $conversation->buyer_id = $admin->id;
+                $conversation->amount = 0;
+                $conversation->save();
+            }
+
+            $chat = Chat::create([
+                'sender_id' => $admin->id,
+                'item_offer_id' => $conversation->id,
+                'message' => trim((string) $request->input('message')),
+                'message_type' => 'text',
+                'file' => '',
+                'audio' => '',
+                'is_read' => 0,
+                'status' => 'sent',
+            ]);
+            DB::commit();
+
+            $pushSent = false;
+            if ($request->boolean('send_push', true)) {
+                $userTokens = UserFcmToken::where('user_id', $seller->id)->pluck('fcm_token')->filter()->values()->all();
+                if (! empty($userTokens)) {
+                    try {
+                        NotificationService::sendFcmNotification(
+                            $userTokens,
+                            'Nova poruka od administracije',
+                            $chat->message,
+                            'chat',
+                            [
+                                'id' => $chat->id,
+                                'type' => 'chat',
+                                'chat_id' => $conversation->id,
+                                'item_offer_id' => $conversation->id,
+                                'sender_id' => $admin->id,
+                                'message' => $chat->message,
+                                'message_type' => 'text',
+                                'message_type_temp' => 'text',
+                                'user_id' => $admin->id,
+                                'user_name' => $admin->name,
+                                'user_profile' => $admin->profile,
+                                'user_type' => 'Admin',
+                                'item_id' => $item->id,
+                                'item_name' => $item->name,
+                                'item_image' => $item->image,
+                                'item_price' => $item->price,
+                                'item_offer_amount' => $conversation->amount ?? 0,
+                            ]
+                        );
+                        $pushSent = true;
+                    } catch (Throwable $notificationError) {
+                        logger()->warning('Failed to send seller chat push from admin panel', [
+                            'item_id' => $item->id,
+                            'seller_id' => $seller->id,
+                            'error' => $notificationError->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            AuditLogService::log('advertisement_admin_message_sent_to_seller', Item::class, $item->id, [
+                'seller_id' => $seller->id,
+                'conversation_id' => $conversation->id,
+                'chat_id' => $chat->id,
+                'push_sent' => $pushSent,
+            ]);
+
+            ResponseService::successResponse('Seller message sent successfully', [
+                'item_id' => $item->id,
+                'seller_id' => $seller->id,
+                'conversation_id' => $conversation->id,
+                'chat_id' => $chat->id,
+                'push_sent' => $pushSent,
+            ]);
+        } catch (Throwable $th) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            ResponseService::logErrorResponse($th, 'ItemController -> sendMessageToSeller');
+            ResponseService::errorResponse('Unable to send message to seller');
+        }
+    }
+
+    public function sendNotificationToSeller(Request $request, $id)
+    {
+        ResponseService::noPermissionThenSendJson('advertisement-update');
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:120',
+            'message' => 'required|string|max:2000',
+            'image' => 'nullable|mimes:jpeg,jpg,png|max:7168',
+            'send_push' => 'nullable|boolean',
+            'store_in_inbox' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        if (! $request->boolean('send_push', true) && ! $request->boolean('store_in_inbox', true)) {
+            ResponseService::validationError('Select at least one notification channel');
+        }
+
+        try {
+            $item = Item::with(['user:id,name'])->withTrashed()->findOrFail($id);
+            $seller = $item->user;
+
+            if (! $seller) {
+                ResponseService::notFoundResponse('Seller not found');
+            }
+
+            $imagePath = '';
+            if ($request->hasFile('image')) {
+                $imagePath = FileService::compressAndUpload($request->file('image'), 'notification');
+            }
+
+            $notificationRecord = null;
+            if ($request->boolean('store_in_inbox', true)) {
+                $notificationRecord = Notifications::create([
+                    'title' => trim((string) $request->input('title')),
+                    'message' => trim((string) $request->input('message')),
+                    'image' => $imagePath,
+                    'item_id' => $item->id,
+                    'user_id' => (string) $seller->id,
+                    'send_to' => 'selected',
+                ]);
+            }
+
+            $pushSent = false;
+            $tokenCount = 0;
+            if ($request->boolean('send_push', true)) {
+                $userTokens = UserFcmToken::where('user_id', $seller->id)->pluck('fcm_token')->filter()->values()->all();
+                $tokenCount = count($userTokens);
+
+                if ($tokenCount > 0) {
+                    try {
+                        NotificationService::sendFcmNotification(
+                            $userTokens,
+                            trim((string) $request->input('title')),
+                            trim((string) $request->input('message')),
+                            'notification',
+                            [
+                                'item_id' => $item->id,
+                                'item_name' => $item->name,
+                                'item_image' => $item->image,
+                                'source' => 'admin_advertisement_action',
+                            ]
+                        );
+                        $pushSent = true;
+                    } catch (Throwable $notificationError) {
+                        logger()->warning('Failed to send seller notification push from admin panel', [
+                            'item_id' => $item->id,
+                            'seller_id' => $seller->id,
+                            'error' => $notificationError->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            AuditLogService::log('advertisement_admin_notification_sent_to_seller', Item::class, $item->id, [
+                'seller_id' => $seller->id,
+                'notification_id' => $notificationRecord?->id,
+                'push_sent' => $pushSent,
+                'token_count' => $tokenCount,
+            ]);
+
+            if ($request->boolean('send_push', true) && $tokenCount === 0) {
+                ResponseService::warningResponse('Seller has no active push token', [
+                    'item_id' => $item->id,
+                    'seller_id' => $seller->id,
+                    'notification_id' => $notificationRecord?->id,
+                    'push_sent' => false,
+                ]);
+            }
+
+            ResponseService::successResponse('Seller notification sent successfully', [
+                'item_id' => $item->id,
+                'seller_id' => $seller->id,
+                'notification_id' => $notificationRecord?->id,
+                'push_sent' => $pushSent,
+                'token_count' => $tokenCount,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemController -> sendNotificationToSeller');
+            ResponseService::errorResponse('Unable to send notification to seller');
+        }
     }
 
     public function update(Request $request, $id)
