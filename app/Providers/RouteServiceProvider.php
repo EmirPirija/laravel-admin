@@ -45,5 +45,31 @@ class RouteServiceProvider extends ServiceProvider {
         RateLimiter::for('api', static function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('public-location', static function (Request $request) {
+            $scope = 'coordinates';
+            if ($request->filled('search')) {
+                $scope = 'search';
+            } elseif ($request->filled('place_id')) {
+                $scope = 'place_id';
+            }
+
+            $key = implode(':', [
+                'public-location',
+                $scope,
+                $request->user()?->id ?: $request->ip(),
+            ]);
+
+            return match ($scope) {
+                'search' => Limit::perMinute(100)->by($key),
+                'place_id' => Limit::perMinute(120)->by($key),
+                default => Limit::perMinute(80)->by($key),
+            };
+        });
+
+        RateLimiter::for('verification-status', static function (Request $request) {
+            $actor = $request->user()?->id ?: $request->ip();
+            return Limit::perMinute(45)->by('verification-status:' . $actor);
+        });
     }
 }

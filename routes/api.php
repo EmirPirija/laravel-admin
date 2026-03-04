@@ -260,7 +260,8 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
 
     Route::get('verification-fields', [ApiController::class, 'getVerificationFields']);
     Route::post('send-verification-request',[ApiController::class,'sendVerificationRequest']);
-    Route::get('verification-request',[ApiController::class,'getVerificationRequest']);
+    Route::get('verification-request',[ApiController::class,'getVerificationRequest'])
+        ->middleware('throttle:verification-status');
     Route::post('bank-transfer-update', [ApiController::class, 'bankTransferUpdate']);
 
     Route::post('job-apply', [ApiController::class, 'applyJob']);
@@ -296,7 +297,8 @@ Route::post('contact-us', [ApiController::class, 'storeContactUs']);
 Route::get('seo-settings', [ApiController::class, 'seoSettings']);
 Route::get('get-seller', [ApiController::class, 'getSeller']);
 Route::get('get-categories-demo', [ApiController::class, 'getCategories']);
-Route::get('get-location', [ApiController::class, 'getLocationFromCoordinates']);
+Route::get('get-location', [ApiController::class, 'getLocationFromCoordinates'])
+    ->middleware('throttle:public-location');
 Route::get('get-item-slug', [ApiController::class, 'getItemSlugs']);
 Route::get('get-categories-slug', [ApiController::class, 'getCategoriesSlug']);
 Route::get('get-blogs-slug', [ApiController::class, 'getBlogsSlug']);
