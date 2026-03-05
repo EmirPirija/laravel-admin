@@ -26,6 +26,19 @@
                         <h6 class="divider-text">{{ __('Web Settings') }}</h6>
                     </div>
                     <div class="row">
+                        @php
+                            $listingCampaignBadgesRaw = $settings['listing_campaign_badges'] ?? '[]';
+                            $listingCampaignBadgesPretty = $listingCampaignBadgesRaw;
+                            if (is_string($listingCampaignBadgesRaw) && trim($listingCampaignBadgesRaw) !== '') {
+                                $decodedListingCampaignBadges = json_decode($listingCampaignBadgesRaw, true);
+                                if (json_last_error() === JSON_ERROR_NONE) {
+                                    $listingCampaignBadgesPretty = json_encode(
+                                        $decodedListingCampaignBadges,
+                                        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                                    );
+                                }
+                            }
+                        @endphp
                         <div class="form-group col-md-6 col-sm-12">
                             <label for="web_theme_color" class="form-label ">{{ __('Theme Color') }}</label>
                             <input id="web_theme_color" name="web_theme_color" type="color" class="form-control form-control-color" placeholder="{{ __('Theme Color') }}" value="{{ $settings['web_theme_color'] ?? '' }}">
@@ -106,6 +119,41 @@
                                     {{ __('On / Off') }}
                                 </label>
                             </div>
+                        </div>
+
+                        <div class="form-group col-md-6 col-sm-12">
+                            <label class="form-label">{{ __('Seasonal listing labels') }}</label>
+                            <div class="form-check form-switch">
+                                <input type="hidden" name="listing_campaign_badges_enabled" value="0">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="listing_campaign_badges_enabled"
+                                    name="listing_campaign_badges_enabled"
+                                    value="1"
+                                    {{ isset($settings['listing_campaign_badges_enabled']) && (int)$settings['listing_campaign_badges_enabled'] === 1 ? 'checked' : '' }}
+                                >
+                                <label class="form-check-label" for="listing_campaign_badges_enabled">
+                                    {{ __('Allow sellers to choose seasonal/event label on listing create/edit form') }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-md-12 col-sm-12">
+                            <label for="listing_campaign_badges" class="form-label">
+                                {{ __('Seasonal label options (JSON)') }}
+                            </label>
+                            <textarea
+                                id="listing_campaign_badges"
+                                name="listing_campaign_badges"
+                                rows="9"
+                                class="form-control"
+                                placeholder='[{"key":"valentinovo","label":"Valentinovo"},{"key":"8-mart","label":"8. mart"}]'
+                            >{{ $listingCampaignBadgesPretty }}</textarea>
+                            <small class="text-muted">
+                                {{ __('Supported format: array of objects with key + label, optional bg_color/text_color. Example:') }}
+                                <code>[{"key":"bajram","label":"Bajram","bg_color":"#065F46","text_color":"#FFFFFF"}]</code>
+                            </small>
                         </div>
 
 

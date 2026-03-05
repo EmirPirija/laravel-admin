@@ -83,6 +83,12 @@ class DefaultSettingService {
             ['name' => 'twilio_my_phone_number', 'value' => '', 'type' => 'string'],
              ['name' => 'map_provider', 'value' => 'free_api', 'type' => 'string'],
             ['name' => 'refund_policy', 'value' => '', 'type' => 'string'],
+            ['name' => 'listing_campaign_badges_enabled', 'value' => '0', 'type' => 'boolean'],
+            ['name' => 'listing_campaign_badges', 'value' => json_encode([
+                ['key' => 'valentinovo', 'label' => 'Valentinovo'],
+                ['key' => '8-mart', 'label' => '8. mart'],
+                ['key' => 'ramazan', 'label' => 'Ramazan'],
+            ], JSON_UNESCAPED_UNICODE), 'type' => 'string'],
         ];
 
     }

@@ -9,6 +9,7 @@ use App\Services\AuditLogService;
 use App\Services\CachingService;
 use App\Services\FileService;
 use App\Services\HelperService;
+use App\Services\ListingCampaignBadgeService;
 use App\Services\ResponseService;
 use File;
 use Illuminate\Http\Request;
@@ -102,6 +103,8 @@ class SettingController extends Controller
             "facebook_link"          => "nullable|url",
             "linkedin_link"          => "nullable|url",
             "pinterest_link"         => "nullable|url",
+            "listing_campaign_badges_enabled" => "nullable|boolean",
+            "listing_campaign_badges" => "nullable|string|max:20000",
             "deep_link_text_file"    => "nullable",
             "deep_link_json_file"    => "nullable|mimes:json|max:7168",
             "mobile_authentication"    => "nullable",
@@ -152,6 +155,21 @@ class SettingController extends Controller
             unset($inputs['_token']);
             if (config('app.demo_mode')) {
                 unset($inputs['place_api_key']);
+            }
+            if (array_key_exists('listing_campaign_badges_enabled', $inputs)) {
+                $inputs['listing_campaign_badges_enabled'] = filter_var(
+                    $inputs['listing_campaign_badges_enabled'],
+                    FILTER_VALIDATE_BOOLEAN
+                ) ? '1' : '0';
+            }
+            if (array_key_exists('listing_campaign_badges', $inputs)) {
+                $normalizedCampaignOptions = ListingCampaignBadgeService::parseOptions(
+                    $inputs['listing_campaign_badges']
+                );
+                $inputs['listing_campaign_badges'] = json_encode(
+                    $normalizedCampaignOptions,
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                );
             }
             $data = [];
             foreach ($inputs as $key => $input) {

@@ -54,6 +54,7 @@ use App\Services\CachingService;
 use App\Services\FileService;
 use App\Services\AuthEventService;
 use App\Services\HelperService;
+use App\Services\ListingCampaignBadgeService;
 use App\Services\NotificationService;
 use App\Services\Payment\PaymentService;
 use App\Services\ResponseService;
@@ -827,6 +828,7 @@ protected static function booted()
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
             'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
             'seller_product_code' => 'nullable|string|max:100',
+            'campaign_badge_key' => 'nullable|string|max:80',
         ]);
 
         // Zakazana objava - MORA biti prije kreiranje itema
@@ -1012,6 +1014,11 @@ protected static function booted()
         $data['seller_product_code'] = $request->filled('seller_product_code')
             ? trim((string) $request->input('seller_product_code'))
             : null;
+        $campaignBadgeOption = $this->resolveCampaignBadgeOption(
+            $request->input('campaign_badge_key')
+        );
+        $data['campaign_badge_key'] = $campaignBadgeOption['key'] ?? null;
+        $data['campaign_badge_label'] = $campaignBadgeOption['label'] ?? null;
 
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
         $tempMainImageId = $request->input('temp_main_image_id');
@@ -2109,6 +2116,7 @@ public function getItem(Request $request)
             'minimum_order_quantity' => 'nullable|integer|min:1|max:100000',
             'stock_alert_threshold' => 'nullable|integer|min:1|max:1000',
             'seller_product_code' => 'nullable|string|max:100',
+            'campaign_badge_key' => 'nullable|string|max:80',
         ]);
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
@@ -2193,6 +2201,17 @@ public function getItem(Request $request)
                 $data['seller_product_code'] = $request->filled('seller_product_code')
                     ? trim((string) $request->input('seller_product_code'))
                     : null;
+            }
+            if ($request->has('campaign_badge_key')) {
+                $rawCampaignBadgeKey = trim((string) $request->input('campaign_badge_key'));
+                if ($rawCampaignBadgeKey === '') {
+                    $data['campaign_badge_key'] = null;
+                    $data['campaign_badge_label'] = null;
+                } else {
+                    $campaignBadgeOption = $this->resolveCampaignBadgeOption($rawCampaignBadgeKey);
+                    $data['campaign_badge_key'] = $campaignBadgeOption['key'];
+                    $data['campaign_badge_label'] = $campaignBadgeOption['label'];
+                }
             }
             if ($request->has('scarcity_enabled') || $request->has('is_scarcity_enabled')) {
                 $scarcityInput = $request->input('scarcity_enabled', $request->input('is_scarcity_enabled'));
@@ -7981,6 +8000,29 @@ public function getMyReview(Request $request)
             ResponseService::logErrorResponse($th, 'API Controller -> getCategoriesSlug');
             ResponseService::errorResponse();
         }
+    }
+
+    private function resolveCampaignBadgeOption($rawCampaignBadgeKey): ?array
+    {
+        $candidateKey = trim((string) ($rawCampaignBadgeKey ?? ''));
+        if ($candidateKey === '') {
+            return null;
+        }
+
+        $config = ListingCampaignBadgeService::getConfig();
+        if (!($config['enabled'] ?? false)) {
+            ResponseService::validationError('Sezonske oznake oglasa su trenutno isključene.');
+        }
+        if (empty($config['options'])) {
+            ResponseService::validationError('Sezonske oznake nisu konfigurisane. Kontaktirajte administratora.');
+        }
+
+        $resolvedOption = ListingCampaignBadgeService::resolveOptionByKey($candidateKey, $config);
+        if (!$resolvedOption) {
+            ResponseService::validationError('Odabrana sezonska oznaka nije dozvoljena.');
+        }
+
+        return $resolvedOption;
     }
 
 

@@ -56,6 +56,8 @@ class Item extends Model {
         'stock_alert_threshold',
         'scarcity_enabled',
         'seller_product_code',
+        'campaign_badge_key',
+        'campaign_badge_label',
         'price_history',
         'video',
         'video_thumbnail',
