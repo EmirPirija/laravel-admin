@@ -180,6 +180,10 @@ class SettingController extends Controller
                 if (in_array($key, ['translations', 'about_us', 'languages', 'contact_us', 'privacy_policy', 'refund_policy', 'terms_conditions'])) {
                     continue;
                 }
+
+                if (is_array($input) || is_object($input)) {
+                    $input = json_encode($input, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                }
                 $data[] = [
                     'name'  => $key,
                     'value' => $input,
@@ -365,20 +369,35 @@ class SettingController extends Controller
                 }
             }
             if ($request->has('translations')) {
-                foreach ($request->input('translations') as $languageId => $translationData) {
-                    $setting = Setting::where('name', $translationData['name'])->first();
-
-                    if ($setting) {
-                        SettingTranslation::updateOrCreate(
-                            [
-                                'setting_id' => $setting->id,
-                                'language_id' => $languageId
-                            ],
-                            [
-                                'translated_value' => $translationData['value'] ?? null
-                            ]
-                        );
+                foreach ((array) $request->input('translations') as $languageId => $translationData) {
+                    if (!is_array($translationData)) {
+                        continue;
                     }
+
+                    $settingName = $translationData['name'] ?? null;
+                    if (!$settingName || !is_string($settingName)) {
+                        continue;
+                    }
+
+                    $setting = Setting::where('name', $settingName)->first();
+                    if (!$setting) {
+                        continue;
+                    }
+
+                    $translatedValue = $translationData['value'] ?? null;
+                    if (is_array($translatedValue) || is_object($translatedValue)) {
+                        $translatedValue = json_encode($translatedValue, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+
+                    SettingTranslation::updateOrCreate(
+                        [
+                            'setting_id' => $setting->id,
+                            'language_id' => $languageId
+                        ],
+                        [
+                            'translated_value' => $translatedValue
+                        ]
+                    );
                 }
             }
             CachingService::removeCache(config('constants.CACHE.SETTINGS'));
