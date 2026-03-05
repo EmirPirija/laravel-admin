@@ -8,7 +8,6 @@ use App\Models\SettingTranslation;
 use App\Services\AuditLogService;
 use App\Services\CachingService;
 use App\Services\FileService;
-use App\Services\FrontendControlPlaneService;
 use App\Services\HelperService;
 use App\Services\ResponseService;
 use File;
@@ -108,13 +107,7 @@ class SettingController extends Controller
             "mobile_authentication"    => "nullable",
             "google_authentication"    => "nullable",
             "email_authentication"    => "nullable",
-            "apple_authentication"    => "nullable",
             "apple_authenticaion"    => "nullable",
-            "realtime_events_enabled" => "nullable|in:0,1",
-            "push_notifications_enabled" => "nullable|in:0,1",
-            "live_tracking_enabled" => "nullable|in:0,1",
-            "engagement_tracking_enabled" => "nullable|in:0,1",
-            "frontend_observability_enabled" => "nullable|in:0,1",
             // Email settings validation
             "mail_mailer"            => "nullable",
             "mail_host"              => "nullable",
@@ -367,7 +360,6 @@ class SettingController extends Controller
                 }
             }
             CachingService::removeCache(config('constants.CACHE.SETTINGS'));
-            FrontendControlPlaneService::flush();
             AuditLogService::log('system_settings_updated', Setting::class, null, [
                 'updated_keys_count' => count($data ?? []),
                 'has_files' => count($request->files->all()) > 0,
@@ -423,7 +415,6 @@ class SettingController extends Controller
             $serviceWorkerFile = str_replace(array_keys($updateFileStrings), $updateFileStrings, $serviceWorkerFile);
             file_put_contents(public_path('firebase-messaging-sw.js'), $serviceWorkerFile);
             CachingService::removeCache(config('constants.CACHE.SETTINGS'));
-            FrontendControlPlaneService::flush();
             AuditLogService::log('firebase_settings_updated', Setting::class, null, [
                 'project_id' => $request->projectId,
             ]);

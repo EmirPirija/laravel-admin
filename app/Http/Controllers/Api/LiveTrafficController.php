@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SiteLiveSession;
 use App\Models\SitePageEvent;
-use App\Services\CachingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Throwable;
@@ -14,16 +13,6 @@ class LiveTrafficController extends Controller
 {
     public function track(Request $request)
     {
-        if (!$this->isLiveTrackingEnabled()) {
-            return response()->json([
-                'error' => false,
-                'message' => __('Live tracking is disabled by admin control plane.'),
-                'data' => [
-                    'disabled' => true,
-                ],
-            ], 202);
-        }
-
         $validated = $request->validate([
             'visitor_id' => 'nullable|string|max:100',
             'session_id' => 'nullable|string|max:100',
@@ -137,14 +126,5 @@ class LiveTrafficController extends Controller
 
         return 'sf_' . substr(hash('sha256', $seed), 0, 48);
     }
-
-    private function isLiveTrackingEnabled(): bool
-    {
-        $value = CachingService::getSystemSettings('live_tracking_enabled');
-        if ($value === null || $value === '') {
-            return true;
-        }
-        $normalized = strtolower(trim((string) $value));
-        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
-    }
 }
+

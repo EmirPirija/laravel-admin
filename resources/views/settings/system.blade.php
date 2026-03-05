@@ -353,65 +353,6 @@
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <div class="divider pt-3">
-                        <h6 class="divider-text">{{ __('Frontend Runtime Controls') }}</h6>
-                    </div>
-                    <div class="row">
-                        <div class="form-group col-sm-12 col-md-6">
-                            <label class="form-check-label">{{ __('Realtime Events') }}
-                                <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Disables websocket/realtime events on frontend when turned off.') }}" aria-label="{{ __('Disables websocket/realtime events on frontend when turned off.') }}"></i>
-                            </label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="realtime_events_enabled" id="realtime_events_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['realtime_events_enabled'] ?? 1 }}">
-                                <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_realtime_events_enabled" {{ (int)($settings['realtime_events_enabled'] ?? 1) === 1 ? 'checked' : '' }}>
-                            </div>
-                        </div>
-
-                        <div class="form-group col-sm-12 col-md-6">
-                            <label class="form-check-label">{{ __('Push Notifications') }}
-                                <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Blocks FCM token fetch and push handling on frontend when turned off.') }}" aria-label="{{ __('Blocks FCM token fetch and push handling on frontend when turned off.') }}"></i>
-                            </label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="push_notifications_enabled" id="push_notifications_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['push_notifications_enabled'] ?? 1 }}">
-                                <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_push_notifications_enabled" {{ (int)($settings['push_notifications_enabled'] ?? 1) === 1 ? 'checked' : '' }}>
-                            </div>
-                        </div>
-
-                        <div class="form-group col-sm-12 col-md-6">
-                            <label class="form-check-label">{{ __('Live Session Tracking') }}
-                                <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Disables live traffic/session tracking calls when turned off.') }}" aria-label="{{ __('Disables live traffic/session tracking calls when turned off.') }}"></i>
-                            </label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="live_tracking_enabled" id="live_tracking_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['live_tracking_enabled'] ?? 1 }}">
-                                <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_live_tracking_enabled" {{ (int)($settings['live_tracking_enabled'] ?? 1) === 1 ? 'checked' : '' }}>
-                            </div>
-                        </div>
-
-                        <div class="form-group col-sm-12 col-md-6">
-                            <label class="form-check-label">{{ __('Engagement Tracking') }}
-                                <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Disables item/search engagement tracking calls when turned off.') }}" aria-label="{{ __('Disables item/search engagement tracking calls when turned off.') }}"></i>
-                            </label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="engagement_tracking_enabled" id="engagement_tracking_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['engagement_tracking_enabled'] ?? 1 }}">
-                                <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_engagement_tracking_enabled" {{ (int)($settings['engagement_tracking_enabled'] ?? 1) === 1 ? 'checked' : '' }}>
-                            </div>
-                        </div>
-
-                        <div class="form-group col-sm-12 col-md-6">
-                            <label class="form-check-label">{{ __('Frontend Observability') }}
-                                <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Disables frontend telemetry bridge when turned off.') }}" aria-label="{{ __('Disables frontend telemetry bridge when turned off.') }}"></i>
-                            </label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="frontend_observability_enabled" id="frontend_observability_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['frontend_observability_enabled'] ?? 1 }}">
-                                <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_frontend_observability_enabled" {{ (int)($settings['frontend_observability_enabled'] ?? 1) === 1 ? 'checked' : '' }}>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="col-12 d-flex justify-content-end">
                 <button type="submit" value="btnAdd" class="btn btn-primary me-1 mb-3">{{ __('Save') }}</button>
             </div>
