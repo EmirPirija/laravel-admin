@@ -1292,6 +1292,7 @@ public function getItem(Request $request)
         'sort_by' => 'nullable|in:new-to-old,old-to-new,price-high-to-low,price-low-to-high,popular_items',
         'posted_since' => 'nullable|in:all-time,today,within-1-week,within-2-week,within-1-month,within-3-month',
         'current_page' => 'nullable|string',
+        'compact' => 'nullable|boolean',
         'is_feature' => 'nullable',
         'placement' => 'nullable|in:category,home,category_home',
         'positions' => 'nullable|in:category,home,category_home',
@@ -1301,10 +1302,25 @@ public function getItem(Request $request)
         ResponseService::validationError($validator->errors()->first());
     }
     try {
-        //TODO : need to simplify this whole module
-        $sql = Item::with('user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code,response_time_avg', 'category:id,name,image,is_job_category,price_optional',
+        $isCompactListing = filter_var($request->input('compact'), FILTER_VALIDATE_BOOLEAN);
 
-            'gallery_images:id,image,item_id', 'featured_items', 'favourites', 'item_custom_field_values.custom_field.translations', 'area:id,name', 'job_applications', 'translations')
+        $itemRelations = [
+            'user:id,name,email,mobile,profile,avatar_key,use_svg_avatar,created_at,is_verified,show_personal_details,country_code,response_time_avg',
+            'category:id,name,image,is_job_category,price_optional',
+            'gallery_images:id,image,item_id',
+            'featured_items',
+            'favourites',
+            'area:id,name',
+            'job_applications',
+            'translations',
+        ];
+
+        if (! $isCompactListing) {
+            $itemRelations[] = 'item_custom_field_values.custom_field.translations';
+        }
+
+        //TODO : need to simplify this whole module
+        $sql = Item::with($itemRelations)
             ->withCount('featured_items')
             ->withCount('job_applications')
             ->select('items.*')

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
  
 use App\Models\City;
 use App\Models\Language;
+use App\Models\SellerRating;
 use Carbon\Carbon;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
@@ -50,6 +51,73 @@ class ItemCollection extends ResourceCollection {
                 }
             }
             $placementContext = $requestedPlacementContext ?: $derivedPlacementContext;
+
+            $isCompactListing = filter_var($request->input('compact'), FILTER_VALIDATE_BOOLEAN);
+
+            $userIds = $this->collection
+                ->pluck('user.id')
+                ->filter()
+                ->map(static fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            $sellerReviewStatsBySellerId = collect();
+            if ($userIds->isNotEmpty()) {
+                $sellerReviewStatsBySellerId = SellerRating::query()
+                    ->selectRaw('seller_id, COUNT(*) as reviews_count, AVG(ratings) as average_rating')
+                    ->whereIn('seller_id', $userIds->all())
+                    ->groupBy('seller_id')
+                    ->get()
+                    ->keyBy('seller_id');
+            }
+
+            $normalizeLookupToken = static function ($value) {
+                return strtolower(trim((string) ($value ?? '')));
+            };
+
+            $cityLookupByKey = [];
+            if (! $isCompactListing) {
+                $cityPairs = $this->collection
+                    ->map(static function ($item) use ($normalizeLookupToken) {
+                        return [
+                            'city' => trim((string) ($item->city ?? '')),
+                            'state' => trim((string) ($item->state ?? '')),
+                            'city_key' => $normalizeLookupToken($item->city),
+                            'state_key' => $normalizeLookupToken($item->state),
+                        ];
+                    })
+                    ->filter(static fn ($pair) => ! empty($pair['city']))
+                    ->unique(static fn ($pair) => "{$pair['city_key']}|{$pair['state_key']}")
+                    ->values();
+
+                $cityNames = $cityPairs->pluck('city')->filter()->unique()->values()->all();
+                $stateNames = $cityPairs->pluck('state')->filter()->unique()->values()->all();
+
+                if (! empty($cityNames)) {
+                    $matchedCities = City::with(['translations', 'state', 'country'])
+                        ->whereIn('name', $cityNames)
+                        ->when(! empty($stateNames), function ($query) use ($stateNames) {
+                            $query->whereHas('state', function ($stateQuery) use ($stateNames) {
+                                $stateQuery->whereIn('name', $stateNames);
+                            });
+                        })
+                        ->get();
+
+                    foreach ($matchedCities as $matchedCity) {
+                        $matchedCityNameKey = $normalizeLookupToken($matchedCity->name);
+                        $matchedStateNameKey = $normalizeLookupToken($matchedCity?->state?->name);
+                        $exactKey = "{$matchedCityNameKey}|{$matchedStateNameKey}";
+                        if (! isset($cityLookupByKey[$exactKey])) {
+                            $cityLookupByKey[$exactKey] = $matchedCity;
+                        }
+
+                        $fallbackKey = "{$matchedCityNameKey}|";
+                        if (! isset($cityLookupByKey[$fallbackKey])) {
+                            $cityLookupByKey[$fallbackKey] = $matchedCity;
+                        }
+                    }
+                }
+            }
  
             foreach ($this->collection as $key => $collection) {
  
@@ -191,8 +259,11 @@ class ItemCollection extends ResourceCollection {
                 // User info
                 if ($collection->relationLoaded('user') && !is_null($collection->user)) {
                     $response[$key]['user'] = $collection->user;
-                    $response[$key]['user']['reviews_count'] = $collection->user->sellerReview()->count();
-                    $response[$key]['user']['average_rating'] = $collection->user->sellerReview->avg('ratings');
+                    $reviewStats = $sellerReviewStatsBySellerId->get((int) $collection->user->id);
+                    $response[$key]['user']['reviews_count'] = (int) ($reviewStats?->reviews_count ?? 0);
+                    $response[$key]['user']['average_rating'] = isset($reviewStats?->average_rating)
+                        ? (float) $reviewStats->average_rating
+                        : null;
                     if ($collection->user->show_personal_details == 0) {
                         $response[$key]['user']['mobile'] = '';
                         $response[$key]['user']['country_code'] = '';
@@ -200,11 +271,13 @@ class ItemCollection extends ResourceCollection {
                     }
                 }
  
-                // Load city once
-                $city = City::with(['translations','state','country'])
-                            ->where('name', $collection->city)
-                            ->whereHas('state', fn($q) => $q->where('name', $collection->state))
-                            ->first();
+                // Resolve city translation from preloaded lookup.
+                $city = null;
+                if (! $isCompactListing) {
+                    $cityNameKey = $normalizeLookupToken($collection->city);
+                    $stateNameKey = $normalizeLookupToken($collection->state);
+                    $city = $cityLookupByKey["{$cityNameKey}|{$stateNameKey}"] ?? $cityLookupByKey["{$cityNameKey}|"] ?? null;
+                }
  
                 // Translated item
                 $translatedItem = [
@@ -213,9 +286,9 @@ class ItemCollection extends ResourceCollection {
                     'address' => $collection->address,
                     'rejected_reason' => $collection->rejected_reason ?? null,
                     'admin_edit_reason' => $collection->admin_edit_reason ?? null,
-                    'city' => $city->translated_name ?? $collection->city,
-                    'state' => $city->state->translated_name ?? $collection->state,
-                    'country' => $city->country->translated_name ?? $collection->country,
+                    'city' => $city?->translated_name ?? $collection->city,
+                    'state' => $city?->state?->translated_name ?? $collection->state,
+                    'country' => $city?->country?->translated_name ?? $collection->country,
                 ];
  
                 if ($currentLanguage && $collection->relationLoaded('translations')) {
@@ -227,9 +300,9 @@ class ItemCollection extends ResourceCollection {
                             'address' => $translation->address,
                             'rejected_reason' => $translation->rejected_reason,
                             'admin_edit_reason' => $translation->admin_edit_reason,
-                            'city' => $city->translated_name ?? $collection->city,
-                            'state' => $city->state->translated_name ?? $collection->state,
-                            'country' => $city->country->translated_name ?? $collection->country,
+                            'city' => $city?->translated_name ?? $collection->city,
+                            'state' => $city?->state?->translated_name ?? $collection->state,
+                            'country' => $city?->country?->translated_name ?? $collection->country,
                         ];
                     }
                 }
@@ -237,8 +310,8 @@ class ItemCollection extends ResourceCollection {
                 $response[$key]['translated_item'] = $translatedItem;
                 $response[$key]['translated_area'] = $collection->area->translated_name ?? "";
                 $response[$key]['translated_city'] = $city?->translated_name ?? $collection->city;
-                $response[$key]['translated_state'] = $city->state->translated_name ?? $collection->state;
-                $response[$key]['translated_country'] = $city->country->translated_name ?? $collection->country;
+                $response[$key]['translated_state'] = $city?->state?->translated_name ?? $collection->state;
+                $response[$key]['translated_country'] = $city?->country?->translated_name ?? $collection->country;
                 $response[$key]['translated_address'] = 
                 (!empty($response[$key]['translated_area']) ? $response[$key]['translated_area'] . ', ' : '') .
                 $response[$key]['translated_city'] . ', ' .
