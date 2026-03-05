@@ -1249,15 +1249,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const fieldTypeSelect = document.getElementById('type');
     const valuesSelect = $('#values');
     const form = document.querySelector('.create-form') || document.querySelector('.edit-form');
-     const existingTranslations = window.existingTranslations || {};
+    const existingTranslations = window.existingTranslations || {};
+
+    if (!fieldTypeSelect || valuesSelect.length === 0) {
+        return;
+    }
 
     function updateTranslationInputs() {
         const values = valuesSelect.val() || [];
         const requiresTranslation = ['checkbox', 'radio', 'dropdown'].includes(fieldTypeSelect.value);
 
         document.querySelectorAll('.field-value-translation').forEach(wrapper => {
-            const langId = wrapper.getAttribute('id').split('-').pop();
+            const wrapperId = wrapper.getAttribute('id') || '';
+            const langId = wrapperId.split('-').pop();
             const container = wrapper.querySelector('.translated-values-container');
+            if (!container) {
+                return;
+            }
 
             if (!requiresTranslation || values.length === 0) {
                 wrapper.style.display = 'none';
@@ -1300,15 +1308,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 let isValid = true;
 
                 document.querySelectorAll('.field-value-translation').forEach(wrapper => {
-                    const langId = wrapper.getAttribute('id').split('-').pop();
+                    const wrapperId = wrapper.getAttribute('id') || '';
+                    const langId = wrapperId.split('-').pop();
                     const errorBox = wrapper.querySelector(`.error-msg-${langId}`);
                     const inputs = wrapper.querySelectorAll('.field-translation-input');
 
-                    errorBox.textContent = '';
+                    if (errorBox) {
+                        errorBox.textContent = '';
+                    }
                     wrapper.querySelectorAll('.translation-error-msg').forEach(msg => msg.remove());
                     if (inputs.length !== originalCount) {
                         isValid = false;
-                        errorBox.textContent = `You must provide ${originalCount} translations.`;
+                        if (errorBox) {
+                            errorBox.textContent = `You must provide ${originalCount} translations.`;
+                        }
                     }
 
                     inputs.forEach(input => {
@@ -1352,19 +1365,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // updateTranslationInputs();
 
-    if (!form) return;
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            const values = valuesSelect.val() || [];
+            const requiresTranslation = ['checkbox', 'radio', 'dropdown'].includes(fieldTypeSelect.value);
 
-    form.addEventListener('submit', function (e) {
-        const values = valuesSelect.val() || [];
-        const requiresTranslation = ['checkbox', 'radio', 'dropdown'].includes(fieldTypeSelect.value);
-
-        if (requiresTranslation && values.length > 0) {
-            if (!validateTranslationInputs()) {
-                e.preventDefault();
-                toastr.error('Please ensure all translation values are filled and match the main field values.');
+            if (requiresTranslation && values.length > 0) {
+                if (!validateTranslationInputs()) {
+                    e.preventDefault();
+                    toastr.error('Please ensure all translation values are filled and match the main field values.');
+                }
             }
-        }
-    });
+        });
+    }
 });
 
  $('#country_translation').on('change', function () {
@@ -1412,25 +1425,35 @@ $('#state_translation').on('change', function () {
 
 });
 // Search filter
-document.getElementById('countrySearchInput').addEventListener('keyup', function() {
-    let filter = this.value.toLowerCase();
-    document.querySelectorAll('#countryModal .col-md-3').forEach(function(div) {
-        let label = div.querySelector('label');
-        if (label.textContent.toLowerCase().indexOf(filter) > -1) {
-            div.style.display = '';
-        } else {
-            div.style.display = 'none';
-        }
+const countrySearchInput = document.getElementById('countrySearchInput');
+if (countrySearchInput) {
+    countrySearchInput.addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        document.querySelectorAll('#countryModal .col-md-3').forEach(function(div) {
+            let label = div.querySelector('label');
+            if (!label) {
+                return;
+            }
+
+            if (label.textContent.toLowerCase().indexOf(filter) > -1) {
+                div.style.display = '';
+            } else {
+                div.style.display = 'none';
+            }
+        });
     });
-});
+}
 
 // Select all logic
-document.getElementById('selectAllCountries').addEventListener('change', function() {
-    let checked = this.checked;
-    document.querySelectorAll('#countryModal input[type="checkbox"][name="countries[]"]:not(:disabled)').forEach(function(box) {
-        box.checked = checked;
+const selectAllCountries = document.getElementById('selectAllCountries');
+if (selectAllCountries) {
+    selectAllCountries.addEventListener('change', function() {
+        let checked = this.checked;
+        document.querySelectorAll('#countryModal input[type="checkbox"][name="countries[]"]:not(:disabled)').forEach(function(box) {
+            box.checked = checked;
+        });
     });
-});
+}
 function showSweetAlertForDataConfirmPopup(url, method, options = {}) {
 
     let opt = {

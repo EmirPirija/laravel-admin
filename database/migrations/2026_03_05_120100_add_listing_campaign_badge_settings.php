@@ -12,7 +12,7 @@ return new class extends Migration
             ['name' => ListingCampaignBadgeService::SETTINGS_KEY_ENABLED],
             [
                 'value' => '0',
-                'type' => 'boolean',
+                'type' => 'string',
                 'updated_at' => now(),
                 'created_at' => now(),
             ]

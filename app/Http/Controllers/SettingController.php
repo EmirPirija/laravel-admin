@@ -166,10 +166,14 @@ class SettingController extends Controller
                 $normalizedCampaignOptions = ListingCampaignBadgeService::parseOptions(
                     $inputs['listing_campaign_badges']
                 );
-                $inputs['listing_campaign_badges'] = json_encode(
+                $encodedCampaignOptions = json_encode(
                     $normalizedCampaignOptions,
                     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
                 );
+                if ($encodedCampaignOptions === false) {
+                    ResponseService::validationError('Seasonal label options are invalid. Please check JSON format and special characters.');
+                }
+                $inputs['listing_campaign_badges'] = $encodedCampaignOptions;
             }
             $data = [];
             foreach ($inputs as $key => $input) {
@@ -220,7 +224,7 @@ class SettingController extends Controller
                     }
                 }
             }
-            Setting::upsert($data, 'name', ['value']);
+            Setting::upsert($data, 'name', ['value', 'type']);
 
             if (!empty($inputs['company_name']) && config('app.name') != $inputs['company_name']) {
                 HelperService::changeEnv([

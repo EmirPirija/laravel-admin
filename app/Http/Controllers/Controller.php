@@ -120,21 +120,57 @@ class Controller extends BaseController {
 
     public function readLanguageFile() {
         try {
-            //    https://medium.com/@serhii.matrunchyk/using-laravel-localization-with-javascript-and-vuejs-23064d0c210e
-            header('Content-Type: text/javascript');
-//        $labels = Cache::remember('lang.js', 3600, static function () {
-//            $lang = app()->getLocale();
-            $lang = Session::get('language');
-//            $lang = app()->getLocale();
-            $test = $lang->code ?? "en";
-            $files = resource_path('lang/' . $test . '.json');
-//            return File::get($files);
-//        });]
-            echo('window.languageLabels = ' . File::get($files));
-            http_response_code(200);
-            exit();
+            $sessionLanguage = Session::get('language');
+            $languageCode = is_object($sessionLanguage)
+                ? ($sessionLanguage->code ?? null)
+                : (is_string($sessionLanguage) ? $sessionLanguage : null);
+
+            $languageCode = preg_replace('/[^a-zA-Z_-]/', '', (string) ($languageCode ?: 'en'));
+            if (empty($languageCode)) {
+                $languageCode = 'en';
+            }
+
+            $candidateFiles = [
+                resource_path('lang/' . $languageCode . '.json'),
+                base_path('lang/' . $languageCode . '.json'),
+                resource_path('lang/en.json'),
+                base_path('lang/en.json'),
+            ];
+
+            $labels = [];
+            foreach ($candidateFiles as $filePath) {
+                if (!File::exists($filePath)) {
+                    continue;
+                }
+
+                $raw = trim((string) File::get($filePath));
+                if ($raw === '') {
+                    continue;
+                }
+
+                $decoded = json_decode($raw, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $labels = $decoded;
+                    break;
+                }
+            }
+
+            $payload = 'window.languageLabels = ' . json_encode(
+                $labels,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            ) . ';';
+
+            return response($payload, 200, [
+                'Content-Type' => 'application/javascript; charset=UTF-8',
+                'Cache-Control' => 'no-store, max-age=0',
+            ]);
         } catch (Throwable $th) {
-            ResponseService::errorResponse($th);
+            ResponseService::logErrorResponse($th, "Controller -> readLanguageFile");
+
+            return response('window.languageLabels = {};', 200, [
+                'Content-Type' => 'application/javascript; charset=UTF-8',
+                'Cache-Control' => 'no-store, max-age=0',
+            ]);
         }
     }
 
