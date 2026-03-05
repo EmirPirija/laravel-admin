@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\BulkAdController;
 use App\Http\Controllers\Api\ShopOperationsController;
 use App\Http\Controllers\Api\SystemHealthController;
 use App\Http\Controllers\Api\LiveTrafficController;
+use App\Http\Controllers\Api\FrontendControlPlaneController;
 use App\Http\Controllers\ItemController;
 
 
@@ -277,6 +278,8 @@ Route::get('get-package', [ApiController::class, 'getPackage']);
 Route::get('get-languages', [ApiController::class, 'getLanguages']);
 Route::post('set-item-total-click', [ApiController::class, 'setItemTotalClick']);
 Route::get('get-system-settings', [ApiController::class, 'getSystemSettings']);
+Route::get('frontend-control-plane', [FrontendControlPlaneController::class, 'index'])
+    ->middleware('throttle:60,1');
 Route::get('app-payment-status', [ApiController::class, 'appPaymentStatus']);
 Route::get('get-customfields', [ApiController::class, 'getCustomFields']);
 Route::get('get-item', [ApiController::class, 'getItem']);
