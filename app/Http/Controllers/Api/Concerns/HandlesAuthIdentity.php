@@ -11,6 +11,8 @@ use Throwable;
 
 trait HandlesAuthIdentity
 {
+    private const TRUNK_ZERO_COUNTRY_CODES = ['381', '382', '385', '386', '387'];
+
     private function normalizePhoneDigits($value): string
     {
         return preg_replace('/\D+/', '', (string) ($value ?? '')) ?? '';
@@ -66,6 +68,54 @@ trait HandlesAuthIdentity
         return $country !== '' ? $country.$mobile : $mobile;
     }
 
+    private function shouldNormalizeTrunkZero(string $countryCode): bool
+    {
+        if ($countryCode === '') {
+            return false;
+        }
+
+        return in_array($countryCode, self::TRUNK_ZERO_COUNTRY_CODES, true);
+    }
+
+    private function buildPhoneVariants(array $normalized): array
+    {
+        $country = (string) ($normalized['country'] ?? '');
+        $mobile = (string) ($normalized['mobile'] ?? '');
+
+        $mobileVariants = array_values(array_unique(array_filter([
+            $mobile,
+        ])));
+
+        if ($mobile !== '' && $this->shouldNormalizeTrunkZero($country)) {
+            if (Str::startsWith($mobile, '0')) {
+                $withoutTrunkZero = substr($mobile, 1);
+                if ($withoutTrunkZero !== '') {
+                    $mobileVariants[] = $withoutTrunkZero;
+                }
+            } else {
+                $mobileVariants[] = '0'.$mobile;
+            }
+        }
+
+        $mobileVariants = array_values(array_unique(array_filter($mobileVariants)));
+
+        $fullVariants = [];
+        if ($country !== '') {
+            foreach ($mobileVariants as $variant) {
+                $fullVariants[] = $country.$variant;
+            }
+        } else {
+            $fullVariants = $mobileVariants;
+        }
+
+        $fullVariants = array_values(array_unique(array_filter($fullVariants)));
+
+        return [
+            'mobile' => $mobileVariants,
+            'full' => $fullVariants,
+        ];
+    }
+
     private function findPhoneConflict(
         ?string $countryCode,
         ?string $mobile,
@@ -78,11 +128,15 @@ trait HandlesAuthIdentity
             return null;
         }
 
+        $phoneVariants = $this->buildPhoneVariants($normalized);
+        $mobileVariants = $phoneVariants['mobile'];
+        $fullVariants = $phoneVariants['full'];
+
         $mobileCandidates = array_values(array_unique(array_filter([
-            $normalized['mobile'],
-            $normalized['full'],
-            '+'.$normalized['mobile'],
-            '+'.$normalized['full'],
+            ...$mobileVariants,
+            ...$fullVariants,
+            ...array_map(static fn ($value) => '+'.$value, $mobileVariants),
+            ...array_map(static fn ($value) => '+'.$value, $fullVariants),
         ])));
 
         $countryCandidates = array_values(array_unique(array_filter([
@@ -103,15 +157,15 @@ trait HandlesAuthIdentity
             $query->whereNotNull('phone_verified_at');
         }
 
-        $query->where(function ($outer) use ($mobileCandidates, $countryCandidates, $normalized) {
+        $query->where(function ($outer) use ($mobileCandidates, $countryCandidates, $mobileVariants) {
             if (! empty($mobileCandidates)) {
                 $outer->whereIn('mobile', $mobileCandidates);
             }
 
-            if ($normalized['mobile'] !== '' && ! empty($countryCandidates)) {
-                $outer->orWhere(function ($withCountry) use ($normalized, $countryCandidates) {
+            if (! empty($mobileVariants) && ! empty($countryCandidates)) {
+                $outer->orWhere(function ($withCountry) use ($mobileVariants, $countryCandidates) {
                     $withCountry
-                        ->where('mobile', $normalized['mobile'])
+                        ->whereIn('mobile', $mobileVariants)
                         ->whereIn('country_code', $countryCandidates);
                 });
             }
@@ -120,7 +174,7 @@ trait HandlesAuthIdentity
         $candidates = $query->get();
 
         foreach ($candidates as $candidate) {
-            if ($this->normalizedUserPhone($candidate) === $normalized['full']) {
+            if (in_array($this->normalizedUserPhone($candidate), $fullVariants, true)) {
                 return $candidate;
             }
         }
