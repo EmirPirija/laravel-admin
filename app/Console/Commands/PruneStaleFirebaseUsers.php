@@ -33,6 +33,9 @@ class PruneStaleFirebaseUsers extends Command
             $this->line('Lokalnih legacy users.firebase_id zapisa: ' . $result['local_legacy_firebase_users']);
             $this->line('Ukupno lokalnih Firebase linkova: ' . $result['local_firebase_links']);
             $this->line('Strict orphan role(User) naloga: ' . $result['strict_orphan_users']);
+            $this->line('Detektovanih stale korisnika (prije grace): ' . ($result['detected_stale_users'] ?? $result['stale_users']));
+            $this->line('Grace period (minute): ' . ($result['cleanup_grace_minutes'] ?? 0));
+            $this->line('Zaštićenih korisnika zbog grace perioda: ' . ($result['grace_protected_users'] ?? 0));
             $this->line('Stale korisnika detektovano: ' . $result['stale_users']);
             $this->line('Stale oglasa detektovano: ' . $result['stale_items']);
             $this->line('Obrisanih korisnika: ' . $result['deleted_users']);

@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\SocialLogin;
 use App\Models\User;
 use Google\Client;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -26,6 +27,9 @@ class FirebaseAuthCleanupService
      *   local_legacy_firebase_users:int,
      *   local_firebase_links:int,
      *   strict_orphan_users:int,
+     *   detected_stale_users:int,
+     *   grace_protected_users:int,
+     *   cleanup_grace_minutes:int,
      *   stale_users:int,
      *   stale_items:int,
      *   deleted_users:int,
@@ -123,6 +127,32 @@ class FirebaseAuthCleanupService
             $candidateUserIds = array_values(array_unique(array_merge($candidateUserIds, $strictOrphanUserIds)));
         }
 
+        $detectedStaleUsers = count($candidateUserIds);
+        $cleanupGraceMinutes = $this->resolveCleanupGraceMinutes();
+        $graceProtectedUsers = 0;
+
+        if ($cleanupGraceMinutes > 0 && $detectedStaleUsers > 0) {
+            $graceCutoff = Carbon::now()->subMinutes($cleanupGraceMinutes);
+            $eligibleUserIds = User::withTrashed()
+                ->whereIn('id', $candidateUserIds)
+                ->where(function ($query) use ($graceCutoff) {
+                    $query
+                        ->whereNull('created_at')
+                        ->orWhere('created_at', '<=', $graceCutoff);
+                })
+                ->where(function ($query) use ($graceCutoff) {
+                    $query
+                        ->whereNull('updated_at')
+                        ->orWhere('updated_at', '<=', $graceCutoff);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $graceProtectedUsers = max(0, $detectedStaleUsers - count($eligibleUserIds));
+            $candidateUserIds = $eligibleUserIds;
+        }
+
         if (count($candidateUserIds) === 0) {
             return [
                 'firebase_users' => count($firebaseUidSet),
@@ -130,6 +160,9 @@ class FirebaseAuthCleanupService
                 'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
                 'local_firebase_links' => $localFirebaseLinks,
                 'strict_orphan_users' => $strictOrphanUsers,
+                'detected_stale_users' => $detectedStaleUsers,
+                'grace_protected_users' => $graceProtectedUsers,
+                'cleanup_grace_minutes' => $cleanupGraceMinutes,
                 'stale_users' => 0,
                 'stale_items' => 0,
                 'deleted_users' => 0,
@@ -149,6 +182,9 @@ class FirebaseAuthCleanupService
                 'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
                 'local_firebase_links' => $localFirebaseLinks,
                 'strict_orphan_users' => $strictOrphanUsers,
+                'detected_stale_users' => $detectedStaleUsers,
+                'grace_protected_users' => $graceProtectedUsers,
+                'cleanup_grace_minutes' => $cleanupGraceMinutes,
                 'stale_users' => count($candidateUserIds),
                 'stale_items' => $staleItems,
                 'deleted_users' => 0,
@@ -186,6 +222,9 @@ class FirebaseAuthCleanupService
             'local_legacy_firebase_users' => $localLegacyFirebaseUsers,
             'local_firebase_links' => $localFirebaseLinks,
             'strict_orphan_users' => $strictOrphanUsers,
+            'detected_stale_users' => $detectedStaleUsers,
+            'grace_protected_users' => $graceProtectedUsers,
+            'cleanup_grace_minutes' => $cleanupGraceMinutes,
             'stale_users' => count($candidateUserIds),
             'stale_items' => $staleItems,
             'deleted_users' => $deletedUsers,
@@ -196,21 +235,37 @@ class FirebaseAuthCleanupService
 
     private function resolveProjectId(): string
     {
-        $projectId = (string) (Setting::query()
+        $configuredProjectId = (string) (Setting::query()
             ->where('name', 'firebase_project_id')
             ->value('value') ?? '');
 
-        if ($projectId !== '') {
-            return $projectId;
+        $serviceJson = $this->readServiceAccountJson();
+        $serviceProjectId = (string) ($serviceJson['project_id'] ?? '');
+
+        if (
+            $configuredProjectId !== '' &&
+            $serviceProjectId !== '' &&
+            $configuredProjectId !== $serviceProjectId
+        ) {
+            throw new RuntimeException(
+                'Firebase cleanup je blokiran: firebase_project_id i service_file project_id se ne podudaraju.'
+            );
         }
 
-        $serviceJson = $this->readServiceAccountJson();
-        $fallbackProjectId = (string) ($serviceJson['project_id'] ?? '');
-        if ($fallbackProjectId === '') {
+        $resolvedProjectId = $configuredProjectId !== '' ? $configuredProjectId : $serviceProjectId;
+        if ($resolvedProjectId === '') {
             throw new RuntimeException('Firebase project ID nije konfigurisan.');
         }
 
-        return $fallbackProjectId;
+        return $resolvedProjectId;
+    }
+
+    private function resolveCleanupGraceMinutes(): int
+    {
+        $envValue = env('FIREBASE_CLEANUP_GRACE_MINUTES', 1440);
+        $minutes = (int) $envValue;
+
+        return max(0, $minutes);
     }
 
     private function resolveAccessToken(): string
