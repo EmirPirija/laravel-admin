@@ -3671,8 +3671,16 @@ public function getItem(Request $request)
                     }]);
                 }
 
-                // Limit results early and get items
-                $items = $items->limit(5)->get();
+                // For most sections keep compact preview; for "all_ads" return all unless explicit section_limit is sent.
+                $requestedSectionLimit = (int) $request->input('section_limit', 0);
+                $sectionLimit = $requestedSectionLimit > 0 ? min($requestedSectionLimit, 500) : null;
+                if ($row->filter !== 'all_ads' && $sectionLimit === null) {
+                    $sectionLimit = 5;
+                }
+
+                $items = $sectionLimit === null
+                    ? $items->get()
+                    : $items->limit($sectionLimit)->get();
 
                 $tempRow[$row->id] = $row;
                 $tempRow[$row->id]['total_data'] = count($items);
