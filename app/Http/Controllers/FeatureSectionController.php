@@ -11,6 +11,7 @@ use App\Services\HelperService;
 use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -18,9 +19,8 @@ class FeatureSectionController extends Controller {
 
     public function index() {
         ResponseService::noAnyPermissionThenRedirect(['feature-section-list', 'feature-section-create', 'feature-section-update', 'feature-section-delete']);
-        $categories = Category::get();
         $languages = CachingService::getLanguages()->values();
-        return view('feature_section.index', compact('categories','languages'));
+        return view('feature_section.index', compact('languages'));
     }
 
     public function store(Request $request) {
@@ -34,7 +34,7 @@ class FeatureSectionController extends Controller {
             "title.$defaultLangId" => 'required|string',
             "description.$defaultLangId" => 'nullable|string',
             'slug'        => 'required',
-            'filter'      => 'required|in:most_liked,most_viewed,price_criteria,category_criteria,featured_ads',
+            'filter'      => 'required|in:most_liked,most_viewed,price_criteria,category_criteria,featured_ads,all_ads',
             'style'       => 'required|in:style_1,style_2,style_3,style_4',
             'min_price'   => 'required_if:filter,price_criteria',
             'max_price'   => 'required_if:filter,price_criteria',
@@ -103,7 +103,7 @@ class FeatureSectionController extends Controller {
         $limit = $request->input('limit', 10);
         $sort = $request->input('sort', 'sequence');
         $order = $request->input('order', 'ASC');
-        $sql = FeatureSection::with('category','translations');
+        $sql = FeatureSection::with('translations');
         if (!empty($request->search)) {
             $sql = $sql->search($request->search);
         }
@@ -142,7 +142,7 @@ class FeatureSectionController extends Controller {
             "title.$defaultLangId" => 'required|string',
             "description.$defaultLangId" => 'nullable|string',
             'slug'        => 'required',
-            'filter'      => 'required|in:most_liked,most_viewed,price_criteria,category_criteria,featured_ads',
+            'filter'      => 'required|in:most_liked,most_viewed,price_criteria,category_criteria,featured_ads,all_ads',
             'style'       => 'required|in:style_1,style_2,style_3,style_4',
             'min_price'   => 'required_if:filter,price_criteria',
             'max_price'   => 'required_if:filter,price_criteria',
@@ -219,5 +219,137 @@ class FeatureSectionController extends Controller {
             ResponseService::logErrorResponse($th, "FeaturedSection Controller -> destroy");
             ResponseService::errorResponse('Something Went Wrong');
         }
+    }
+
+    public function searchCategories(Request $request) {
+        ResponseService::noAnyPermissionThenSendJson(['feature-section-list', 'feature-section-create', 'feature-section-update', 'feature-section-delete']);
+
+        $term = trim((string) $request->input('q', $request->input('search', '')));
+        $limit = min(50, max(10, (int) $request->input('limit', 20)));
+
+        $query = Category::without('translations')
+            ->select('id', 'name', 'parent_category_id')
+            ->where('status', 1)
+            ->orderBy('name');
+
+        if ($term !== '') {
+            $query->where('name', 'LIKE', '%' . $term . '%');
+        }
+
+        $categories = $query->limit($limit)->get();
+        $pathMap = $this->getCategoryPathMap();
+
+        $items = $categories->map(static function ($category) use ($pathMap) {
+            $id = (int) $category->id;
+
+            return [
+                'id' => $id,
+                'text' => $pathMap[$id] ?? (string) $category->name,
+            ];
+        })->values();
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
+
+    public function resolveCategories(Request $request) {
+        ResponseService::noAnyPermissionThenSendJson(['feature-section-list', 'feature-section-create', 'feature-section-update', 'feature-section-delete']);
+
+        $ids = $this->normalizeIds($request->input('ids', []));
+        if (empty($ids)) {
+            return response()->json(['items' => []]);
+        }
+
+        $pathMap = $this->getCategoryPathMap();
+        $categories = Category::without('translations')
+            ->select('id', 'name')
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(static fn($category) => array_search((int) $category->id, $ids, true))
+            ->values();
+
+        $items = $categories->map(static function ($category) use ($pathMap) {
+            $id = (int) $category->id;
+
+            return [
+                'id' => $id,
+                'text' => $pathMap[$id] ?? (string) $category->name,
+            ];
+        })->values();
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
+
+    private function normalizeIds($value): array {
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($value as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private function getCategoryPathMap(): array {
+        $version = (string) (Category::without('translations')->max('updated_at') ?? 'none');
+        $cacheKey = 'admin:feature-section:category:path_map:' . md5($version);
+
+        return Cache::remember($cacheKey, 600, static function () {
+            $categories = Category::without('translations')
+                ->select('id', 'name', 'parent_category_id')
+                ->get();
+
+            $parent = [];
+            $name = [];
+
+            foreach ($categories as $category) {
+                $id = (int) $category->id;
+                $parent[$id] = $category->parent_category_id ? (int) $category->parent_category_id : null;
+                $name[$id] = (string) $category->name;
+            }
+
+            $memo = [];
+            $visiting = [];
+
+            $buildPath = static function (int $id) use (&$buildPath, &$memo, &$visiting, $parent, $name) {
+                if (isset($memo[$id])) {
+                    return $memo[$id];
+                }
+                if (isset($visiting[$id])) {
+                    return $memo[$id] = $name[$id] ?? '';
+                }
+
+                $visiting[$id] = true;
+                $path = $name[$id] ?? '';
+                $parentId = $parent[$id] ?? null;
+
+                if ($parentId && isset($name[$parentId])) {
+                    $path = $buildPath($parentId) . ' > ' . $path;
+                }
+
+                unset($visiting[$id]);
+
+                return $memo[$id] = $path;
+            };
+
+            foreach (array_keys($name) as $id) {
+                $buildPath((int) $id);
+            }
+
+            return $memo;
+        });
     }
 }

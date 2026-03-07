@@ -1553,6 +1553,8 @@ public function getItem(Request $request)
                     $applyFeaturedPlacement($query);
                     return $query->getNonExpiredItems();
                 })(),
+                'all_ads' => $sql->where('status', 'approved')->getNonExpiredItems(),
+                default => $sql,
             };
         }
  
@@ -3656,6 +3658,8 @@ public function getItem(Request $request)
                             $applyFeaturedSectionPlacement($query);
                         })->orderBy('id', 'DESC');
                     })(),
+                    'all_ads' => $baseItems->orderBy('id', 'DESC'),
+                    default => $baseItems->orderBy('id', 'DESC'),
                 };
 
                 // Add auth-specific relationships

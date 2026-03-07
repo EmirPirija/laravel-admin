@@ -37,13 +37,8 @@
 
                                     {{ Form::label('item', __('Item'), ['class' => 'col-md-12 col-sm-12 col-form-label','for'=>"items"]) }}
                                     <div class="col-md-12 col-sm-12">
-                                        <select name="item" class="form-select form-control-sm select2" id="items" aria-label="items" data-parsley-errors-messages-disabled>
-                                            @if (isset($items))
-                                                <option value="" selected>{{__("Select Advertisement")}}</option>
-                                                @foreach ($items as $row)
-                                                    <option value="{{ $row->id }}">{{ $row->name }} </option>
-                                                @endforeach
-                                            @endif
+                                        <select name="item" class="form-select form-control-sm" id="items" aria-label="items" data-parsley-errors-messages-disabled>
+                                            <option value="" selected>{{ __("Type to search advertisement") }}</option>
                                         </select>
                                     </div>
                                     <div class="col-12 d-flex justify-content-center align-items-center mt-3">
@@ -53,9 +48,8 @@
                                     <div class="col-md-12">
                                         <div class="col-md-12 form-group">
                                             <label for="category" class="form-label">{{ __('Category') }}</label>
-                                            <select name="category_id" id="category" class="form-select form-control" data-placeholder="{{__("Select Category")}}">
-                                                <option value="">{{__("Select a Category")}}</option>
-                                                @include('category.dropdowntree', ['categories' => $categories])
+                                            <select name="category_id" id="category" class="form-select form-control" data-placeholder="{{__("Type to search category")}}">
+                                                <option value="">{{__("Type to search category")}}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -127,6 +121,75 @@
             </div>
         </div>
     </section>
+@endsection
+
+@section('js')
+    <script>
+        $(function () {
+            const $itemSelect = $('#items');
+            const $categorySelect = $('#category');
+
+            $itemSelect.select2({
+                placeholder: "{{ __('Type to search advertisement') }}",
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "{{ route('slider.items.search') }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term || '',
+                            limit: 25
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.items || []
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 0
+            });
+
+            $categorySelect.select2({
+                placeholder: "{{ __('Type to search category') }}",
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "{{ route('slider.categories.search') }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term || '',
+                            limit: 25
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.items || []
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 0
+            });
+
+            $itemSelect.on('change', function () {
+                if ($(this).val()) {
+                    $categorySelect.val(null).trigger('change');
+                }
+            });
+
+            $categorySelect.on('change', function () {
+                if ($(this).val()) {
+                    $itemSelect.val(null).trigger('change');
+                }
+            });
+        });
+    </script>
 @endsection
 
 

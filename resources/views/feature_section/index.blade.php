@@ -68,14 +68,14 @@
                                                             <option value="price_criteria">{{__("Price Criteria")}}</option>
                                                             <option value="category_criteria">{{__("Category Criteria")}}</option>
                                                             <option value="featured_ads">{{__("Featured Ads")}}</option>
+                                                            <option value="all_ads">{{__("Show All Ads")}}</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-md-6">
                                                         <div id="category_criteria" class="form-group mandatory" style="display: none;">
                                                             <label for="category_id" class=" form-label">{{ __('Category') }}</label>
                                                             <br>
-                                                            <select name="category_id[]" class="select2" multiple id="category_id" data-placeholder="{{__("Select Category")}}" style="width : 100%" required>
-                                                                @include('category.dropdowntree', ['categories' => $categories])
+                                                            <select name="category_id[]" class="form-control" multiple id="category_id" data-placeholder="{{__("Type to search categories")}}" style="width : 100%" required>
                                                             </select>
                                                         </div>
                                                     </div>
@@ -244,6 +244,7 @@
                                                             <option value="price_criteria">{{__("Price Criteria")}}</option>
                                                             <option value="category_criteria">{{__("Category Criteria")}}</option>
                                                             <option value="featured_ads">{{__("Featured Ads")}}</option>
+                                                            <option value="all_ads">{{__("Show All Ads")}}</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -267,8 +268,7 @@
                                                 <div class="col-md-4">
                                                     <div id="edit_category_criteria" class="col-md-12 form-group mandatory" style="display: none;">
                                                         <label for="edit_category_id" class="form-label">{{ __('Category') }}</label>
-                                                        <select name="category_id[]" class="select2" id="edit_category_id" data-placeholder="{{__("Select Category")}}" multiple>
-                                                            @include('category.dropdowntree', ['categories' => $categories])
+                                                        <select name="category_id[]" class="form-control" id="edit_category_id" data-placeholder="{{__("Type to search categories")}}" multiple>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -321,8 +321,101 @@
 @endsection
 @section('js')
     <script>
-        {{--TODO: @include was not loading data 2nd time. So added this temporary solution here--}}
-        let category_options = $('#category_id option').clone();
-        $('#edit_category_id').append(category_options);
+        $(function () {
+            const searchUrl = "{{ route('feature-section.categories.search') }}";
+            const resolveUrl = "{{ route('feature-section.categories.resolve') }}";
+            const $createCategory = $('#category_id');
+            const $editCategory = $('#edit_category_id');
+            const $editModal = $('#editModal');
+
+            function initCategorySelect($select, dropdownParent) {
+                const options = {
+                    placeholder: "{{ __('Type to search categories') }}",
+                    allowClear: true,
+                    width: '100%',
+                    ajax: {
+                        url: searchUrl,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term || '',
+                                limit: 30
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.items || []
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                };
+
+                if (dropdownParent && dropdownParent.length) {
+                    options.dropdownParent = dropdownParent;
+                }
+
+                $select.select2(options);
+            }
+
+            function normalizeIds(ids) {
+                if (!ids) {
+                    return [];
+                }
+
+                const values = Array.isArray(ids) ? ids : String(ids).split(',');
+                const normalized = values
+                    .map(function (value) {
+                        return String(value).trim();
+                    })
+                    .filter(function (value) {
+                        return value !== '';
+                    });
+
+                return normalized.filter(function (value, index, list) {
+                    return list.indexOf(value) === index;
+                });
+            }
+
+            function prefillSelectedCategories(ids) {
+                const normalizedIds = normalizeIds(ids);
+
+                if (!normalizedIds.length) {
+                    $editCategory.val(null).trigger('change');
+                    return;
+                }
+
+                $.ajax({
+                    url: resolveUrl,
+                    type: 'GET',
+                    dataType: 'json',
+                    traditional: true,
+                    data: {
+                        ids: normalizedIds
+                    },
+                    success: function (response) {
+                        const items = response.items || [];
+                        items.forEach(function (item) {
+                            if ($editCategory.find("option[value='" + item.id + "']").length === 0) {
+                                const option = new Option(item.text, item.id, false, false);
+                                $editCategory.append(option);
+                            }
+                        });
+
+                        $editCategory.val(normalizedIds).trigger('change');
+                    },
+                    error: function () {
+                        $editCategory.val(null).trigger('change');
+                    }
+                });
+            }
+
+            initCategorySelect($createCategory, null);
+            initCategorySelect($editCategory, $editModal);
+
+            window.prefillFeatureSectionCategories = prefillSelectedCategories;
+        });
     </script>
 @endsection

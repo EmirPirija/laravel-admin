@@ -374,6 +374,10 @@ Route::prefix('package/membership')->name('package.membership.')->middleware(['a
 
 
     /*** Slider Module : START ***/
+    Route::group(['prefix' => 'slider'], static function () {
+        Route::get('/items/search', [SliderController::class, 'searchItems'])->name('slider.items.search');
+        Route::get('/categories/search', [SliderController::class, 'searchCategories'])->name('slider.categories.search');
+    });
     Route::resource('slider', SliderController::class);
     /*** Slider Module : END ***/
 
@@ -413,6 +417,10 @@ Route::prefix('package/membership')->name('package.membership.')->middleware(['a
 
 
     /*** Feature Section Module : START ***/
+    Route::group(['prefix' => 'feature-section'], static function () {
+        Route::get('/categories/search', [FeatureSectionController::class, 'searchCategories'])->name('feature-section.categories.search');
+        Route::get('/categories/resolve', [FeatureSectionController::class, 'resolveCategories'])->name('feature-section.categories.resolve');
+    });
     Route::resource('feature-section', FeatureSectionController::class);
     /*** Feature Section Module : END ***/
 

@@ -375,7 +375,7 @@ window.featuredSectionEvents = {
             row.translations.forEach(function (trans) {
                 const langId = trans.language_id;
                 if (langId != 1) { // Skip English as it's already set above
-                    $('#edit_title_' + langId).val(trans.title || '');
+                    $('#edit_title_' + langId).val(trans.name || trans.title || '');
                     $('#edit_description_' + langId).val(trans.description || '');
                 }
             });
@@ -395,7 +395,21 @@ window.featuredSectionEvents = {
         if (row.filter == "category_criteria") {
             $('#edit_category_criteria').show();
             if (row.value && row.value != '') {
-                $('#edit_category_id').val(row.value.split(',')).trigger('change');
+                const categoryIds = row.value
+                    .toString()
+                    .split(',')
+                    .map(function (value) {
+                        return value.trim();
+                    })
+                    .filter(function (value) {
+                        return value !== '';
+                    });
+
+                if (typeof window.prefillFeatureSectionCategories === 'function') {
+                    window.prefillFeatureSectionCategories(categoryIds);
+                } else {
+                    $('#edit_category_id').val(categoryIds).trigger('change');
+                }
             } else {
                 $('#edit_category_id').val('').trigger('change');
             }

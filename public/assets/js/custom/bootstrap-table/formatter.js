@@ -133,6 +133,12 @@ function filterTextFormatter(value) {
         filter = "Category Criteria";
     } else if (value == "most_viewed") {
         filter = "Most Viewed";
+    } else if (value == "featured_ads") {
+        filter = "Featured Ads";
+    } else if (value == "all_ads") {
+        filter = "Show All Ads";
+    } else {
+        filter = value || '-';
     }
     return filter;
 }
