@@ -53,6 +53,7 @@ use App\Models\TempMedia;
 use App\Services\CachingService;
 use App\Services\FileService;
 use App\Services\AuthEventService;
+use App\Services\FeaturedAdService;
 use App\Services\HelperService;
 use App\Services\ListingCampaignBadgeService;
 use App\Services\NotificationService;
@@ -3148,7 +3149,7 @@ public function getItem(Request $request)
     }
 
 
-    public function makeFeaturedItem(Request $request)
+    public function makeFeaturedItem(Request $request, FeaturedAdService $featuredAdService)
     {
         $validator = Validator::make($request->all(), [
             'item_id' => 'required|integer',
@@ -3160,176 +3161,24 @@ public function getItem(Request $request)
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            DB::beginTransaction();
             $user = Auth::user();
             if (! $user) {
-                DB::rollBack();
                 return ResponseService::errorResponse(__('Unauthenticated user'));
             }
 
             $item = Item::where('user_id', $user->id)->findOrFail($request->item_id);
-            $itemStatus = strtolower((string) ($item->getAttributes()['status'] ?? $item->status ?? ''));
-            if (! in_array($itemStatus, ['approved', 'active', 'featured'], true)) {
-                DB::rollBack();
-                return ResponseService::errorResponse(__('Only active ad can be featured.'));
-            }
-
-            $placement = strtolower(trim((string) ($request->input('placement') ?: $request->input('positions') ?: 'category_home')));
-            if (! in_array($placement, ['category', 'home', 'category_home'], true)) {
-                $placement = 'category_home';
-            }
-
-            $durationDays = (int) $request->input('duration_days', 30);
-            $durationDays = max(1, min($durationDays, 365));
-
-            $user_package = UserPurchasedPackage::onlyActive()
-                ->where(['user_id' => $user->id])
-                ->with('package')
-                ->whereHas('package', function ($q) {
-                    $q->where(['type' => 'advertisement']);
-                })
-                ->first();
-
-            if (! $user_package) {
-                $fallbackPackageQuery = Package::query()
-                    ->where(function ($query) {
-                        $query->where('type', 'advertisement');
-                        if (Schema::hasColumn('packages', 'package_type')) {
-                            $query->orWhere('package_type', 'advertisement');
-                        }
-                    });
-
-                $fallbackPackage = (clone $fallbackPackageQuery)
-                    ->where(function ($query) {
-                        $query->whereNull('status')->orWhere('status', 1);
-                    })
-                    ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
-                    ->orderBy('final_price', 'asc')
-                    ->orderBy('id', 'asc')
-                    ->first();
-
-                if (! $fallbackPackage) {
-                    $fallbackPackage = (clone $fallbackPackageQuery)
-                        ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
-                        ->orderBy('final_price', 'asc')
-                        ->orderBy('id', 'asc')
-                        ->first();
-                }
-
-                if (! $fallbackPackage) {
-                    $fallbackPackage = Package::query()
-                        ->where(function ($query) {
-                            $query->whereNull('status')->orWhere('status', 1);
-                        })
-                        ->orderBy('id', 'asc')
-                        ->first();
-                }
-
-                if (! $fallbackPackage) {
-                    $fallbackPayload = [
-                        'name' => 'LMX Auto Featured',
-                        'description' => 'Auto-generated package used for featured ad fallback.',
-                        'price' => 0,
-                        'discount_in_percentage' => 0,
-                        'final_price' => 0,
-                        'duration' => 'unlimited',
-                        'item_limit' => 'unlimited',
-                        'type' => 'advertisement',
-                        'icon' => 'packages/auto-featured.png',
-                        'status' => 1,
-                    ];
-                    if (Schema::hasColumn('packages', 'package_type')) {
-                        $fallbackPayload['package_type'] = 'advertisement';
-                    }
-                    $fallbackPackage = Package::create($fallbackPayload);
-                }
-
-                if (! $fallbackPackage) {
-                    DB::rollBack();
-                    return ResponseService::errorResponse(__('Unable to feature this ad right now. Please try again later.'));
-                }
-
-                $user_package = UserPurchasedPackage::create([
-                    'user_id' => $user->id,
-                    'package_id' => $fallbackPackage->id,
-                    'start_date' => Carbon::today()->toDateString(),
-                    'end_date' => null,
-                    'total_limit' => null,
-                    'used_limit' => 0,
-                ]);
-            }
-
-            $startDate = Carbon::today();
-            $requestedEndDate = Carbon::today()->addDays($durationDays);
-            $packageEndDate = ! empty($user_package->end_date) ? Carbon::parse($user_package->end_date) : null;
-            $endDate = $packageEndDate ? $requestedEndDate->min($packageEndDate) : $requestedEndDate;
-
-            $featuredItems = FeaturedItems::where('item_id', $request->item_id)
-                ->where('package_id', $user_package->package_id)
-                ->orderByDesc('id')
-                ->first();
-
-            if (! $featuredItems) {
-                $featuredItems = FeaturedItems::where('item_id', $request->item_id)
-                    ->orderByDesc('id')
-                    ->first();
-            }
-            if (! empty($featuredItems)) {
-                $featuredItems->update([
-                    'package_id' => $user_package->package_id,
-                    'user_purchased_package_id' => $user_package->id,
-                    'placement' => $placement,
-                    'positions' => $placement,
-                    'duration_days' => $durationDays,
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                ]);
-
-                $featuredExpiresAt = $endDate->copy()->endOfDay();
-                $featuredSecondsLeft = max(0, Carbon::now()->diffInSeconds($featuredExpiresAt, false));
-                $featuredDaysLeft = (int) ceil($featuredSecondsLeft / 86400);
-                DB::commit();
-                return ResponseService::successResponse(__('Featured Advertisement Updated Successfully'), [
-                    'placement' => $placement,
-                    'positions' => $placement,
-                    'duration_days' => $durationDays,
-                    'featured_until' => $endDate->toDateString(),
-                    'featured_expires_at' => $featuredExpiresAt->toIso8601String(),
-                    'featured_seconds_left' => $featuredSecondsLeft,
-                    'featured_days_left' => $featuredDaysLeft,
-                ]);
-            }
-
-            $user_package->used_limit++;
-            $user_package->save();
-
-            FeaturedItems::create([
-                'item_id' => $request->item_id,
-                'package_id' => $user_package->package_id,
-                'user_purchased_package_id' => $user_package->id,
-                'placement' => $placement,
-                'positions' => $placement,
-                'duration_days' => $durationDays,
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
+            $result = $featuredAdService->assign($item, (int) $user->id, [
+                'placement' => $request->input('placement') ?: $request->input('positions'),
+                'duration_days' => $request->input('duration_days'),
             ]);
 
-            $featuredExpiresAt = $endDate->copy()->endOfDay();
-            $featuredSecondsLeft = max(0, Carbon::now()->diffInSeconds($featuredExpiresAt, false));
-            $featuredDaysLeft = (int) ceil($featuredSecondsLeft / 86400);
-            DB::commit();
-            return ResponseService::successResponse(__('Featured Advertisement Created Successfully'), [
-                'placement' => $placement,
-                'positions' => $placement,
-                'duration_days' => $durationDays,
-                'featured_until' => $endDate->toDateString(),
-                'featured_expires_at' => $featuredExpiresAt->toIso8601String(),
-                'featured_seconds_left' => $featuredSecondsLeft,
-                'featured_days_left' => $featuredDaysLeft,
-            ]);
+            if (! ($result['success'] ?? false)) {
+                return ResponseService::errorResponse((string) ($result['message'] ?? 'Unable to feature advertisement right now.'));
+            }
+
+            return ResponseService::successResponse((string) ($result['message'] ?? __('Featured Advertisement Updated Successfully')), $result['meta'] ?? []);
         } catch (Throwable $th) {
-            DB::rollBack();
-            ResponseService::logErrorResponse($th, 'API Controller -> createAdvertisement');
+            ResponseService::logErrorResponse($th, 'API Controller -> makeFeaturedItem');
             ResponseService::errorResponse();
         }
     }

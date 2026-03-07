@@ -281,6 +281,48 @@
                 </div>
             </div>
         </div>
+        <div id="featureSellerModal" class="modal fade" tabindex="-1" role="dialog"
+            aria-labelledby="featureSellerModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="featureSellerModalLabel">{{ __('Feature Advertisement') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="featureSellerForm" class="create-form" action="#" method="POST"
+                            data-success-function="featureSellerSuccess" data-parsley-validate>
+                            @csrf
+                            <div class="mb-2">
+                                <strong>{{ __('Advertisement') }}:</strong>
+                                <span id="featureSellerItemName">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>{{ __('Seller') }}:</strong>
+                                <span id="featureSellerUserName">-</span>
+                            </div>
+                            <div class="mb-3 text-muted small" id="featureSellerCurrentMeta">
+                                {{ __('Set placement and duration for featured visibility.') }}
+                            </div>
+                            <div class="mb-3">
+                                <label for="feature_seller_placement" class="form-label mandatory">{{ __('Placement') }}</label>
+                                <select id="feature_seller_placement" name="placement" class="form-select" required>
+                                    <option value="category_home">{{ __('Category + Home') }}</option>
+                                    <option value="category">{{ __('Category') }}</option>
+                                    <option value="home">{{ __('Home') }}</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="feature_seller_duration_days" class="form-label mandatory">{{ __('Duration (days)') }}</label>
+                                <input type="number" class="form-control" id="feature_seller_duration_days" name="duration_days"
+                                    min="1" max="365" value="30" required>
+                            </div>
+                            <input type="submit" value="{{ __('Apply Featured Settings') }}" class="btn btn-primary">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="advertisementTimelineModal" class="modal fade" tabindex="-1" role="dialog"
             aria-labelledby="advertisementTimelineModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -356,6 +398,10 @@
         function notifySellerSuccess() {
             $('#notifySellerModal').modal('hide');
             $('#notifySellerForm')[0].reset();
+        }
+
+        function featureSellerSuccess() {
+            $('#featureSellerModal').modal('hide');
         }
 
         // Custom queryParams function for items table to preserve filters during pagination

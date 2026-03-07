@@ -176,6 +176,51 @@ window.itemEvents = {
         $('#notifySellerModal').modal('show');
     },
 
+    'click .feature-seller-ad': function (e, value, row) {
+        e.preventDefault();
+        const actionUrl = $(e.currentTarget).attr('href');
+        const featuredMeta = row.featured_meta || {};
+        const placement = (featuredMeta.placement || featuredMeta.positions || 'category_home').toString().toLowerCase();
+        const durationDays = parseInt(featuredMeta.duration_days || 30, 10);
+        const isFeatured = String(row.featured_status || '').toLowerCase() === 'featured';
+        const featureUntil = featuredMeta.featured_until || '-';
+
+        $('#featureSellerForm').attr('action', actionUrl);
+        $('#featureSellerItemName').text(row.name || '-');
+        $('#featureSellerUserName').text((row.user && row.user.name) ? row.user.name : '-');
+        $('#feature_seller_placement').val(['category', 'home', 'category_home'].includes(placement) ? placement : 'category_home');
+        $('#feature_seller_duration_days').val(Number.isNaN(durationDays) ? 30 : Math.max(1, Math.min(durationDays, 365)));
+
+        if (isFeatured) {
+            $('#featureSellerCurrentMeta').text(`${translateSafe('Currently featured until')}: ${featureUntil}`);
+        } else {
+            $('#featureSellerCurrentMeta').text(translateSafe('This advertisement is currently premium. Apply settings to feature it.'));
+        }
+
+        $('#featureSellerModal').modal('show');
+    },
+
+    'click .unfeature-seller-ad': function (e, value, row) {
+        e.preventDefault();
+        const actionUrl = $(e.currentTarget).attr('href');
+        const adName = row.name || translateSafe('selected advertisement');
+
+        showSweetAlertConfirmPopup(actionUrl, 'POST', {
+            title: translateSafe('Remove featured status?'),
+            text: `${translateSafe('This will remove featured visibility for')}: ${adName}`,
+            icon: 'warning',
+            confirmButtonText: translateSafe('Yes, remove'),
+            cancelButtonText: translateSafe('Cancel'),
+            successCallBack: function () {
+                $('#table_list').bootstrapTable('refresh');
+                showSuccessToast(translateSafe('Featured status removed successfully.'));
+            },
+            errorCallBack: function (response) {
+                showErrorToast((response && response.message) ? response.message : translateSafe('Unable to remove featured status.'));
+            },
+        });
+    },
+
     'click .view-timeline': function (e, value, row) {
         e.preventDefault();
         const actionUrl = $(e.currentTarget).attr('href');

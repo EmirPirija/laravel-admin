@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\Package;
 use App\Models\Setting;
 use App\Models\UserPurchasedPackage;
+use App\Services\FeaturedAdService;
 use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,11 @@ class BulkAdController extends Controller
     private const ACTION_PAUSE = 'pause';
     private const ACTION_RELIST = 'relist';
     private const RENEW_COOLDOWN_DAYS = 15;
+
+    public function __construct(
+        private readonly FeaturedAdService $featuredAdService
+    ) {
+    }
 
     public function apply(Request $request)
     {
@@ -317,183 +323,11 @@ class BulkAdController extends Controller
 
     private function featureItem(Item $item, int $userId, ?Package $package, string $placement, int $durationDays): array
     {
-        if ($item->trashed()) {
-            return [
-                'success' => false,
-                'message' => 'Pauziran oglas ne može biti izdvojen',
-            ];
-        }
-
-        $status = strtolower((string) ($item->getAttributes()['status'] ?? $item->status ?? ''));
-        if (! in_array($status, ['approved', 'active', 'featured'], true)) {
-            return [
-                'success' => false,
-                'message' => 'Samo aktivan oglas može biti izdvojen',
-            ];
-        }
-
-        $durationDays = max(1, min($durationDays, 365));
-        $placement = in_array($placement, ['category', 'home', 'category_home'], true)
-            ? $placement
-            : 'category_home';
-
-        $userPackageQuery = UserPurchasedPackage::onlyActive()
-            ->where('user_id', $userId)
-            ->whereHas('package', function ($q) {
-                $q->where('type', 'advertisement');
-            });
-
-        if ($package) {
-            $userPackageQuery->where('package_id', $package->id);
-        }
-
-        $userPackage = $userPackageQuery->orderBy('end_date')->first();
-        if (! $userPackage) {
-            $fallbackPackage = null;
-            if ($package instanceof Package) {
-                $fallbackPackage = $package;
-            } else {
-                $fallbackPackageQuery = Package::query()
-                    ->where(function ($query) {
-                        $query->where('type', 'advertisement');
-                        if (Schema::hasColumn('packages', 'package_type')) {
-                            $query->orWhere('package_type', 'advertisement');
-                        }
-                    });
-
-                $fallbackPackage = (clone $fallbackPackageQuery)
-                    ->where(function ($query) {
-                        $query->whereNull('status')->orWhere('status', 1);
-                    })
-                    ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
-                    ->orderBy('final_price', 'asc')
-                    ->orderBy('id', 'asc')
-                    ->first();
-
-                if (! $fallbackPackage) {
-                    $fallbackPackage = (clone $fallbackPackageQuery)
-                        ->orderByRaw('CASE WHEN final_price = 0 THEN 0 ELSE 1 END')
-                        ->orderBy('final_price', 'asc')
-                        ->orderBy('id', 'asc')
-                        ->first();
-                }
-
-                if (! $fallbackPackage) {
-                    $fallbackPackage = Package::query()
-                        ->where(function ($query) {
-                            $query->whereNull('status')->orWhere('status', 1);
-                        })
-                        ->orderBy('id', 'asc')
-                        ->first();
-                }
-
-                if (! $fallbackPackage) {
-                    $fallbackPayload = [
-                        'name' => 'LMX Auto Featured',
-                        'description' => 'Auto-generated package used for featured ad fallback.',
-                        'price' => 0,
-                        'discount_in_percentage' => 0,
-                        'final_price' => 0,
-                        'duration' => 'unlimited',
-                        'item_limit' => 'unlimited',
-                        'type' => 'advertisement',
-                        'icon' => 'packages/auto-featured.png',
-                        'status' => 1,
-                    ];
-                    if (Schema::hasColumn('packages', 'package_type')) {
-                        $fallbackPayload['package_type'] = 'advertisement';
-                    }
-                    $fallbackPackage = Package::create($fallbackPayload);
-                }
-            }
-
-            if (! $fallbackPackage) {
-                return [
-                    'success' => false,
-                    'message' => 'Izdvajanje trenutno nije dostupno. Pokušaj ponovo kasnije.',
-                ];
-            }
-
-            $userPackage = UserPurchasedPackage::create([
-                'user_id' => $userId,
-                'package_id' => $fallbackPackage->id,
-                'start_date' => Carbon::today()->toDateString(),
-                'end_date' => null,
-                'total_limit' => null,
-                'used_limit' => 0,
-            ]);
-        }
-
-        if ($userPackage->total_limit !== null && (int) $userPackage->used_limit >= (int) $userPackage->total_limit) {
-            return [
-                'success' => false,
-                'message' => 'Dostigli ste limit paketa za izdvajanje',
-            ];
-        }
-
-        $startDate = Carbon::today();
-        $requestedEndDate = Carbon::today()->addDays($durationDays);
-        $packageEnd = $userPackage->end_date ? Carbon::parse($userPackage->end_date) : null;
-        $endDate = $packageEnd ? $requestedEndDate->min($packageEnd) : $requestedEndDate;
-
-        DB::beginTransaction();
-        try {
-            $featuredRow = FeaturedItems::where('item_id', $item->id)
-                ->where('package_id', $userPackage->package_id)
-                ->orderByDesc('id')
-                ->first();
-
-            if (! $featuredRow) {
-                $featuredRow = FeaturedItems::where('item_id', $item->id)
-                    ->orderByDesc('id')
-                    ->first();
-            }
-
-            $createdFeaturedRow = false;
-            if ($featuredRow) {
-                $featuredRow->update([
-                    'package_id' => $userPackage->package_id,
-                    'user_purchased_package_id' => $userPackage->id,
-                    'placement' => $placement,
-                    'positions' => $placement,
-                    'duration_days' => $durationDays,
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                ]);
-            } else {
-                FeaturedItems::create([
-                    'item_id' => $item->id,
-                    'package_id' => $userPackage->package_id,
-                    'user_purchased_package_id' => $userPackage->id,
-                    'placement' => $placement,
-                    'positions' => $placement,
-                    'duration_days' => $durationDays,
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                ]);
-                $createdFeaturedRow = true;
-            }
-
-            if ($createdFeaturedRow) {
-                $userPackage->used_limit = (int) $userPackage->used_limit + 1;
-                $userPackage->save();
-            }
-
-            DB::commit();
-
-            return [
-                'success' => true,
-                'message' => 'Oglas je uspješno izdvojen',
-                'meta' => [
-                    'placement' => $placement,
-                    'duration_days' => $durationDays,
-                    'featured_until' => $endDate->toDateString(),
-                ],
-            ];
-        } catch (Throwable $th) {
-            DB::rollBack();
-            throw $th;
-        }
+        return $this->featuredAdService->assign($item, $userId, [
+            'preferred_package' => $package,
+            'placement' => $placement,
+            'duration_days' => $durationDays,
+        ]);
     }
 
     private function normalizeIds($rawIds): array

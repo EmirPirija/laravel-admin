@@ -22,6 +22,7 @@ use App\Models\UserFcmToken;
 use App\Services\AuditLogService;
 use App\Services\BootstrapTableService;
 use App\Services\FileService;
+use App\Services\FeaturedAdService;
 use App\Services\HelperService;
 use App\Services\NotificationService;
 use App\Services\ResponseService;
@@ -102,7 +103,8 @@ class ItemController extends Controller
                 $itemCustomFieldValue = $itemCustomFieldValues->filter(function ($data) use ($row) {
                     return $data->item_id == $row->id;
                 });
-                $featured_status = $row->featured_items->isNotEmpty() ? 'Featured' : 'Premium';
+                $activeFeaturedItem = $row->featured_items->sortByDesc('id')->first();
+                $featured_status = $activeFeaturedItem ? 'Featured' : 'Premium';
                 $row->custom_fields = collect($row->custom_fields)->map(function ($customField) use ($itemCustomFieldValue) {
                     $customField['value'] = $itemCustomFieldValue->first(function ($data) use ($customField) {
                         return $data->custom_field_id == $customField->id;
@@ -127,6 +129,14 @@ class ItemController extends Controller
                 }
                 if (Auth::user()->can('advertisement-update')) {
                     $operate .= BootstrapTableService::button('fa fa-wrench', route('advertisement.edit', $row->id), ['btn', 'btn-light-warning'], ['title' => __('Advertisement Update')]);
+                    $operate .= BootstrapTableService::button('fa fa-star', route('advertisement.feature-seller', $row->id), ['btn', 'btn-light-success', 'feature-seller-ad'], [
+                        'title' => $activeFeaturedItem ? __('Manage Featured Settings') : __('Feature For Seller'),
+                    ]);
+                    if ($activeFeaturedItem) {
+                        $operate .= BootstrapTableService::button('fa fa-star-o', route('advertisement.unfeature-seller', $row->id), ['btn', 'btn-light-danger', 'unfeature-seller-ad'], [
+                            'title' => __('Remove Featured Status'),
+                        ]);
+                    }
                     $operate .= BootstrapTableService::button('fa fa-history', route('advertisement.timeline', $row->id), ['btn', 'btn-light-secondary', 'view-timeline'], [
                         'title' => __('Moderation Timeline'),
                     ]);
@@ -142,6 +152,14 @@ class ItemController extends Controller
                 }
                 $tempRow['active_status'] = empty($row->deleted_at); //IF deleted_at is empty then status is true else false
                 $tempRow['featured_status'] = $featured_status;
+                $tempRow['featured_meta'] = $activeFeaturedItem ? [
+                    'featured_item_id' => (int) $activeFeaturedItem->id,
+                    'placement' => (string) ($activeFeaturedItem->placement ?: $activeFeaturedItem->positions ?: 'category_home'),
+                    'positions' => (string) ($activeFeaturedItem->positions ?: $activeFeaturedItem->placement ?: 'category_home'),
+                    'duration_days' => (int) ($activeFeaturedItem->duration_days ?? 30),
+                    'featured_until' => ! empty($activeFeaturedItem->end_date) ? (string) $activeFeaturedItem->end_date : null,
+                    'featured_expires_at' => ! empty($activeFeaturedItem->end_date) ? $activeFeaturedItem->end_date.' 23:59:59' : null,
+                ] : null;
                 $tempRow['operate'] = $operate;
 
                 $rows[] = $tempRow;
@@ -737,6 +755,80 @@ class ItemController extends Controller
         }
     }
 
+    public function featureSellerAd(Request $request, FeaturedAdService $featuredAdService, $id)
+    {
+        ResponseService::noPermissionThenSendJson('advertisement-update');
+
+        $validator = Validator::make($request->all(), [
+            'placement' => 'required|in:category,home,category_home',
+            'duration_days' => 'required|integer|min:1|max:365',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+
+        try {
+            $item = Item::withTrashed()->with('user:id,name,email')->findOrFail($id);
+            $result = $featuredAdService->assign($item, (int) $item->user_id, [
+                'placement' => (string) $request->input('placement'),
+                'duration_days' => (int) $request->input('duration_days'),
+            ]);
+
+            if (! ($result['success'] ?? false)) {
+                ResponseService::errorResponse((string) ($result['message'] ?? 'Unable to feature this advertisement'));
+            }
+
+            $meta = $result['meta'] ?? [];
+            AuditLogService::log('advertisement_featured_by_admin', Item::class, $item->id, [
+                'seller_id' => (int) $item->user_id,
+                'seller_name' => $item->user?->name,
+                'placement' => $meta['placement'] ?? null,
+                'duration_days' => $meta['duration_days'] ?? null,
+                'featured_until' => $meta['featured_until'] ?? null,
+                'featured_expires_at' => $meta['featured_expires_at'] ?? null,
+                'featured_item_id' => $meta['featured_item_id'] ?? null,
+            ]);
+
+            ResponseService::successResponse((string) ($result['message'] ?? 'Advertisement featured successfully'), array_merge([
+                'item_id' => (int) $item->id,
+                'seller_id' => (int) $item->user_id,
+            ], $meta));
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemController -> featureSellerAd');
+            ResponseService::errorResponse('Unable to update featured status');
+        }
+    }
+
+    public function unfeatureSellerAd(FeaturedAdService $featuredAdService, $id)
+    {
+        ResponseService::noPermissionThenSendJson('advertisement-update');
+
+        try {
+            $item = Item::withTrashed()->with('user:id,name,email')->findOrFail($id);
+            $result = $featuredAdService->unfeature($item);
+
+            if (! ($result['success'] ?? false)) {
+                ResponseService::errorResponse((string) ($result['message'] ?? 'Unable to remove featured status'));
+            }
+
+            $meta = $result['meta'] ?? [];
+            AuditLogService::log('advertisement_unfeatured_by_admin', Item::class, $item->id, [
+                'seller_id' => (int) $item->user_id,
+                'seller_name' => $item->user?->name,
+                'deactivated_rows' => $meta['deactivated_rows'] ?? 0,
+            ]);
+
+            ResponseService::successResponse((string) ($result['message'] ?? 'Featured status removed successfully'), array_merge([
+                'item_id' => (int) $item->id,
+                'seller_id' => (int) $item->user_id,
+            ], $meta));
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'ItemController -> unfeatureSellerAd');
+            ResponseService::errorResponse('Unable to remove featured status');
+        }
+    }
+
     private function queueSellerPushNotification(
         array $tokens,
         string $title,
@@ -772,6 +864,8 @@ class ItemController extends Controller
             'advertisement_created_by_admin' => __('Advertisement Created By Admin'),
             'advertisement_updated_by_admin' => __('Advertisement Updated By Admin'),
             'advertisement_approval_status_change' => __('Status Change'),
+            'advertisement_featured_by_admin' => __('Featured By Admin'),
+            'advertisement_unfeatured_by_admin' => __('Feature Removed By Admin'),
             'advertisement_admin_message_sent_to_seller' => __('Seller Message Sent'),
             'advertisement_admin_notification_sent_to_seller' => __('Seller Notification Sent'),
             'advertisement_deleted_by_admin' => __('Advertisement Permanently Deleted'),
@@ -786,6 +880,12 @@ class ItemController extends Controller
                 'from' => $context['from'] ?? '-',
                 'to' => $context['to'] ?? '-',
             ]),
+            'advertisement_featured_by_admin' => __('Admin featured this advertisement (:placement, :days days, until :until)', [
+                'placement' => $context['placement'] ?? 'category_home',
+                'days' => $context['duration_days'] ?? '-',
+                'until' => $context['featured_until'] ?? '-',
+            ]),
+            'advertisement_unfeatured_by_admin' => __('Admin removed featured status for this advertisement'),
             'advertisement_admin_message_sent_to_seller' => __('Admin sent a direct message to seller. Conversation # :conversation', [
                 'conversation' => $context['conversation_id'] ?? '-',
             ]),
