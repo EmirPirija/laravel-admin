@@ -55,9 +55,14 @@ class FeaturedAdService
                 ];
             }
 
-            $userPackage = UserPurchasedPackage::create(
-                $this->buildUserPackagePayload($fallbackPackage, $sellerId)
-            );
+            $userPackage = UserPurchasedPackage::create([
+                'user_id' => $sellerId,
+                'package_id' => $fallbackPackage->id,
+                'start_date' => Carbon::today()->toDateString(),
+                'end_date' => null,
+                'total_limit' => null,
+                'used_limit' => 0,
+            ]);
         }
 
         $startDate = Carbon::today();
@@ -235,10 +240,12 @@ class FeaturedAdService
                     ->orWhereNull('total_limit');
             })
             ->whereHas('package', function ($packageQuery) {
-                $packageQuery->where('type', 'advertisement');
-                if (Schema::hasColumn('packages', 'package_type')) {
-                    $packageQuery->orWhere('package_type', 'advertisement');
-                }
+                $packageQuery->where(function ($scope) {
+                    $scope->where('type', 'advertisement');
+                    if (Schema::hasColumn('packages', 'package_type')) {
+                        $scope->orWhere('package_type', 'advertisement');
+                    }
+                });
             });
 
         if ($preferredPackage) {
@@ -286,15 +293,6 @@ class FeaturedAdService
                 ->first();
         }
 
-        if (! $fallbackPackage) {
-            $fallbackPackage = Package::query()
-                ->where(function ($query) {
-                    $query->whereNull('status')->orWhere('status', 1);
-                })
-                ->orderBy('id', 'asc')
-                ->first();
-        }
-
         if ($fallbackPackage) {
             return $fallbackPackage;
         }
@@ -317,37 +315,6 @@ class FeaturedAdService
         }
 
         return Package::create($payload);
-    }
-
-    /**
-     * @return array<string,mixed>
-     */
-    private function buildUserPackagePayload(Package $package, int $sellerId): array
-    {
-        $startDate = Carbon::today();
-
-        $durationRaw = strtolower(trim((string) ($package->duration ?? '')));
-        $durationDays = (int) ($package->duration ?? 0);
-        $endDate = null;
-        if ($durationRaw !== '' && $durationRaw !== 'unlimited' && $durationDays > 0) {
-            $endDate = $startDate->copy()->addDays($durationDays)->toDateString();
-        }
-
-        $itemLimitRaw = strtolower(trim((string) ($package->item_limit ?? '')));
-        $itemLimit = (int) ($package->item_limit ?? 0);
-        $totalLimit = null;
-        if ($itemLimitRaw !== '' && $itemLimitRaw !== 'unlimited' && $itemLimit > 0) {
-            $totalLimit = $itemLimit;
-        }
-
-        return [
-            'user_id' => $sellerId,
-            'package_id' => $package->id,
-            'start_date' => $startDate->toDateString(),
-            'end_date' => $endDate,
-            'total_limit' => $totalLimit,
-            'used_limit' => 0,
-        ];
     }
 
     private function isAdvertisementPackage(Package $package): bool
