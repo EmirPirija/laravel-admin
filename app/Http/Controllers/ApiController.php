@@ -104,27 +104,31 @@ protected static function booted()
     static::deleted(fn() => Cache::flush());
 }
 
-    private function hasAutoWatermarkColumn(): bool
+    private function shouldApplyGlobalWatermark(): bool
     {
-        static $hasColumn = null;
-        if ($hasColumn === null) {
-            $hasColumn = Schema::hasColumn('users', 'auto_watermark_enabled');
+        static $enabled = null;
+        if ($enabled !== null) {
+            return $enabled;
         }
 
-        return $hasColumn;
-    }
-
-    private function shouldApplySellerWatermark(?User $user): bool
-    {
-        if (!$user) {
-            return true;
+        $rawValue = CachingService::getSystemSettings('global_auto_watermark_enabled');
+        if ($rawValue === '' || $rawValue === null) {
+            $rawValue = Setting::where('name', 'global_auto_watermark_enabled')->value('value');
         }
 
-        if (!$this->hasAutoWatermarkColumn()) {
-            return true;
+        if ($rawValue === null || $rawValue === '') {
+            $enabled = true;
+            return $enabled;
         }
 
-        return (bool) ($user->auto_watermark_enabled ?? true);
+        if (is_bool($rawValue)) {
+            $enabled = $rawValue;
+            return $enabled;
+        }
+
+        $normalized = strtolower(trim((string) $rawValue));
+        $enabled = !in_array($normalized, ['0', 'false', 'off', 'no'], true);
+        return $enabled;
     }
 
     public function getSystemSettings(Request $request)
@@ -1049,7 +1053,7 @@ protected static function booted()
         $data['campaign_badge_key'] = $campaignBadgeOption['key'] ?? null;
         $data['campaign_badge_label'] = $campaignBadgeOption['label'] ?? null;
 
-        $applyWatermark = $this->shouldApplySellerWatermark($user);
+        $applyWatermark = $this->shouldApplyGlobalWatermark();
 
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
         $tempMainImageId = $request->input('temp_main_image_id');
@@ -2201,10 +2205,7 @@ public function getItem(Request $request)
 
             // Generate unique slug
             $uniqueSlug = HelperService::generateUniqueSlug(new Item, $slug, $request->id);
-            $itemOwner = User::query()
-                ->select(['id', 'auto_watermark_enabled'])
-                ->find($item->user_id);
-            $applyWatermark = $this->shouldApplySellerWatermark($itemOwner);
+            $applyWatermark = $this->shouldApplyGlobalWatermark();
 
             $data = $request->except(['video', 'image', 'gallery_images', 'custom_field_files']);
             $storyColumnExists = Schema::hasColumn('items', 'add_video_to_story');
@@ -8515,7 +8516,7 @@ public function getMyReview(Request $request)
         ]);
 
         $user = Auth::user();
-        $applyWatermark = $this->shouldApplySellerWatermark($user);
+        $applyWatermark = $this->shouldApplyGlobalWatermark();
 
         // Store in temp folder, but STILL compress + watermark
         $path = FileService::compressAndUploadWithWatermark(

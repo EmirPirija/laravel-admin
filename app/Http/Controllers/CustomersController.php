@@ -99,7 +99,6 @@ class CustomersController extends Controller {
             $tempRow['status'] = empty($row->deleted_at);
             $tempRow['is_verified'] = $row->is_verified;
             $tempRow['auto_approve_advertisement'] = $row->auto_approve_item;
-            $tempRow['auto_watermark_enabled'] = (bool) ($row->auto_watermark_enabled ?? true);
 
             if (config('app.demo_mode')) {
                 // Get the first two digits, Apply enough asterisks to cover the middle numbers ,  Get the last two digits;

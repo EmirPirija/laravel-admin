@@ -82,6 +82,7 @@ class SettingController extends Controller
             "app_store_link"         => "nullable",
             "maintenance_mode"       => "nullable",
             "force_update"           => "nullable",
+            "global_auto_watermark_enabled" => "nullable|boolean",
             "number_with_suffix"     => "nullable",
             "firebase_project_id"    => "nullable",
             "service_file"           => "nullable",

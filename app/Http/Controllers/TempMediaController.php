@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\TempMedia;
+use App\Services\CachingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Intervention\Image\Facades\Image;
@@ -23,7 +24,7 @@ class TempMediaController extends Controller
 
         $file = $request->file('image');
         $userId = $request->user()->id;
-        $applyWatermark = $this->shouldApplyWatermarkForUser($request->user());
+        $applyWatermark = $this->shouldApplyGlobalWatermark();
 
         Storage::disk('public')->makeDirectory("tmp/images/{$userId}");
 
@@ -248,21 +249,37 @@ class TempMediaController extends Controller
         return random_int($min, $max);
     }
 
-    private function shouldApplyWatermarkForUser($user): bool
+    private function shouldApplyGlobalWatermark(): bool
     {
-        if (!$user) {
-            return true;
+        static $enabled = null;
+        if ($enabled !== null) {
+            return $enabled;
         }
 
-        static $hasFlagColumn = null;
-        if ($hasFlagColumn === null) {
-            $hasFlagColumn = Schema::hasColumn('users', 'auto_watermark_enabled');
+        $rawValue = CachingService::getSystemSettings('global_auto_watermark_enabled');
+        if ($rawValue === '' || $rawValue === null) {
+            $rawValue = DB::table('settings')
+                ->where('name', 'global_auto_watermark_enabled')
+                ->value('value');
         }
 
-        if (!$hasFlagColumn) {
-            return true;
+        if ($rawValue === null || $rawValue === '') {
+            $enabled = true;
+            return $enabled;
         }
 
-        return (bool) ($user->auto_watermark_enabled ?? true);
+        if (is_bool($rawValue)) {
+            $enabled = $rawValue;
+            return $enabled;
+        }
+
+        $normalized = strtolower(trim((string) $rawValue));
+        if (in_array($normalized, ['0', 'false', 'off', 'no'], true)) {
+            $enabled = false;
+            return $enabled;
+        }
+
+        $enabled = true;
+        return $enabled;
     }
 }

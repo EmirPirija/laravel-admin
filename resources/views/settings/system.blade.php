@@ -191,6 +191,15 @@
                                     </div>
                                 </div>
                                 <div class="form-group col-sm-12 col-md-6">
+                                    <label class="form-check-label">{{ __('Global Watermark For Seller Images') }}
+                                        <i class="fa fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('When enabled, watermark is added to seller images on upload/edit for all sellers.') }}" aria-label="{{ __('When enabled, watermark is added to seller images on upload/edit for all sellers.') }}"></i>
+                                    </label>
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="global_auto_watermark_enabled" id="global_auto_watermark_enabled" class="checkbox-toggle-switch-input" value="{{ $settings['global_auto_watermark_enabled'] ?? 1 }}">
+                                        <input class="form-check-input checkbox-toggle-switch" type="checkbox" role="switch" id="switch_global_auto_watermark_enabled" aria-label="switch_global_auto_watermark_enabled" data-bs-toggle="tooltip" data-bs-placement="top" {{ ($settings['global_auto_watermark_enabled'] ?? '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+                                <div class="form-group col-sm-12 col-md-6">
                                     <label for="map_provider" class="col-sm-12 form-check-label  mt-2">{{ __('Map Provider') }}</label>
                                     <select name="map_provider" id="map_provider" class="form-select form-control-sm">
                                         <option value="google_places" {{ !empty($settings['map_provider']) && $settings['map_provider'] == 'google_places' ? 'selected' : '' }}>{{ __('Place API') }}</option>

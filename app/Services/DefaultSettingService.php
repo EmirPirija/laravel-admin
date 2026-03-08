@@ -65,6 +65,7 @@ class DefaultSettingService {
             ['name' => 'free_ad_listing', 'value' => '0', 'type' => 'boolean'],
             ['name' => 'auto_approve_item', 'value' => '0', 'type' => 'boolean'],
             ['name' => 'auto_approve_edited_item', 'value' => '0', 'type' => 'boolean'],
+            ['name' => 'global_auto_watermark_enabled', 'value' => '1', 'type' => 'boolean'],
             ['name' => 'mail_mailer', 'value' => 'smtp', 'type' => 'string'],
             ['name' => 'mail_host', 'value' => 'mailhog', 'type' => 'string'],
             ['name' => 'mail_port', 'value' => '1025', 'type' => 'string'],

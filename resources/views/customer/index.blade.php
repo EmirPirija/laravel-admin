@@ -88,7 +88,6 @@
                                 <th scope="col" data-field="status" data-formatter="statusSwitchFormatter" data-sortable="false">{{ __('Status') }}</th>
                                  @can('customer-update')
                                  <th scope="col" data-field="auto_approve_advertisement" data-formatter="autoApproveItemSwitchFormatter" data-sortable="false">{{ __('Auto Approve Advertisement') }}</th>
-                                 <th scope="col" data-field="auto_watermark_enabled" data-formatter="autoWatermarkSwitchFormatter" data-sortable="false">{{ __('Auto Watermark') }}</th>
                                 @endcan
                                 <th scope="col" data-field="operate" data-escape="false" data-align="center" data-sortable="false" data-events="userEvents">{{ __('Action') }}</th>
                             </tr>
