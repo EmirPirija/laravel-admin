@@ -2774,6 +2774,7 @@ public function getItem(Request $request)
             'per_page' => 'nullable|integer|min:1|max:200',
             'page' => 'nullable|integer|min:1',
             'include_counts' => 'nullable|boolean',
+            'tree_depth' => 'nullable|integer|min:0|max:6',
         ]);
     
         if ($validator->fails()) {
@@ -2793,18 +2794,21 @@ public function getItem(Request $request)
             $perPage = (int) ($request->input('per_page', 50));
             $perPage = max(1, min($perPage, 200));
             $page = max(1, (int) ($request->input('page', 1)));
+            $treeDepth = (int) ($request->input('tree_depth', 5));
+            $treeDepth = max(0, min($treeDepth, 6));
             $languageCode = strtolower(trim((string) ($request->header('Content-Language') ?? app()->getLocale() ?? 'default')));
 
-            $cacheKey = 'api:get-categories:v3:'.md5(json_encode([
+            $cacheKey = 'api:get-categories:v4:'.md5(json_encode([
                 'category_id' => $request->input('category_id'),
                 'slug' => $request->input('slug'),
                 'per_page' => $perPage,
                 'page' => $page,
                 'include_counts' => (int) $includeCounts,
+                'tree_depth' => $treeDepth,
                 'lang' => $languageCode,
             ]));
 
-            $payload = Cache::remember($cacheKey, now()->addSeconds(120), function () use ($request, $includeCounts, $perPage, $page) {
+            $payload = Cache::remember($cacheKey, now()->addSeconds(120), function () use ($request, $includeCounts, $perPage, $page, $treeDepth) {
                 $categoryColumns = [
                     'id',
                     'name',
@@ -2848,14 +2852,17 @@ public function getItem(Request $request)
                     ->where('status', 1)
                     ->orderByRaw('ISNULL(sequence), sequence ASC')
                     ->orderBy('id', 'ASC')
-                    ->withCount($buildCounts())
-                    ->with([
-                        'subcategories' => $applySubcategoryScope,
-                        'subcategories.subcategories' => $applySubcategoryScope,
-                        'subcategories.subcategories.subcategories' => $applySubcategoryScope,
-                        'subcategories.subcategories.subcategories.subcategories' => $applySubcategoryScope,
-                        'subcategories.subcategories.subcategories.subcategories.subcategories' => $applySubcategoryScope,
-                    ]);
+                    ->withCount($buildCounts());
+
+                if ($treeDepth > 0) {
+                    $relations = [];
+                    $relationPath = 'subcategories';
+                    for ($depth = 0; $depth < $treeDepth; $depth++) {
+                        $relations[$relationPath] = $applySubcategoryScope;
+                        $relationPath .= '.subcategories';
+                    }
+                    $sql->with($relations);
+                }
 
                 $parentCategory = null;
 
