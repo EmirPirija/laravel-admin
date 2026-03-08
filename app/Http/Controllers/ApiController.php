@@ -1637,16 +1637,15 @@ public function getItem(Request $request)
                 $sql->getNonExpiredItems();
             }
         }
-        
-        
- 
+        $locationMessage = null;
+
+        if (empty($request->id) && empty($request->slug)) {
         // Handle location-based search with fallback logic
         // Priority: area_id > city > state > country > latitude/longitude
         // Only fallback to all items if current_page=home is passed
         $isHomePage = $request->current_page === 'home';
         // Save base query before location filters for fallback
         $baseQueryBeforeLocation = clone $sql;
-        $locationMessage = null;
         $hasLocationFilter = $request->latitude !== null && $request->longitude !== null;
         $hasCityFilter = ! empty($request->city);
         $hasStateFilter = ! empty($request->state);
@@ -1727,7 +1726,7 @@ public function getItem(Request $request)
             $areaQuery = clone $sql;
             $areaQuery->where('area_id', $areaId);
             $areaQuery = $applyAuthFilters($areaQuery);
-            $areaItemCount = $areaQuery->count();
+            $areaItemCount = $areaQuery->exists() ? 1 : 0;
  
             if ($areaItemCount > 0) {
                 $sql = $areaQuery;
@@ -1748,7 +1747,7 @@ public function getItem(Request $request)
             $cityQuery = clone $sql;
             $cityQuery->where('city', $cityName);
             $cityQuery = $applyAuthFilters($cityQuery);
-            $cityItemCount = $cityQuery->count();
+            $cityItemCount = $cityQuery->exists() ? 1 : 0;
  
             if ($cityItemCount > 0) {
                 $sql = $cityQuery;
@@ -1776,7 +1775,7 @@ public function getItem(Request $request)
             $stateQuery = clone $sql;
             $stateQuery->where('state', $stateName);
             $stateQuery = $applyAuthFilters($stateQuery);
-            $stateItemCount = $stateQuery->count();
+            $stateItemCount = $stateQuery->exists() ? 1 : 0;
  
             if ($stateItemCount > 0) {
                 $sql = $stateQuery;
@@ -1813,7 +1812,7 @@ public function getItem(Request $request)
             $countryQuery = clone $sql;
             $countryQuery->where('country', $countryName);
             $countryQuery = $applyAuthFilters($countryQuery);
-            $countryItemCount = $countryQuery->count();
+            $countryItemCount = $countryQuery->exists() ? 1 : 0;
  
             if ($countryItemCount > 0) {
                 $sql = $countryQuery;
@@ -1893,7 +1892,7 @@ public function getItem(Request $request)
             }
  
             // Check if items exist at exact location
-            $exactLocationCount = $exactLocationQuery->count();
+            $exactLocationCount = $exactLocationQuery->exists() ? 1 : 0;
  
             if ($exactLocationCount > 0) {
                 // Items found at exact location, use exact location query
@@ -1920,7 +1919,7 @@ public function getItem(Request $request)
  
                 // Apply auth filters to nearby query
                 $nearbyQuery = $applyAuthFilters($nearbyQuery);
-                $nearbyItemCount = $nearbyQuery->count();
+                $nearbyItemCount = $nearbyQuery->exists() ? 1 : 0;
  
                 if ($nearbyItemCount > 0) {
                     // Items found nearby, use nearby query
@@ -1947,6 +1946,8 @@ public function getItem(Request $request)
             }
         }
  
+        }
+
         // Note: Auth filters are already applied to $baseQueryBeforeLocation,
         // so when we fallback using clone $baseQueryBeforeLocation, filters are preserved.
         // No need to re-apply filters here.
@@ -2770,6 +2771,9 @@ public function getItem(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'nullable|integer',
+            'per_page' => 'nullable|integer|min:1|max:200',
+            'page' => 'nullable|integer|min:1',
+            'include_counts' => 'nullable|boolean',
         ]);
     
         if ($validator->fails()) {
@@ -2777,94 +2781,127 @@ public function getItem(Request $request)
         }
     
         try {
-            $sql = Category::withCount([
-                    'subcategories' => function ($q) {
-                        $q->where('status', 1);
-                    },
-                ])
-                ->with('translations')
-                ->where(['status' => 1])
-                ->orderBy('sequence', 'ASC')
-                ->with([
-                    'subcategories' => function ($query) {
-                        $query->where('status', 1)
-                            ->orderBy('sequence', 'ASC')
-                            ->with('translations')
-                            ->withCount([
-                                'approved_items',
-                                'subcategories' => function ($q) {
-                                    $q->where('status', 1);
-                                },
-                            ]);
-                    },
-    
-                    'subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)
-                            ->orderBy('sequence', 'ASC')
-                            ->with('translations')
-                            ->withCount([
-                                'approved_items',
-                                'subcategories' => function ($q) {
-                                    $q->where('status', 1);
-                                },
-                            ]);
-                    },
-    
-                    'subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)
-                            ->orderBy('sequence', 'ASC')
-                            ->with('translations')
-                            ->withCount([
-                                'approved_items',
-                                'subcategories' => function ($q) {
-                                    $q->where('status', 1);
-                                },
-                            ]);
-                    },
-    
-                    'subcategories.subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)
-                            ->orderBy('sequence', 'ASC')
-                            ->with('translations')
-                            ->withCount([
-                                'approved_items',
-                                'subcategories' => function ($q) {
-                                    $q->where('status', 1);
-                                },
-                            ]);
-                    },
-    
-                    'subcategories.subcategories.subcategories.subcategories.subcategories' => function ($query) {
-                        $query->where('status', 1)
-                            ->orderBy('sequence', 'ASC')
-                            ->with('translations')
-                            ->withCount([
-                                'approved_items',
-                                'subcategories' => function ($q) {
-                                    $q->where('status', 1);
-                                },
-                            ]);
-                    },
-                ]);
-    
-            if (!empty($request->category_id)) {
-                $sql = $sql->where('parent_category_id', $request->category_id);
-            } elseif (!empty($request->slug)) {
-                $parentCategory = Category::where('slug', $request->slug)->firstOrFail();
-                $sql = $sql->where('parent_category_id', $parentCategory->id);
-            } else {
-                $sql = $sql->whereNull('parent_category_id');
+            $includeCounts = filter_var(
+                $request->input('include_counts', true),
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE
+            );
+            if ($includeCounts === null) {
+                $includeCounts = true;
             }
-    
-            $sql = $sql->paginate();
-    
-            $sql->map(function ($category) {
-                $category->all_items_count = $category->all_items_count;
-                return $category;
+
+            $perPage = (int) ($request->input('per_page', 50));
+            $perPage = max(1, min($perPage, 200));
+            $page = max(1, (int) ($request->input('page', 1)));
+            $languageCode = strtolower(trim((string) ($request->header('Content-Language') ?? app()->getLocale() ?? 'default')));
+
+            $cacheKey = 'api:get-categories:v3:'.md5(json_encode([
+                'category_id' => $request->input('category_id'),
+                'slug' => $request->input('slug'),
+                'per_page' => $perPage,
+                'page' => $page,
+                'include_counts' => (int) $includeCounts,
+                'lang' => $languageCode,
+            ]));
+
+            $payload = Cache::remember($cacheKey, now()->addSeconds(120), function () use ($request, $includeCounts, $perPage, $page) {
+                $categoryColumns = [
+                    'id',
+                    'name',
+                    'image',
+                    'slug',
+                    'status',
+                    'description',
+                    'is_job_category',
+                    'price_optional',
+                    'sequence',
+                    'parent_category_id',
+                    'created_at',
+                    'updated_at',
+                ];
+
+                $buildCounts = function () use ($includeCounts) {
+                    $counts = [
+                        'subcategories' => function ($q) {
+                            $q->where('status', 1);
+                        },
+                    ];
+
+                    if ($includeCounts) {
+                        $counts[] = 'approved_items';
+                    }
+
+                    return $counts;
+                };
+
+                $applySubcategoryScope = function ($query) use ($categoryColumns, $buildCounts) {
+                    $query->select($categoryColumns)
+                        ->where('status', 1)
+                        ->orderByRaw('ISNULL(sequence), sequence ASC')
+                        ->orderBy('id', 'ASC')
+                        ->with('translations')
+                        ->withCount($buildCounts());
+                };
+
+                $sql = Category::select($categoryColumns)
+                    ->with('translations')
+                    ->where('status', 1)
+                    ->orderByRaw('ISNULL(sequence), sequence ASC')
+                    ->orderBy('id', 'ASC')
+                    ->withCount($buildCounts())
+                    ->with([
+                        'subcategories' => $applySubcategoryScope,
+                        'subcategories.subcategories' => $applySubcategoryScope,
+                        'subcategories.subcategories.subcategories' => $applySubcategoryScope,
+                        'subcategories.subcategories.subcategories.subcategories' => $applySubcategoryScope,
+                        'subcategories.subcategories.subcategories.subcategories.subcategories' => $applySubcategoryScope,
+                    ]);
+
+                $parentCategory = null;
+
+                if (! empty($request->category_id)) {
+                    $sql->where('parent_category_id', $request->category_id);
+                } elseif (! empty($request->slug)) {
+                    $parentCategory = Category::select($categoryColumns)
+                        ->with('translations')
+                        ->where('slug', $request->slug)
+                        ->firstOrFail();
+                    $sql->where('parent_category_id', $parentCategory->id);
+                } else {
+                    $sql->whereNull('parent_category_id');
+                }
+
+                $paginator = $sql->paginate($perPage, ['*'], 'page', $page);
+
+                if ($includeCounts) {
+                    $computeAllItemsCount = function ($category) use (&$computeAllItemsCount) {
+                        $total = (int) ($category->approved_items_count ?? 0);
+                        $children = $category->relationLoaded('subcategories')
+                            ? $category->subcategories
+                            : collect();
+
+                        foreach ($children as $child) {
+                            $total += $computeAllItemsCount($child);
+                        }
+
+                        $category->setAttribute('all_items_count', $total);
+
+                        return $total;
+                    };
+
+                    $paginator->getCollection()->each(function ($category) use ($computeAllItemsCount) {
+                        $computeAllItemsCount($category);
+                    });
+                }
+
+                return [
+                    'data' => $paginator->toArray(),
+                    'self_category' => $parentCategory?->toArray(),
+                ];
             });
-    
-            ResponseService::successResponse(null, $sql, [
-                'self_category' => $parentCategory ?? null,
+
+            ResponseService::successResponse(null, $payload['data'], [
+                'self_category' => $payload['self_category'] ?? null,
             ]);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> getCategories');
