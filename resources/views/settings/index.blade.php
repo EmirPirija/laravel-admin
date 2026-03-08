@@ -53,6 +53,23 @@
                 </a>
             </div>
             <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-12 mb-3">
+                <a href="{{ route('settings.runtime-control') }}" class="card setting_active_tab h-100" style="text-decoration: none;">
+                    <div class="content d-flex h-100">
+                        <div class="row mx-2 ">
+                            <div class="provider_a test">
+                                <i class="fas fa-sliders-h text-dark icon_font_size "></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h5 class="title">{{ __('Runtime Control') }}</h5>
+                        <div class="">{{ __('Manage feature flags, maintenance, limits and announcements') }} <i class="fas fa-arrow-right mt-2 arrow_icon"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-12 mb-3">
                 <a href="{{ route('settings.notification-setting') }}" class="card setting_active_tab h-100" style="text-decoration: none;">
                     <div class="content d-flex h-100">
                         <div class="row mx-2 ">

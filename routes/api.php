@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\BulkAdController;
 use App\Http\Controllers\Api\ShopOperationsController;
 use App\Http\Controllers\Api\SystemHealthController;
 use App\Http\Controllers\Api\LiveTrafficController;
+use App\Http\Controllers\Api\RuntimeConfigController;
 use App\Http\Controllers\ItemController;
 
 
@@ -41,6 +42,7 @@ Route::post('track/search-impressions', [ItemStatisticsController::class, 'track
 Route::post('track/search-click', [ItemStatisticsController::class, 'trackSearchClick']);
 Route::post('track/live-session', [LiveTrafficController::class, 'track'])->middleware('throttle:120,1');
 Route::get('share/{token}', [ItemStatisticsController::class, 'handleShareClick']);
+Route::get('runtime-config', [RuntimeConfigController::class, 'show']);
 Route::post('item-statistics/track-view', [ItemStatisticsController::class, 'trackView']);
 Route::post('item-statistics/track-contact', [ItemStatisticsController::class, 'trackContact']);
 Route::post('item-statistics/track-share', [ItemStatisticsController::class, 'trackShare']);
@@ -257,6 +259,7 @@ Route::get('seller-questions', [ItemQuestionController::class, 'getSellerQuestio
     Route::post('add-item-review', [ApiController::class, 'addItemReview']);
     Route::get('my-review', [ApiController::class, 'getMyReview']);
     Route::post('add-review-report', [ApiController::class, 'addReviewReport']);
+    Route::post('runtime-announcements/{id}/read', [RuntimeConfigController::class, 'markAnnouncementRead']);
 
     Route::get('verification-fields', [ApiController::class, 'getVerificationFields']);
     Route::post('send-verification-request',[ApiController::class,'sendVerificationRequest']);

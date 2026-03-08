@@ -19,6 +19,7 @@ use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PlaceController;
 use App\Http\Controllers\ReportReasonController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\RuntimeControlController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SeoSettingController;
 use App\Http\Controllers\SettingController;
@@ -295,6 +296,12 @@ Route::group(['prefix' => 'custom-fields'], static function () {
         Route::get('refund-policy', [SettingController::class, 'page'])->name('settings.refund-policy.index');
         Route::get('dummy-data', [SettingController::class, 'page'])->name('settings.dummy-data.index');
         Route::post('dummy-data/import', [SettingController::class, 'importDummyData'])->name('settings.dummy-data.import');
+        Route::get('runtime-control', [RuntimeControlController::class, 'index'])->name('settings.runtime-control');
+        Route::post('runtime-control/settings', [RuntimeControlController::class, 'saveSettings'])->name('settings.runtime-control.settings');
+        Route::post('runtime-control/feature-flags', [RuntimeControlController::class, 'saveFeatureFlags'])->name('settings.runtime-control.feature-flags');
+        Route::post('runtime-control/announcements', [RuntimeControlController::class, 'saveAnnouncements'])->name('settings.runtime-control.announcements');
+        Route::post('runtime-control/plan-limits', [RuntimeControlController::class, 'savePlanLimits'])->name('settings.runtime-control.plan-limits');
+        Route::post('runtime-control/user-overrides', [RuntimeControlController::class, 'saveUserOverrides'])->name('settings.runtime-control.user-overrides');
 
     });
     Route::group(['prefix' => 'system-update'], static function () {

@@ -59,6 +59,7 @@ use App\Services\ListingCampaignBadgeService;
 use App\Services\NotificationService;
 use App\Services\Payment\PaymentService;
 use App\Services\ResponseService;
+use App\Services\RuntimeControlService;
 use App\Services\UserDeletionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -129,6 +130,25 @@ protected static function booted()
         $normalized = strtolower(trim((string) $rawValue));
         $enabled = !in_array($normalized, ['0', 'false', 'off', 'no'], true);
         return $enabled;
+    }
+
+    private function enforceRuntimeGuard(string $action): void
+    {
+        $guard = app(RuntimeControlService::class)->guardAction($action, Auth::user());
+        if (($guard['allowed'] ?? true) === true) {
+            return;
+        }
+
+        ResponseService::errorResponse(
+            (string) ($guard['message'] ?? __('Operation is temporarily disabled.')),
+            [
+                'reason' => $guard['reason'] ?? 'runtime_blocked',
+                'action' => $action,
+            ],
+            config('constants.RESPONSE_CODE.FORBIDDEN'),
+            null,
+            403
+        );
     }
 
     public function getSystemSettings(Request $request)
@@ -786,6 +806,8 @@ protected static function booted()
     public function getLimits(Request $request)
     {
         try {
+            $this->enforceRuntimeGuard('ads.create');
+
             $validator = Validator::make($request->all(), [
                 'package_type' => 'required|in:item_listing,advertisement',
             ]);
@@ -812,6 +834,8 @@ protected static function booted()
     public function addItem(Request $request)
     {
     try {
+        $this->enforceRuntimeGuard('ads.create');
+
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'category_id' => 'required|integer',
@@ -2114,6 +2138,8 @@ public function getItem(Request $request)
 
     public function updateItem(Request $request)
     {
+        $this->enforceRuntimeGuard('ads.edit');
+
         $validator = Validator::make($request->all(), [
             'id' => 'required',
             'name' => 'nullable',
@@ -2643,6 +2669,8 @@ public function getItem(Request $request)
     public function deleteItem(Request $request)
     {
         try {
+            $this->enforceRuntimeGuard('ads.delete');
+
             // Validation rules
             $rules = [
                 'item_id' => 'nullable|exists:items,id',
@@ -2728,8 +2756,10 @@ public function getItem(Request $request)
         }
     }
 
-    public function updateItemStatus(Request $request)
+public function updateItemStatus(Request $request)
 {
+    $this->enforceRuntimeGuard('ads.edit');
+
     $validator = Validator::make($request->all(), [
         'item_id'  => 'required|integer',
         'status'   => 'required|in:sold out,inactive,active,resubmitted',
@@ -3234,6 +3264,8 @@ public function getItem(Request $request)
 
     public function makeFeaturedItem(Request $request, FeaturedAdService $featuredAdService)
     {
+        $this->enforceRuntimeGuard('ads.feature');
+
         $validator = Validator::make($request->all(), [
             'item_id' => 'required|integer',
             'placement' => 'nullable|in:category,home,category_home',
@@ -3790,6 +3822,7 @@ public function getItem(Request $request)
 
     public function getPaymentIntent(Request $request)
     {
+        $this->enforceRuntimeGuard('payments.create');
 
         $validator = Validator::make($request->all(), [
             'package_id' => 'required',
@@ -3922,6 +3955,7 @@ public function getItem(Request $request)
 
     public function createItemOffer(Request $request)
     {
+        $this->enforceRuntimeGuard('offers.create');
 
         $validator = Validator::make($request->all(), [
             'item_id' => 'required|integer',
@@ -4394,6 +4428,8 @@ public function markAsSeen(Request $request)
 
 public function sendMessage(Request $request)
 {
+    $this->enforceRuntimeGuard('chat.send');
+
     $validator = Validator::make($request->all(), [
         'item_offer_id' => 'required|integer',
         'message' => (! $request->file('file') && ! $request->file('audio')) ? 'required' : 'nullable',
@@ -5794,6 +5830,8 @@ private function calculateAverageResponseMinutes(int $sellerId): ?int
     public function renewItem(Request $request)
 {
     try {
+        $this->enforceRuntimeGuard('ads.renew');
+
         $free_ad_listing = Setting::where('name', 'free_ad_listing')->value('value') ?? 0;
 
         $rules = [

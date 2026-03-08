@@ -332,6 +332,12 @@
                                 <span class="menu-item">{{ __('Settings') }}</span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a href="{{ route('settings.runtime-control') }}" class='sidebar-link'>
+                                <i class="bi bi-sliders"></i>
+                                <span class="menu-item">{{ __('Runtime Control') }}</span>
+                            </a>
+                        </li>
                     @endcan
                     @if(\Illuminate\Support\Facades\Auth::user()->hasRole('Super Admin'))
                         <li class="sidebar-item">
