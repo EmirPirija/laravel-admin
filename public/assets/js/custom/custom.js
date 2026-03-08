@@ -440,6 +440,19 @@ $(document).on('change', '.update-auto-approve-status', function () {
         showErrorToast(error.message);
     });
 });
+$(document).on('change', '.update-auto-watermark-status', function () {
+    let url = window.baseurl + "common/change-status";
+    ajaxRequest('PUT', url, {
+        id: $(this).attr('id'),
+        table: "users",
+        column: "auto_watermark_enabled",
+        status: $(this).is(':checked') ? 1 : 0
+    }, null, function (response) {
+        showSuccessToast(response.message);
+    }, function (error) {
+        showErrorToast(error.message);
+    });
+});
 
 $('#switch_banner_ad_status').on('change', function () {
     $('#banner_ad_id_android').attr('required', $(this).is(':checked'));

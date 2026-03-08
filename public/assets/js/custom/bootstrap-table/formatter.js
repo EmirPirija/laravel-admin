@@ -44,6 +44,11 @@ function autoApproveItemSwitchFormatter(value, row) {
         <input class="form-check-input switch1 update-auto-approve-status" id="${row.id}" type="checkbox" role="switch" ${value ? 'checked' : ''}>
     </div>`;
 }
+function autoWatermarkSwitchFormatter(value, row) {
+    return `<div class="form-check form-switch">
+        <input class="form-check-input switch1 update-auto-watermark-status" id="${row.id}" type="checkbox" role="switch" ${value ? 'checked' : ''}>
+    </div>`;
+}
 
 function itemStatusSwitchFormatter(value, row) {
     return `<div class="form-check form-switch">

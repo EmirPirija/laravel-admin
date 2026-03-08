@@ -104,6 +104,29 @@ protected static function booted()
     static::deleted(fn() => Cache::flush());
 }
 
+    private function hasAutoWatermarkColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('users', 'auto_watermark_enabled');
+        }
+
+        return $hasColumn;
+    }
+
+    private function shouldApplySellerWatermark(?User $user): bool
+    {
+        if (!$user) {
+            return true;
+        }
+
+        if (!$this->hasAutoWatermarkColumn()) {
+            return true;
+        }
+
+        return (bool) ($user->auto_watermark_enabled ?? true);
+    }
+
     public function getSystemSettings(Request $request)
     {
         try {
@@ -1026,6 +1049,8 @@ protected static function booted()
         $data['campaign_badge_key'] = $campaignBadgeOption['key'] ?? null;
         $data['campaign_badge_label'] = $campaignBadgeOption['label'] ?? null;
 
+        $applyWatermark = $this->shouldApplySellerWatermark($user);
+
         // 🔹 Glavna slika (podržava upload file ILI temp upload)
         $tempMainImageId = $request->input('temp_main_image_id');
         $tempImageIds = $request->input('temp_image_ids'); // fallback (ako šalješ sve slike u jednom nizu)
@@ -1038,7 +1063,8 @@ protected static function booted()
         if ($request->hasFile('image')) {
             $data['image'] = FileService::compressAndUploadWithWatermark(
                 $request->file('image'),
-                $this->uploadFolder
+                $this->uploadFolder,
+                $applyWatermark
             );
         } elseif (!empty($tempMainImageId)) {
             $temp = TempMedia::where('id', $tempMainImageId)->where('type', 'image')->first();
@@ -1155,7 +1181,7 @@ protected static function booted()
         if ($request->hasFile('gallery_images')) {
             foreach ($request->file('gallery_images') as $file) {
                 $galleryImages[] = [
-                    'image'     => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder),
+                    'image'     => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder, $applyWatermark),
                     'item_id'   => $item->id,
                     'created_at'=> time(),
                     'updated_at'=> time(),
@@ -2175,6 +2201,10 @@ public function getItem(Request $request)
 
             // Generate unique slug
             $uniqueSlug = HelperService::generateUniqueSlug(new Item, $slug, $request->id);
+            $itemOwner = User::query()
+                ->select(['id', 'auto_watermark_enabled'])
+                ->find($item->user_id);
+            $applyWatermark = $this->shouldApplySellerWatermark($itemOwner);
 
             $data = $request->except(['video', 'image', 'gallery_images', 'custom_field_files']);
             $storyColumnExists = Schema::hasColumn('items', 'add_video_to_story');
@@ -2281,7 +2311,8 @@ public function getItem(Request $request)
                 $data['image'] = FileService::compressAndReplaceWithWatermark(
                     $request->file('image'),
                     $this->uploadFolder,
-                    $item->getRawOriginal('image')
+                    $item->getRawOriginal('image'),
+                    $applyWatermark
                 );
             }
             if ($request->has('show_only_to_premium')) {
@@ -2514,7 +2545,7 @@ public function getItem(Request $request)
             if ($request->hasFile('gallery_images')) {
                 foreach ($request->file('gallery_images') as $file) {
                     $galleryImages[] = [
-                        'image' => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder),
+                        'image' => FileService::compressAndUploadWithWatermark($file, $this->uploadFolder, $applyWatermark),
                         'item_id' => $item->id,
                         'created_at' => time(),
                         'updated_at' => time(),
@@ -8484,11 +8515,13 @@ public function getMyReview(Request $request)
         ]);
 
         $user = Auth::user();
+        $applyWatermark = $this->shouldApplySellerWatermark($user);
 
         // Store in temp folder, but STILL compress + watermark
         $path = FileService::compressAndUploadWithWatermark(
             $request->file('image'),
-            'temp_media/images'
+            'temp_media/images',
+            $applyWatermark
         );
 
         $temp = TempMedia::create([

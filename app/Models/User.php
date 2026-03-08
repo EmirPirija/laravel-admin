@@ -36,6 +36,7 @@ class User extends Authenticatable {
         'show_personal_details',
         'is_verified',
         'auto_approve_item',
+        'auto_watermark_enabled',
         'region_code',
         'last_seen',
         'phone_verified_at',
@@ -194,6 +195,7 @@ public function updateSellerLevel(): void
         'phone_verified_at' => 'datetime',
         'total_sales' => 'integer',
         'response_time_avg' => 'integer',
+        'auto_watermark_enabled' => 'boolean',
         'use_svg_avatar' => 'boolean',
     ];
 

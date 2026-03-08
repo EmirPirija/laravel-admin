@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TempMedia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Intervention\Image\Facades\Image;
@@ -22,6 +23,7 @@ class TempMediaController extends Controller
 
         $file = $request->file('image');
         $userId = $request->user()->id;
+        $applyWatermark = $this->shouldApplyWatermarkForUser($request->user());
 
         Storage::disk('public')->makeDirectory("tmp/images/{$userId}");
 
@@ -44,7 +46,7 @@ class TempMediaController extends Controller
         // --- WATERMARK LOGIKA (random uz ivicu, nikad centar) ---
         $watermarkPath = public_path('lmx-watermark.png');
 
-        if (file_exists($watermarkPath)) {
+        if ($applyWatermark && file_exists($watermarkPath)) {
             $watermark = Image::make($watermarkPath);
             $watermarkWidth = max(1, (int) round($img->width() * 0.22));
             $watermark->resize($watermarkWidth, null, function ($constraint) {
@@ -244,5 +246,23 @@ class TempMediaController extends Controller
             return $min;
         }
         return random_int($min, $max);
+    }
+
+    private function shouldApplyWatermarkForUser($user): bool
+    {
+        if (!$user) {
+            return true;
+        }
+
+        static $hasFlagColumn = null;
+        if ($hasFlagColumn === null) {
+            $hasFlagColumn = Schema::hasColumn('users', 'auto_watermark_enabled');
+        }
+
+        if (!$hasFlagColumn) {
+            return true;
+        }
+
+        return (bool) ($user->auto_watermark_enabled ?? true);
     }
 }

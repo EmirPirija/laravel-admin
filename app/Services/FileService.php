@@ -211,7 +211,7 @@ class FileService {
     /**
      * @throws Exception
      */
-    public static function compressAndUploadWithWatermark($requestFile, $folder) {
+    public static function compressAndUploadWithWatermark($requestFile, $folder, bool $applyWatermark = true) {
         $file_name = uniqid('', true) . time() . '.' . $requestFile->getClientOriginalExtension();
 
         try {
@@ -224,7 +224,7 @@ class FileService {
                 }
                 $image = Image::make($imagePath)->encode(null, 60);
 
-                if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
+                if ($applyWatermark && !empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
                     self::applyRandomEdgeWatermark($image, $fullWatermarkPath);
                 }
 
@@ -242,7 +242,7 @@ class FileService {
             //            return  $file->storeAs($folder, $file_name, 'public');
         }
     }
-    public static function compressAndReplaceWithWatermark($requestFile, $folder, $deleteRawOriginalImage = null)
+    public static function compressAndReplaceWithWatermark($requestFile, $folder, $deleteRawOriginalImage = null, bool $applyWatermark = true)
 {
 
     if (!empty($deleteRawOriginalImage)) {
@@ -261,7 +261,7 @@ class FileService {
             $image = Image::make($imagePath)->encode(null, 60);
 
 
-            if (!empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
+            if ($applyWatermark && !empty($fullWatermarkPath) && file_exists($fullWatermarkPath)) {
                 self::applyRandomEdgeWatermark($image, $fullWatermarkPath);
             }
 
