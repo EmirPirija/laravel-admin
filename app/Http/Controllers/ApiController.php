@@ -107,45 +107,50 @@ protected static function booted()
     public function getSystemSettings(Request $request)
     {
         try {
-            $query = Setting::select(['id', 'name', 'value', 'type']); // include 'id' to support translation loading
+            $languageCode = strtolower(trim((string) ($request->header('Content-Language') ?? app()->getLocale())));
+            $settingType = trim((string) $request->input('type', ''));
+            $cacheKey = 'api:get-system-settings:v2:' . md5(json_encode([
+                'type' => $settingType ?: null,
+                'lang' => $languageCode ?: 'default',
+            ]));
 
-            if (! empty($request->type)) {
-                $query->where('name', $request->type);
-            }
+            $tempRow = Cache::remember($cacheKey, now()->addSeconds(120), function () use ($settingType, $languageCode) {
+                $query = Setting::select(['id', 'name', 'value', 'type']);
 
-            $settings = $query->with('translations')->get();
-
-            $tempRow = [];
-
-            foreach ($settings as $row) {
-                if (in_array($row->name, [
-                    'account_holder_name',
-                    'bank_name',
-                    'account_number',
-                    'ifsc_swift_code',
-                    'bank_transfer_status',
-                    'place_api_key',
-                ])) {
-                    continue;
+                if ($settingType !== '') {
+                    $query->where('name', $settingType);
                 }
-                $tempRow[$row->name] = $row->translated_value ?? $row->value;
-            }
 
-            // --- determine current language ---
-            $languageCode = $request->header('Content-Language') ?? app()->getLocale();
-            $language = Language::where('code', $languageCode)->first();
+                $settings = $query->with('translations')->get();
 
-            if (! $language) {
-                $defaultLanguageCode = Setting::where('name', 'default_language')->value('value');
-                $language = Language::where('code', $defaultLanguageCode)->first();
-            }
+                $temp = [];
+                foreach ($settings as $row) {
+                    if (in_array($row->name, [
+                        'account_holder_name',
+                        'bank_name',
+                        'account_number',
+                        'ifsc_swift_code',
+                        'bank_transfer_status',
+                        'place_api_key',
+                    ])) {
+                        continue;
+                    }
+                    $temp[$row->name] = $row->translated_value ?? $row->value;
+                }
 
-            $tempRow['demo_mode'] = config('app.demo_mode');
-            $tempRow['languages'] = CachingService::getLanguages();
-            $tempRow['admin'] = User::role('Super Admin')->select(['name', 'profile'])->first();
+                $language = Language::where('code', $languageCode)->first();
+                if (! $language) {
+                    $defaultLanguageCode = Setting::where('name', 'default_language')->value('value');
+                    $language = Language::where('code', $defaultLanguageCode)->first();
+                }
 
-            // 👇 add current language info
-            $tempRow['current_language'] = $language?->code ?? app()->getLocale();
+                $temp['demo_mode'] = config('app.demo_mode');
+                $temp['languages'] = CachingService::getLanguages();
+                $temp['admin'] = User::role('Super Admin')->select(['name', 'profile'])->first();
+                $temp['current_language'] = $language?->code ?? app()->getLocale();
+
+                return $temp;
+            });
 
             ResponseService::successResponse(__('Data Fetched Successfully'), $tempRow);
         } catch (Throwable $th) {
