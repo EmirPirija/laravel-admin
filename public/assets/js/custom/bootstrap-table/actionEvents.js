@@ -37,6 +37,40 @@ window.SeoSettingEvents = {
         $("#edit_description_1").val(row.description ?? '');
         $("#edit_keywords_1").val(row.keywords ?? '');
 
+        $("#edit_canonical_url").val(row.canonical_url ?? '');
+        $("#edit_site_name").val(row.site_name ?? '');
+        $("#edit_search_path").val(row.search_path ?? '');
+        $("#edit_knowledge_graph_type").val(row.knowledge_graph_type ?? '');
+        $("#edit_organization_name").val(row.organization_name ?? '');
+        $("#edit_organization_logo").val(row.organization_logo ?? '');
+        $("#edit_organization_phone").val(row.organization_phone ?? '');
+        $("#edit_organization_email").val(row.organization_email ?? '');
+        $("#edit_organization_address").val(row.organization_address ?? '');
+        $("#edit_social_profiles_json").val(row.social_profiles_json ?? '');
+        $("#edit_og_title").val(row.og_title ?? '');
+        $("#edit_og_description").val(row.og_description ?? '');
+        $("#edit_og_image").val(row.og_image ?? '');
+        $("#edit_og_type").val(row.og_type ?? '');
+        $("#edit_twitter_title").val(row.twitter_title ?? '');
+        $("#edit_twitter_description").val(row.twitter_description ?? '');
+        $("#edit_twitter_image").val(row.twitter_image ?? '');
+        $("#edit_twitter_card").val(row.twitter_card ?? '');
+        $("#edit_schema_json").val(row.schema_json ?? '');
+
+        const toBool = (candidate, fallback = false) => {
+            if (candidate === undefined || candidate === null || candidate === '') return fallback;
+            if (typeof candidate === 'boolean') return candidate;
+            const normalized = String(candidate).trim().toLowerCase();
+            if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+            if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+            return fallback;
+        };
+
+        $("#edit_robots_index").prop('checked', toBool(row.robots_index, true));
+        $("#edit_robots_follow").prop('checked', toBool(row.robots_follow, true));
+        $("#edit_robots_noarchive").prop('checked', toBool(row.robots_noarchive, false));
+        $("#edit_robots_nosnippet").prop('checked', toBool(row.robots_nosnippet, false));
+
         let translations = row.translations ?? [];
         translations.forEach(function (translation) {
             const langId = translation.language_id;

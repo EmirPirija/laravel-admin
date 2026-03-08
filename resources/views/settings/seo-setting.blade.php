@@ -86,6 +86,7 @@
                                                     <label for="page" class="form-label">{{ __('Page') }}</label>
                                                     <select class="form-control" name="page" data-parsley-required="true">
                                                         <option value="">{{ __('Select Page') }}</option>
+                                                        <option value="global">{{ __('Global (Site-wide)') }}</option>
                                                         <option value="home">{{ __('Home') }}</option>
                                                         <option value="subscription">{{ __('Subscription') }}</option>
                                                         <option value="blogs">{{ __('Blogs') }}</option>
@@ -93,7 +94,9 @@
                                                         <option value="ad-listing">{{ __('Ad Listing') }}</option>
                                                         <option value="about-us">{{ __('About us') }}</option>
                                                         <option value="contact-us">{{ __('Contact us') }}</option>
+                                                        <option value="map-search">{{ __('Map Search') }}</option>
                                                         <option value="landing">{{ __('Landing') }}</option>
+                                                        <option value="data-deletion">{{ __('Data Deletion') }}</option>
                                                         <option value="privacy-policy">{{ __('Privacy Policy') }}</option>
                                                          <option value="refund-policy">{{ __('Refund Policy') }}</option>
                                                         <option value="terms-and-conditions">{{ __('Terms and Conditions') }}</option>
@@ -103,6 +106,157 @@
                                                 <div class="form-group mandatory">
                                                     <label for="image" class="form-label">{{ __('Image') }}</label>
                                                     <input class="filepond" type="file" name="image" id="favicon_icon">
+                                                </div>
+
+                                                <div class="alert alert-light-primary mt-3 mb-3">
+                                                    <strong>{{ __('Advanced SEO') }}</strong><br>
+                                                    {{ __('Configure canonical/OG/Twitter/robots/schema and optional organization profile for rich results.') }}
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Canonical URL (optional)') }}</label>
+                                                    <input type="text" name="canonical_url" class="form-control" placeholder="https://lmx.ba/ads">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Site Name Override') }}</label>
+                                                    <input type="text" name="site_name" class="form-control" placeholder="LMX.ba">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Search Path (SearchAction target path)') }}</label>
+                                                    <input type="text" name="search_path" class="form-control" placeholder="/ads?query={search_term_string}">
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Knowledge Graph Type') }}</label>
+                                                        <select class="form-control" name="knowledge_graph_type">
+                                                            <option value="">{{ __('Default: Organization') }}</option>
+                                                            <option value="Organization">Organization</option>
+                                                            <option value="LocalBusiness">LocalBusiness</option>
+                                                            <option value="OnlineStore">OnlineStore</option>
+                                                            <option value="WebSite">WebSite</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Organization Name Override') }}</label>
+                                                        <input type="text" name="organization_name" class="form-control" placeholder="Local Market Exchange">
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Organization Logo URL') }}</label>
+                                                        <input type="text" name="organization_logo" class="form-control" placeholder="https://...">
+                                                    </div>
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Organization Phone') }}</label>
+                                                        <input type="text" name="organization_phone" class="form-control" placeholder="+387 ...">
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Organization Email') }}</label>
+                                                        <input type="text" name="organization_email" class="form-control" placeholder="info@lmx.ba">
+                                                    </div>
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Organization Address') }}</label>
+                                                        <input type="text" name="organization_address" class="form-control" placeholder="Sarajevo, BiH">
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Social Profiles JSON') }}</label>
+                                                    <textarea name="social_profiles_json" class="form-control" rows="3" placeholder='["https://facebook.com/...", "https://instagram.com/..."]'></textarea>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Open Graph Title') }}</label>
+                                                        <input type="text" name="og_title" class="form-control">
+                                                    </div>
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Open Graph Type') }}</label>
+                                                        <select class="form-control" name="og_type">
+                                                            <option value="">{{ __('Default: website') }}</option>
+                                                            <option value="website">website</option>
+                                                            <option value="article">article</option>
+                                                            <option value="product">product</option>
+                                                            <option value="profile">profile</option>
+                                                            <option value="business.business">business.business</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Open Graph Description') }}</label>
+                                                    <textarea name="og_description" class="form-control" rows="2"></textarea>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Open Graph Image URL') }}</label>
+                                                    <input type="text" name="og_image" class="form-control" placeholder="https://...">
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Twitter Title') }}</label>
+                                                        <input type="text" name="twitter_title" class="form-control">
+                                                    </div>
+                                                    <div class="col-12 col-md-6 form-group">
+                                                        <label class="form-label">{{ __('Twitter Card') }}</label>
+                                                        <select class="form-control" name="twitter_card">
+                                                            <option value="">{{ __('Default: summary_large_image') }}</option>
+                                                            <option value="summary">summary</option>
+                                                            <option value="summary_large_image">summary_large_image</option>
+                                                            <option value="app">app</option>
+                                                            <option value="player">player</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Twitter Description') }}</label>
+                                                    <textarea name="twitter_description" class="form-control" rows="2"></textarea>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Twitter Image URL') }}</label>
+                                                    <input type="text" name="twitter_image" class="form-control" placeholder="https://...">
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-6 col-md-3 form-group">
+                                                        <input type="hidden" name="robots_index" value="0">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="robots_index" name="robots_index" value="1" checked>
+                                                            <label class="form-check-label" for="robots_index">{{ __('Robots Index') }}</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 col-md-3 form-group">
+                                                        <input type="hidden" name="robots_follow" value="0">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="robots_follow" name="robots_follow" value="1" checked>
+                                                            <label class="form-check-label" for="robots_follow">{{ __('Robots Follow') }}</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 col-md-3 form-group">
+                                                        <input type="hidden" name="robots_noarchive" value="0">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="robots_noarchive" name="robots_noarchive" value="1">
+                                                            <label class="form-check-label" for="robots_noarchive">{{ __('No Archive') }}</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 col-md-3 form-group">
+                                                        <input type="hidden" name="robots_nosnippet" value="0">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="robots_nosnippet" name="robots_nosnippet" value="1">
+                                                            <label class="form-check-label" for="robots_nosnippet">{{ __('No Snippet') }}</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label">{{ __('Custom Schema JSON-LD') }}</label>
+                                                    <textarea name="schema_json" class="form-control" rows="5" placeholder='{"@context":"https://schema.org","@type":"WebPage"}'></textarea>
                                                 </div>
 
                                                 {{-- Language Tabs --}}
@@ -204,6 +358,148 @@
                                     <input class="filepond" type="file" name="image" id="edit_image">
                                 </div>
                             </div>
+
+                            <div class="col-sm-12">
+                                <div class="alert alert-light-primary mt-2 mb-3">
+                                    <strong>{{ __('Advanced SEO') }}</strong><br>
+                                    {{ __('Configure canonical/OG/Twitter/robots/schema and optional organization profile for rich results.') }}
+                                </div>
+                            </div>
+
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Canonical URL (optional)') }}</label>
+                                <input type="text" id="edit_canonical_url" name="canonical_url" class="form-control">
+                            </div>
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Site Name Override') }}</label>
+                                <input type="text" id="edit_site_name" name="site_name" class="form-control">
+                            </div>
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Search Path (SearchAction target path)') }}</label>
+                                <input type="text" id="edit_search_path" name="search_path" class="form-control">
+                            </div>
+
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Knowledge Graph Type') }}</label>
+                                <select class="form-control" id="edit_knowledge_graph_type" name="knowledge_graph_type">
+                                    <option value="">{{ __('Default: Organization') }}</option>
+                                    <option value="Organization">Organization</option>
+                                    <option value="LocalBusiness">LocalBusiness</option>
+                                    <option value="OnlineStore">OnlineStore</option>
+                                    <option value="WebSite">WebSite</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Organization Name Override') }}</label>
+                                <input type="text" id="edit_organization_name" name="organization_name" class="form-control">
+                            </div>
+
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Organization Logo URL') }}</label>
+                                <input type="text" id="edit_organization_logo" name="organization_logo" class="form-control">
+                            </div>
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Organization Phone') }}</label>
+                                <input type="text" id="edit_organization_phone" name="organization_phone" class="form-control">
+                            </div>
+
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Organization Email') }}</label>
+                                <input type="text" id="edit_organization_email" name="organization_email" class="form-control">
+                            </div>
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Organization Address') }}</label>
+                                <input type="text" id="edit_organization_address" name="organization_address" class="form-control">
+                            </div>
+
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Social Profiles JSON') }}</label>
+                                <textarea id="edit_social_profiles_json" name="social_profiles_json" class="form-control" rows="3"></textarea>
+                            </div>
+
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Open Graph Title') }}</label>
+                                <input type="text" id="edit_og_title" name="og_title" class="form-control">
+                            </div>
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Open Graph Type') }}</label>
+                                <select class="form-control" id="edit_og_type" name="og_type">
+                                    <option value="">{{ __('Default: website') }}</option>
+                                    <option value="website">website</option>
+                                    <option value="article">article</option>
+                                    <option value="product">product</option>
+                                    <option value="profile">profile</option>
+                                    <option value="business.business">business.business</option>
+                                </select>
+                            </div>
+
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Open Graph Description') }}</label>
+                                <textarea id="edit_og_description" name="og_description" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Open Graph Image URL') }}</label>
+                                <input type="text" id="edit_og_image" name="og_image" class="form-control">
+                            </div>
+
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Twitter Title') }}</label>
+                                <input type="text" id="edit_twitter_title" name="twitter_title" class="form-control">
+                            </div>
+                            <div class="col-sm-12 col-md-6 form-group">
+                                <label class="form-label">{{ __('Twitter Card') }}</label>
+                                <select class="form-control" id="edit_twitter_card" name="twitter_card">
+                                    <option value="">{{ __('Default: summary_large_image') }}</option>
+                                    <option value="summary">summary</option>
+                                    <option value="summary_large_image">summary_large_image</option>
+                                    <option value="app">app</option>
+                                    <option value="player">player</option>
+                                </select>
+                            </div>
+
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Twitter Description') }}</label>
+                                <textarea id="edit_twitter_description" name="twitter_description" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Twitter Image URL') }}</label>
+                                <input type="text" id="edit_twitter_image" name="twitter_image" class="form-control">
+                            </div>
+
+                            <div class="col-sm-6 col-md-3 form-group">
+                                <input type="hidden" name="robots_index" value="0">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_robots_index" name="robots_index" value="1">
+                                    <label class="form-check-label" for="edit_robots_index">{{ __('Robots Index') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3 form-group">
+                                <input type="hidden" name="robots_follow" value="0">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_robots_follow" name="robots_follow" value="1">
+                                    <label class="form-check-label" for="edit_robots_follow">{{ __('Robots Follow') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3 form-group">
+                                <input type="hidden" name="robots_noarchive" value="0">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_robots_noarchive" name="robots_noarchive" value="1">
+                                    <label class="form-check-label" for="edit_robots_noarchive">{{ __('No Archive') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3 form-group">
+                                <input type="hidden" name="robots_nosnippet" value="0">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_robots_nosnippet" name="robots_nosnippet" value="1">
+                                    <label class="form-check-label" for="edit_robots_nosnippet">{{ __('No Snippet') }}</label>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-12 form-group">
+                                <label class="form-label">{{ __('Custom Schema JSON-LD') }}</label>
+                                <textarea id="edit_schema_json" name="schema_json" class="form-control" rows="5"></textarea>
+                            </div>
+
                             <ul class="nav nav-tabs mt-3" role="tablist">
                                 @foreach($languages as $lang)
                                     <li class="nav-item" role="presentation">

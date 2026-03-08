@@ -6431,22 +6431,279 @@ public function getMyReview(Request $request)
         try {
             $validator = Validator::make($request->all(), [
                 'page' => 'nullable',
+                'include_global' => 'nullable|boolean',
             ]);
 
             if ($validator->fails()) {
                 ResponseService::validationError($validator->errors()->first());
             }
-            $settings = new SeoSetting;
+            $settings = SeoSetting::with('translations');
             if (! empty($request->page)) {
                 $settings = $settings->where('page', $request->page);
             }
 
             $settings = $settings->get();
-            ResponseService::successResponse(__('SEO settings fetched successfully.'), $settings);
+            $includeGlobal = ! $request->has('include_global') || $request->boolean('include_global');
+            $global = null;
+            if ($includeGlobal) {
+                $global = SeoSetting::with('translations')
+                    ->where('page', 'global')
+                    ->first();
+            }
+
+            $systemSettings = CachingService::getSystemSettings();
+            $systemSettings = is_object($systemSettings) && method_exists($systemSettings, 'toArray')
+                ? $systemSettings->toArray()
+                : (array) $systemSettings;
+
+            $payload = $settings->map(function (SeoSetting $setting) use ($global, $systemSettings) {
+                return $this->buildSeoSettingsApiPayload($setting, $global, $systemSettings);
+            })->values();
+
+            ResponseService::successResponse(__('SEO settings fetched successfully.'), $payload);
         } catch (Throwable $th) {
             ResponseService::logErrorResponse($th, 'API Controller -> seoSettings');
             ResponseService::errorResponse();
         }
+    }
+
+    private function resolveSeoAssetUrl($value): ?string
+    {
+        $rawValue = trim((string) ($value ?? ''));
+        if ($rawValue === '') {
+            return null;
+        }
+
+        if (str_starts_with($rawValue, 'http://') || str_starts_with($rawValue, 'https://')) {
+            return $rawValue;
+        }
+
+        return url(Storage::url($rawValue));
+    }
+
+    private function parseJsonOrNull($value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode((string) $value, true);
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    private function parseSeoBoolean($value, bool $default): bool
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return ((int) $value) === 1;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        if ($normalized === '') {
+            return $default;
+        }
+
+        if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+
+        if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
+
+        return $default;
+    }
+
+    private function coalesceSeoValue(...$candidates)
+    {
+        foreach ($candidates as $candidate) {
+            if ($candidate === null) {
+                continue;
+            }
+            if (is_string($candidate) && trim($candidate) === '') {
+                continue;
+            }
+            return $candidate;
+        }
+
+        return null;
+    }
+
+    private function buildSeoSettingsApiPayload(SeoSetting $setting, ?SeoSetting $global, array $systemSettings): array
+    {
+        $row = $setting->toArray();
+
+        $siteUrl = rtrim((string) (config('app.url') ?? url('/')), '/');
+        $companyName = trim((string) ($systemSettings['company_name'] ?? config('app.name') ?? ''));
+
+        $globalSocial = $this->parseJsonOrNull($global?->getRawOriginal('social_profiles_json'));
+        $localSocial = $this->parseJsonOrNull($setting->getRawOriginal('social_profiles_json'));
+        $socialProfiles = $localSocial ?: $globalSocial ?: array_values(array_filter([
+            $systemSettings['facebook_link'] ?? null,
+            $systemSettings['instagram_link'] ?? null,
+            $systemSettings['x_link'] ?? null,
+            $systemSettings['linkedin_link'] ?? null,
+            $systemSettings['pinterest_link'] ?? null,
+            $systemSettings['youtube_link'] ?? null,
+        ]));
+
+        $image = $this->coalesceSeoValue($setting->image, $global?->image, null);
+        $ogImage = $this->coalesceSeoValue(
+            $setting->og_image,
+            $global?->og_image,
+            $image
+        );
+        $twitterImage = $this->coalesceSeoValue(
+            $setting->twitter_image,
+            $global?->twitter_image,
+            $ogImage
+        );
+
+        $resolved = [
+            'title' => (string) $this->coalesceSeoValue(
+                $setting->translated_title,
+                $global?->translated_title,
+                $setting->title
+            ),
+            'description' => (string) $this->coalesceSeoValue(
+                $setting->translated_description,
+                $global?->translated_description,
+                $setting->description
+            ),
+            'keywords' => (string) $this->coalesceSeoValue(
+                $setting->translated_keywords,
+                $global?->translated_keywords,
+                $setting->keywords
+            ),
+            'image' => $image,
+            'canonical_url' => (string) $this->coalesceSeoValue(
+                $setting->canonical_url,
+                $global?->canonical_url,
+                null
+            ),
+            'site_name' => (string) $this->coalesceSeoValue(
+                $setting->site_name,
+                $global?->site_name,
+                $companyName !== '' ? $companyName : 'LMX'
+            ),
+            'search_path' => (string) $this->coalesceSeoValue(
+                $setting->search_path,
+                $global?->search_path,
+                '/ads?query={search_term_string}'
+            ),
+            'knowledge_graph_type' => (string) $this->coalesceSeoValue(
+                $setting->knowledge_graph_type,
+                $global?->knowledge_graph_type,
+                'Organization'
+            ),
+            'organization_name' => (string) $this->coalesceSeoValue(
+                $setting->organization_name,
+                $global?->organization_name,
+                $companyName
+            ),
+            'organization_logo' => $this->resolveSeoAssetUrl($this->coalesceSeoValue(
+                $setting->organization_logo,
+                $global?->organization_logo,
+                $systemSettings['company_logo'] ?? null
+            )),
+            'organization_phone' => (string) $this->coalesceSeoValue(
+                $setting->organization_phone,
+                $global?->organization_phone,
+                $systemSettings['company_tel1'] ?? null
+            ),
+            'organization_email' => (string) $this->coalesceSeoValue(
+                $setting->organization_email,
+                $global?->organization_email,
+                $systemSettings['company_email'] ?? null
+            ),
+            'organization_address' => (string) $this->coalesceSeoValue(
+                $setting->organization_address,
+                $global?->organization_address,
+                $systemSettings['company_address'] ?? null
+            ),
+            'social_profiles' => is_array($socialProfiles) ? $socialProfiles : [],
+            'og' => [
+                'title' => (string) $this->coalesceSeoValue(
+                    $setting->og_title,
+                    $global?->og_title,
+                    $setting->translated_title
+                ),
+                'description' => (string) $this->coalesceSeoValue(
+                    $setting->og_description,
+                    $global?->og_description,
+                    $setting->translated_description
+                ),
+                'image' => $ogImage,
+                'type' => (string) $this->coalesceSeoValue(
+                    $setting->og_type,
+                    $global?->og_type,
+                    'website'
+                ),
+            ],
+            'twitter' => [
+                'title' => (string) $this->coalesceSeoValue(
+                    $setting->twitter_title,
+                    $global?->twitter_title,
+                    $setting->og_title,
+                    $setting->translated_title
+                ),
+                'description' => (string) $this->coalesceSeoValue(
+                    $setting->twitter_description,
+                    $global?->twitter_description,
+                    $setting->og_description,
+                    $setting->translated_description
+                ),
+                'image' => $twitterImage,
+                'card' => (string) $this->coalesceSeoValue(
+                    $setting->twitter_card,
+                    $global?->twitter_card,
+                    'summary_large_image'
+                ),
+            ],
+            'robots' => [
+                'index' => $this->parseSeoBoolean(
+                    $setting->robots_index,
+                    $this->parseSeoBoolean($global?->robots_index, true)
+                ),
+                'follow' => $this->parseSeoBoolean(
+                    $setting->robots_follow,
+                    $this->parseSeoBoolean($global?->robots_follow, true)
+                ),
+                'noarchive' => $this->parseSeoBoolean(
+                    $setting->robots_noarchive,
+                    $this->parseSeoBoolean($global?->robots_noarchive, false)
+                ),
+                'nosnippet' => $this->parseSeoBoolean(
+                    $setting->robots_nosnippet,
+                    $this->parseSeoBoolean($global?->robots_nosnippet, false)
+                ),
+            ],
+            'schema' => $this->parseJsonOrNull($this->coalesceSeoValue(
+                $setting->schema_json,
+                $global?->schema_json,
+                null
+            )),
+            'site_url' => $siteUrl,
+        ];
+
+        $row['resolved'] = $resolved;
+
+        return $row;
     }
 
     public function updateSellerSettings(Request $request)

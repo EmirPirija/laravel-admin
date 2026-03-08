@@ -15,15 +15,74 @@ class SeoSetting extends Model
          'title',
          'description',
          'keywords',
-         'image'
+         'image',
+         'canonical_url',
+         'site_name',
+         'search_path',
+         'knowledge_graph_type',
+         'organization_name',
+         'organization_logo',
+         'organization_phone',
+         'organization_email',
+         'organization_address',
+         'social_profiles_json',
+         'og_title',
+         'og_description',
+         'og_image',
+         'og_type',
+         'twitter_title',
+         'twitter_description',
+         'twitter_image',
+         'twitter_card',
+         'robots_index',
+         'robots_follow',
+         'robots_noarchive',
+         'robots_nosnippet',
+         'schema_json',
     ];
+
+    protected $casts = [
+        'robots_index' => 'boolean',
+        'robots_follow' => 'boolean',
+        'robots_noarchive' => 'boolean',
+        'robots_nosnippet' => 'boolean',
+    ];
+
     protected $appends = ['translated_title','translated_description','translated_keywords'];
-    public function getImageAttribute($image) {
-        if (!empty($image)) {
-            return url(Storage::url($image));
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        $rawValue = trim((string) ($value ?? ''));
+        if ($rawValue === '') {
+            return null;
         }
-        return $image;
+
+        if (str_starts_with($rawValue, 'http://') || str_starts_with($rawValue, 'https://')) {
+            return $rawValue;
+        }
+
+        return url(Storage::url($rawValue));
     }
+
+    public function getImageAttribute($image) {
+        return $this->resolveMediaUrl($image);
+    }
+
+    public function getOgImageAttribute($image)
+    {
+        return $this->resolveMediaUrl($image);
+    }
+
+    public function getTwitterImageAttribute($image)
+    {
+        return $this->resolveMediaUrl($image);
+    }
+
+    public function getOrganizationLogoAttribute($logo)
+    {
+        return $this->resolveMediaUrl($logo);
+    }
+
     public function scopeSort($query, $column, $order) {
 
         $query = $query->orderBy($column, $order);
