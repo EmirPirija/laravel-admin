@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\AuthEventService;
 use App\Services\ResponseService;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -131,6 +132,10 @@ trait HandlesAuthIdentity
         $phoneVariants = $this->buildPhoneVariants($normalized);
         $mobileVariants = $phoneVariants['mobile'];
         $fullVariants = $phoneVariants['full'];
+        static $hasPhoneNormalizedColumn = null;
+        if ($hasPhoneNormalizedColumn === null) {
+            $hasPhoneNormalizedColumn = Schema::hasColumn('users', 'phone_normalized');
+        }
 
         $mobileCandidates = array_values(array_unique(array_filter([
             ...$mobileVariants,
@@ -157,7 +162,13 @@ trait HandlesAuthIdentity
             $query->whereNotNull('phone_verified_at');
         }
 
-        $query->where(function ($outer) use ($mobileCandidates, $countryCandidates, $mobileVariants) {
+        $query->where(function ($outer) use (
+            $mobileCandidates,
+            $countryCandidates,
+            $mobileVariants,
+            $hasPhoneNormalizedColumn,
+            $fullVariants
+        ) {
             if (! empty($mobileCandidates)) {
                 $outer->whereIn('mobile', $mobileCandidates);
             }
@@ -169,11 +180,19 @@ trait HandlesAuthIdentity
                         ->whereIn('country_code', $countryCandidates);
                 });
             }
+
+            if ($hasPhoneNormalizedColumn && ! empty($fullVariants)) {
+                $outer->orWhereIn('phone_normalized', $fullVariants);
+            }
         });
 
         $candidates = $query->get();
 
         foreach ($candidates as $candidate) {
+            $candidatePhoneNormalized = $this->normalizePhoneDigits($candidate->phone_normalized ?? null);
+            if ($candidatePhoneNormalized !== '' && in_array($candidatePhoneNormalized, $fullVariants, true)) {
+                return $candidate;
+            }
             if (in_array($this->normalizedUserPhone($candidate), $fullVariants, true)) {
                 return $candidate;
             }
