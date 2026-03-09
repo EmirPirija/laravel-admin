@@ -229,6 +229,7 @@ protected static function booted()
             $firebase_id = $request->firebase_id;
             $authIntent = $request->input('auth_intent', 'login');
             $phoneRegisterFallbackToLogin = false;
+            $phoneAutoProvisioned = false;
             $normalizedEmail = $this->normalizeEmail($request->email);
             $phoneInput = $this->normalizePhoneInput($request->country_code, $request->mobile);
             $eventIdentifier = $type === 'phone'
@@ -306,14 +307,11 @@ protected static function booted()
                         $phoneRegisterFallbackToLogin = true;
                     }
 
-                    if (! $existingPhoneUser && $authIntent === 'login') {
-                        $this->phoneNotRegisteredResponse();
-                    }
-
                     DB::beginTransaction();
                     if ($existingPhoneUser) {
                         $user = $existingPhoneUser;
                     } else {
+                        $phoneAutoProvisioned = true;
                         $user = User::create([
                             ...$request->all(),
                             'mobile' => $phoneInput['mobile'],
@@ -449,16 +447,22 @@ protected static function booted()
                 'intent' => $authIntent,
                 'user_id' => $auth->id ?? null,
                 'register_fallback_login' => $phoneRegisterFallbackToLogin,
+                'phone_auto_provisioned' => $phoneAutoProvisioned,
             ], 'success', $eventIdentifier, $auth->id ?? null);
 
-            $successMessage = ($type === 'phone' && $phoneRegisterFallbackToLogin)
-                ? __('Broj je već registrovan. Prijavili smo vas na postojeći račun.')
-                : __('User logged-in successfully');
+            if ($type === 'phone' && $phoneRegisterFallbackToLogin) {
+                $successMessage = __('Broj je već registrovan. Prijavili smo vas na postojeći račun.');
+            } elseif ($type === 'phone' && $phoneAutoProvisioned) {
+                $successMessage = __('Novi račun je uspješno kreiran putem broja telefona.');
+            } else {
+                $successMessage = __('User logged-in successfully');
+            }
 
             ResponseService::successResponse($successMessage, $auth, [
                 'token' => $token,
                 'meta' => [
                     'register_fallback_login' => $phoneRegisterFallbackToLogin,
+                    'phone_auto_provisioned' => $phoneAutoProvisioned,
                 ],
             ]);
         } catch (Throwable $th) {
@@ -466,7 +470,7 @@ protected static function booted()
                 DB::rollBack();
             }
             if ($this->isUniqueConstraintViolation($th)) {
-                $recovered = $this->attemptRecoverPhoneRegisterConflictAsLogin($request);
+                $recovered = $this->attemptRecoverPhoneConflictAsLogin($request);
                 if ($recovered) {
                     return;
                 }
@@ -480,13 +484,13 @@ protected static function booted()
         }
     }
 
-    private function attemptRecoverPhoneRegisterConflictAsLogin(Request $request): bool
+    private function attemptRecoverPhoneConflictAsLogin(Request $request): bool
     {
         $type = (string) $request->input('type', '');
         $authIntent = (string) $request->input('auth_intent', 'login');
         $firebaseId = (string) $request->input('firebase_id', '');
 
-        if ($type !== 'phone' || $authIntent !== 'register' || $firebaseId === '') {
+        if ($type !== 'phone' || $firebaseId === '') {
             return false;
         }
 
@@ -572,6 +576,7 @@ protected static function booted()
                 'meta' => [
                     'register_fallback_login' => true,
                     'recovered_from_conflict' => true,
+                    'phone_auto_provisioned' => false,
                 ],
             ]
         );
@@ -6981,17 +6986,9 @@ public function getMyReview(Request $request)
                 true
             );
 
-            if ($intent === 'login' && empty($existingUser)) {
-                $this->phoneNotRegisteredResponse();
-            }
-
-            if ($intent === 'register' && ! empty($existingUser)) {
-                return ResponseService::conflictResponse(
-                    __('Broj telefona je već registrovan. Prijavite se ili koristite drugi broj.'),
-                    ['reason' => 'phone_already_registered'],
-                    config('constants.RESPONSE_CODE.CONFLICT')
-                );
-            }
+            // Phone auth is intentionally unified:
+            // login/register intents do not block OTP dispatch based on current account existence.
+            // The final account resolution happens after OTP verification.
 
             if ($intent === 'profile_verification') {
                 if (! Auth::check()) {
@@ -7180,12 +7177,9 @@ public function getMyReview(Request $request)
             );
 
             $registerFallbackToLogin = $intent === 'register' && ! empty($user);
+            $phoneAutoProvisioned = false;
 
             if (! $user) {
-                if ($intent === 'login') {
-                    $this->phoneNotRegisteredResponse();
-                }
-
                 $defaultCountryCode = $loginCountryCode ?: null;
                 $normalizedForStore = $this->normalizePhoneInput($defaultCountryCode, $trimmedNumber);
                 $mobileToStore = $normalizedForStore['mobile'] !== ''
@@ -7199,6 +7193,7 @@ public function getMyReview(Request $request)
                     'phone_verified_at' => now(),
                 ]);
                 $user->assignRole('User');
+                $phoneAutoProvisioned = true;
             }
 
             if (! $user->hasRole('User')) {
@@ -7222,16 +7217,22 @@ public function getMyReview(Request $request)
                 'intent' => $intent,
                 'user_id' => $auth->id,
                 'register_fallback_login' => $registerFallbackToLogin,
+                'phone_auto_provisioned' => $phoneAutoProvisioned,
             ], 'success', $toNumber, $auth->id);
 
-            $successMessage = $registerFallbackToLogin
-                ? __('Broj je već registrovan. Prijavili smo vas na postojeći račun.')
-                : __('User logged-in successfully');
+            if ($registerFallbackToLogin) {
+                $successMessage = __('Broj je već registrovan. Prijavili smo vas na postojeći račun.');
+            } elseif ($phoneAutoProvisioned) {
+                $successMessage = __('Novi račun je uspješno kreiran putem broja telefona.');
+            } else {
+                $successMessage = __('User logged-in successfully');
+            }
 
             return ResponseService::successResponse($successMessage, $auth, [
                 'token' => $token,
                 'meta' => [
                     'register_fallback_login' => $registerFallbackToLogin,
+                    'phone_auto_provisioned' => $phoneAutoProvisioned,
                 ],
             ]);
         } catch (Throwable $th) {
