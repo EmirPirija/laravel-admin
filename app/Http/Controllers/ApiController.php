@@ -466,6 +466,10 @@ protected static function booted()
                 DB::rollBack();
             }
             if ($this->isUniqueConstraintViolation($th)) {
+                $recovered = $this->attemptRecoverPhoneRegisterConflictAsLogin($request);
+                if ($recovered) {
+                    return;
+                }
                 $this->throwIdentityConflictFromException($th);
             }
             AuthEventService::log('signup_failed', [
@@ -474,6 +478,105 @@ protected static function booted()
             ResponseService::logErrorResponse($th, 'API Controller -> Signup');
             ResponseService::errorResponse();
         }
+    }
+
+    private function attemptRecoverPhoneRegisterConflictAsLogin(Request $request): bool
+    {
+        $type = (string) $request->input('type', '');
+        $authIntent = (string) $request->input('auth_intent', 'login');
+        $firebaseId = (string) $request->input('firebase_id', '');
+
+        if ($type !== 'phone' || $authIntent !== 'register' || $firebaseId === '') {
+            return false;
+        }
+
+        $phoneInput = $this->normalizePhoneInput(
+            $request->input('country_code'),
+            $request->input('mobile')
+        );
+        if (($phoneInput['full'] ?? '') === '') {
+            return false;
+        }
+
+        $existingPhoneUser = $this->findPhoneConflict(
+            $phoneInput['country'] ?? null,
+            $phoneInput['mobile'] ?? null,
+            null,
+            false,
+            true
+        );
+
+        if (! $existingPhoneUser || ! $existingPhoneUser->hasRole('User')) {
+            return false;
+        }
+
+        if (! empty($existingPhoneUser->deleted_at)) {
+            ResponseService::errorResponse(
+                __('Your account has been deactivated.'),
+                null,
+                config('constants.RESPONSE_CODE.DEACTIVATED_ACCOUNT'),
+                null,
+                403
+            );
+        }
+
+        SocialLogin::updateOrCreate([
+            'type' => 'phone',
+            'user_id' => $existingPhoneUser->id,
+        ], [
+            'firebase_id' => $firebaseId,
+        ]);
+
+        Auth::login($existingPhoneUser);
+        $auth = User::find($existingPhoneUser->id);
+        if (! $auth) {
+            return false;
+        }
+
+        if (! empty($request->fcm_id)) {
+            UserFcmToken::updateOrCreate(
+                ['fcm_token' => $request->fcm_id],
+                [
+                    'user_id' => $auth->id,
+                    'platform_type' => $request->platform_type,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]
+            );
+        }
+
+        $auth->fcm_id = $request->fcm_id;
+        if (! empty($request->registration)) {
+            $token = null;
+        } else {
+            $token = $auth->createToken($auth->name ?? '')->plainTextToken;
+            $this->persistTokenSessionMetadata($token, $request, $request->platform_type);
+        }
+
+        if ($auth && ! empty($auth->email) && filter_var($auth->email, FILTER_VALIDATE_EMAIL)) {
+            NotificationService::sendNewDeviceLoginEmail($auth, $request);
+        }
+
+        AuthEventService::log('signup_conflict_recovered_as_login', [
+            'type' => 'phone',
+            'intent' => $authIntent,
+            'user_id' => $auth->id ?? null,
+            'reason' => 'phone_already_registered',
+        ], 'success', $phoneInput['full'] ?? null, $auth->id ?? null);
+
+        ResponseService::successResponse(
+            __('Broj je već registrovan. Prijavili smo vas na postojeći račun.'),
+            $auth,
+            [
+                'token' => $token,
+                'meta' => [
+                    'register_fallback_login' => true,
+                    'recovered_from_conflict' => true,
+                ],
+            ]
+        );
+
+        return true;
     }
 
     public function resolveLoginIdentifier(Request $request)
