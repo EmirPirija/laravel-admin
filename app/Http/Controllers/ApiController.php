@@ -7013,12 +7013,24 @@ public function getMyReview(Request $request)
                 }
             }
 
+            [$otp, $expireAt] = $this->upsertOtpCode($toNumber);
+
             // Fetch Twilio credentials from settings
             $twilioSettings = Setting::whereIn('name', [
                 'twilio_account_sid', 'twilio_auth_token', 'twilio_my_phone_number',
             ])->pluck('value', 'name');
 
             if (! $twilioSettings->all()) {
+                if ($this->canUseLocalOtpDebugFallback()) {
+                    AuthEventService::log('otp_send_success', [
+                        'provider' => 'local_debug',
+                    ], 'success', $toNumber);
+                    return ResponseService::successResponse(__('OTP generated successfully.'), [
+                        'delivery' => 'local_debug',
+                        'dev_otp_preview' => (string) $otp,
+                        'expires_at' => $expireAt->toIso8601String(),
+                    ]);
+                }
                 return ResponseService::errorResponse(__('Twilio settings are missing. Please contact admin.'));
             }
 
@@ -7032,23 +7044,40 @@ public function getMyReview(Request $request)
             try {
                 $client->lookups->v1->phoneNumbers($toNumber)->fetch();
             } catch (Throwable $e) {
+                if ($this->canUseLocalOtpDebugFallback()) {
+                    AuthEventService::log('otp_send_success', [
+                        'provider' => 'local_debug',
+                        'reason' => 'lookup_failed_fallback',
+                    ], 'success', $toNumber);
+                    return ResponseService::successResponse(__('OTP generated successfully.'), [
+                        'delivery' => 'local_debug',
+                        'dev_otp_preview' => (string) $otp,
+                        'expires_at' => $expireAt->toIso8601String(),
+                    ]);
+                }
                 return ResponseService::errorResponse(__('Invalid phone number.'));
             }
 
-            $existingOtp = NumberOtp::where('number', $toNumber)->where('expire_at', '>', now())->first();
-            $otp = $existingOtp ? $existingOtp->otp : rand(100000, 999999);
-            $expireAt = now()->addMinutes(10);
-
-            NumberOtp::updateOrCreate(
-                ['number' => $toNumber],
-                ['otp' => $otp, 'expire_at' => $expireAt]
-            );
-
             // Send OTP via Twilio
-            $client->messages->create($toNumber, [
-                'from' => $fromNumber,
-                'body' => "Your OTP is: $otp. It expires in 10 minutes.",
-            ]);
+            try {
+                $client->messages->create($toNumber, [
+                    'from' => $fromNumber,
+                    'body' => "Your OTP is: $otp. It expires in 10 minutes.",
+                ]);
+            } catch (Throwable $e) {
+                if ($this->canUseLocalOtpDebugFallback()) {
+                    AuthEventService::log('otp_send_success', [
+                        'provider' => 'local_debug',
+                        'reason' => 'sms_send_failed_fallback',
+                    ], 'success', $toNumber);
+                    return ResponseService::successResponse(__('OTP generated successfully.'), [
+                        'delivery' => 'local_debug',
+                        'dev_otp_preview' => (string) $otp,
+                        'expires_at' => $expireAt->toIso8601String(),
+                    ]);
+                }
+                throw $e;
+            }
             AuthEventService::log('otp_send_success', [], 'success', $toNumber);
 
             return ResponseService::successResponse(__('OTP sent successfully.'));
@@ -7060,6 +7089,27 @@ public function getMyReview(Request $request)
 
             return ResponseService::errorResponse();
         }
+    }
+
+    private function canUseLocalOtpDebugFallback(): bool
+    {
+        return app()->environment(['local', 'development']) || (bool) config('app.debug');
+    }
+
+    private function upsertOtpCode(string $toNumber): array
+    {
+        $existingOtp = NumberOtp::where('number', $toNumber)
+            ->where('expire_at', '>', now())
+            ->first();
+        $otp = $existingOtp ? $existingOtp->otp : rand(100000, 999999);
+        $expireAt = now()->addMinutes(10);
+
+        NumberOtp::updateOrCreate(
+            ['number' => $toNumber],
+            ['otp' => $otp, 'expire_at' => $expireAt]
+        );
+
+        return [$otp, $expireAt];
     }
 
     public function verifyOtp(Request $request)
