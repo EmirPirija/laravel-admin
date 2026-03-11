@@ -86,12 +86,14 @@ class PhonePePayment implements PaymentInterface
             $response = curl_exec($tokenCurl);
             curl_close($tokenCurl);
 
-            // Decode token response
-            $tokenResponse = json_decode($response, true);
+            $tokenResponse = json_decode((string) $response, true);
             $accessToken = $tokenResponse['access_token'] ?? null;
-
             if (!$accessToken) {
-                dd("Failed to retrieve token", $response);
+                Log::error('PhonePe OAuth token fetch failed', [
+                    'http_response' => $response,
+                    'token_response' => $tokenResponse,
+                ]);
+                throw new Exception('Failed to retrieve PhonePe access token.');
             }
             // Build JSON payload properly
             $paymentData = [
@@ -130,13 +132,24 @@ class PhonePePayment implements PaymentInterface
             ));
 
             $response = curl_exec($payCUrl);
-            $final_response = json_decode($response, true);
-            if (!empty($final_response)) {
-
-                $redirectURL =  $final_response['redirectUrl'];
-                return $this->formatPaymentIntent($transactionId, $amount, 'INR', 'pending', $customMetaData, $redirectURL);
+            $final_response = json_decode((string) $response, true);
+            if (!empty($final_response) && !empty($final_response['redirectUrl'])) {
+                $redirectURL = $final_response['redirectUrl'];
+                return $this->formatPaymentIntent(
+                    $transactionId,
+                    $amount,
+                    'INR',
+                    'pending',
+                    $customMetaData,
+                    $redirectURL
+                );
             }
+            Log::error('PhonePe checkout order failed', [
+                'http_response' => $response,
+                'decoded_response' => $final_response,
+            ]);
             curl_close($payCUrl);
+            throw new Exception('PhonePe checkout order failed.');
         } else {
             $redirectUrl = route('phonepe.success');
             $orderId = 'TX' . time(); // unique order ID
@@ -176,7 +189,7 @@ class PhonePePayment implements PaymentInterface
                 "token" => $token,
             ];
         }
-        throw new Exception("Error initiating payment: " . $redirectURL);
+        throw new Exception('Error initiating PhonePe payment.');
     }
 
     /**

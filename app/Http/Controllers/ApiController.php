@@ -7031,7 +7031,13 @@ public function getMyReview(Request $request)
                         'expires_at' => $expireAt->toIso8601String(),
                     ]);
                 }
-                return ResponseService::errorResponse(__('Twilio settings are missing. Please contact admin.'));
+                return ResponseService::errorResponse(
+                    __('OTP servis trenutno nije dostupan. Pokušajte kasnije.'),
+                    ['reason' => 'otp_provider_unavailable'],
+                    config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
+                    null,
+                    503
+                );
             }
 
             $sid = $twilioSettings['twilio_account_sid'];
@@ -7055,7 +7061,7 @@ public function getMyReview(Request $request)
                         'expires_at' => $expireAt->toIso8601String(),
                     ]);
                 }
-                return ResponseService::errorResponse(__('Invalid phone number.'));
+                return ResponseService::validationError(__('Unesite ispravan broj telefona.'));
             }
 
             // Send OTP via Twilio
@@ -7076,7 +7082,13 @@ public function getMyReview(Request $request)
                         'expires_at' => $expireAt->toIso8601String(),
                     ]);
                 }
-                throw $e;
+                return ResponseService::errorResponse(
+                    __('OTP servis trenutno nije dostupan. Pokušajte kasnije.'),
+                    ['reason' => 'otp_send_failed'],
+                    config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
+                    null,
+                    503
+                );
             }
             AuthEventService::log('otp_send_success', [], 'success', $toNumber);
 
