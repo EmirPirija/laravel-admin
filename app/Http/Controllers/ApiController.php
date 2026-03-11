@@ -7020,10 +7020,16 @@ public function getMyReview(Request $request)
                 'twilio_account_sid', 'twilio_auth_token', 'twilio_my_phone_number',
             ])->pluck('value', 'name');
 
-            if (! $twilioSettings->all()) {
+            $sid = trim((string) ($twilioSettings['twilio_account_sid'] ?? ''));
+            $token = trim((string) ($twilioSettings['twilio_auth_token'] ?? ''));
+            $fromNumber = trim((string) ($twilioSettings['twilio_my_phone_number'] ?? ''));
+            $hasTwilioConfig = $sid !== '' && $token !== '' && $fromNumber !== '';
+
+            if (! $hasTwilioConfig) {
                 if ($this->canUseLocalOtpDebugFallback()) {
                     AuthEventService::log('otp_send_success', [
                         'provider' => 'local_debug',
+                        'reason' => 'twilio_config_missing',
                     ], 'success', $toNumber);
                     return ResponseService::successResponse(__('OTP generated successfully.'), [
                         'delivery' => 'local_debug',
@@ -7040,11 +7046,28 @@ public function getMyReview(Request $request)
                 );
             }
 
-            $sid = $twilioSettings['twilio_account_sid'];
-            $token = $twilioSettings['twilio_auth_token'];
-            $fromNumber = $twilioSettings['twilio_my_phone_number'];
-
-            $client = new TwilioRestClient($sid, $token);
+            try {
+                $client = new TwilioRestClient($sid, $token);
+            } catch (Throwable $e) {
+                if ($this->canUseLocalOtpDebugFallback()) {
+                    AuthEventService::log('otp_send_success', [
+                        'provider' => 'local_debug',
+                        'reason' => 'twilio_client_init_failed',
+                    ], 'success', $toNumber);
+                    return ResponseService::successResponse(__('OTP generated successfully.'), [
+                        'delivery' => 'local_debug',
+                        'dev_otp_preview' => (string) $otp,
+                        'expires_at' => $expireAt->toIso8601String(),
+                    ]);
+                }
+                return ResponseService::errorResponse(
+                    __('OTP servis trenutno nije dostupan. Pokušajte kasnije.'),
+                    ['reason' => 'otp_provider_misconfigured'],
+                    config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
+                    null,
+                    503
+                );
+            }
 
             // Validate phone number using Twilio Lookup API
             try {
