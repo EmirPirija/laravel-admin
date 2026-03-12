@@ -28,6 +28,7 @@ class FeedImportProcessorService
     private static ?float $cachedLongitude = null;
     private static ?int $cachedFallbackCategoryId = null;
     private static array $cachedCategoryFields = [];
+    private static ?array $cachedCategoryHintPool = null;
 
     /**
      * Process queued/created feed import and persist summary status.
@@ -94,6 +95,638 @@ class FeedImportProcessorService
         }
 
         return $this->finalizeImport($import, $imported, $failed, $results, $status, $message, $requested, $urls);
+    }
+
+    /**
+     * Dry-run preview for wizard based imports.
+     *
+     * @return array{
+     *   requested_sources:int,
+     *   processed_sources:int,
+     *   success_sources:int,
+     *   failed_sources:int,
+     *   entries_total:int,
+     *   entries_ready:int,
+     *   entries:array<int,array<string,mixed>>,
+     *   source_results:array<int,array<string,mixed>>,
+     *   domain_summary:array<string,int>,
+     *   generated_at:string
+     * }
+     */
+    public function previewSources(array $rawUrls, ?int $forcedCategoryId = null, int $maxEntriesPerSource = 15): array
+    {
+        $urls = collect($rawUrls)
+            ->map(fn ($url) => $this->toValidUrl($url))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $maxEntriesPerSource = max(1, min(50, $maxEntriesPerSource));
+        $allEntries = [];
+        $sourceResults = [];
+        $successSources = 0;
+        $failedSources = 0;
+
+        foreach ($urls as $url) {
+            $sourceResult = [
+                'source_url' => $url,
+                'source_host' => parse_url($url, PHP_URL_HOST) ?: null,
+                'status' => 'failed',
+                'http_status' => null,
+                'message' => null,
+                'blocked' => false,
+                'entries_count' => 0,
+            ];
+
+            try {
+                $response = $this->fetchUrl($url);
+                $body = (string) $response->body();
+                $contentType = (string) $response->header('Content-Type', '');
+                $sourceResult['http_status'] = $response->status();
+
+                if ($response->status() === 404 || $response->serverError()) {
+                    $sourceResult['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
+                    $failedSources++;
+                    $sourceResults[] = $sourceResult;
+                    continue;
+                }
+
+                if ($this->looksLikeAccessProtectionPage($body)) {
+                    $sourceResult['blocked'] = true;
+                    $sourceResult['message'] = 'Udaljeni sajt je blokirao automatski pristup (Cloudflare/anti-bot).';
+                    $failedSources++;
+                    $sourceResults[] = $sourceResult;
+                    continue;
+                }
+
+                $entries = $this->extractEntriesFromResponse($url, $body, $contentType, 'api');
+                if (count($entries) === 0) {
+                    $sourceResult['message'] = 'Nisu pronađeni proizvodi za preview.';
+                    $failedSources++;
+                    $sourceResults[] = $sourceResult;
+                    continue;
+                }
+
+                $preparedCount = 0;
+                foreach ($entries as $index => $entry) {
+                    if ($preparedCount >= $maxEntriesPerSource) {
+                        break;
+                    }
+
+                    $entryUrl = $this->toValidUrl($entry['source_url'] ?? null, $url);
+                    if (! $entryUrl) {
+                        $entryKey = trim((string) ($entry['title'] ?? '')) . '|' . trim((string) ($entry['price'] ?? ''));
+                        $entryHash = substr(sha1($entryKey ?: ('row-' . $index)), 0, 10);
+                        $entryUrl = rtrim($url, '/') . '#preview-' . ($index + 1) . '-' . $entryHash;
+                    }
+
+                    $previewEntry = $this->buildPreviewEntry($entry, $entryUrl, $forcedCategoryId, $index + 1);
+                    $allEntries[] = $previewEntry;
+                    $preparedCount++;
+                }
+
+                $sourceResult['status'] = 'ok';
+                $sourceResult['entries_count'] = $preparedCount;
+                $sourceResult['message'] = $preparedCount > 0
+                    ? 'Preview uspješno generisan.'
+                    : 'Izvor obrađen, ali nije bilo dovoljno podataka za preview.';
+
+                if ($preparedCount > 0) {
+                    $successSources++;
+                } else {
+                    $failedSources++;
+                }
+            } catch (Throwable $th) {
+                $sourceResult['message'] = 'Greška obrade: ' . Str::limit((string) $th->getMessage(), 180, '...');
+                $failedSources++;
+            }
+
+            $sourceResults[] = $sourceResult;
+        }
+
+        $domainSummary = [];
+        foreach ($allEntries as $entry) {
+            $host = trim((string) ($entry['source_host'] ?? 'nepoznat'));
+            $domainSummary[$host] = ($domainSummary[$host] ?? 0) + 1;
+        }
+        ksort($domainSummary);
+
+        $entriesReady = collect($allEntries)
+            ->filter(static fn (array $entry) => ($entry['is_ready'] ?? false) === true)
+            ->count();
+
+        return [
+            'requested_sources' => count($urls),
+            'processed_sources' => count($sourceResults),
+            'success_sources' => $successSources,
+            'failed_sources' => $failedSources,
+            'entries_total' => count($allEntries),
+            'entries_ready' => (int) $entriesReady,
+            'entries' => $allEntries,
+            'source_results' => $sourceResults,
+            'domain_summary' => $domainSummary,
+            'generated_at' => now()->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Commit preview-ed entries into actual LMX ads.
+     *
+     * @return array{
+     *   requested_count:int,
+     *   imported_count:int,
+     *   failed_count:int,
+     *   item_ids:array<int,int>,
+     *   results:array<int,array<string,mixed>>
+     * }
+     */
+    public function importPreparedEntries(int $userId, array $entries, ?int $fallbackCategoryId = null): array
+    {
+        $results = [];
+        $importedCount = 0;
+        $failedCount = 0;
+        $itemIds = [];
+
+        foreach ($entries as $index => $rawEntry) {
+            if (! is_array($rawEntry)) {
+                $failedCount++;
+                $results[] = [
+                    'index' => $index,
+                    'ok' => false,
+                    'message' => 'Neispravan format zapisa za import.',
+                ];
+                continue;
+            }
+
+            $entry = $this->sanitizePreparedEntry($rawEntry);
+            $entryCategoryId = isset($entry['category_id']) ? (int) $entry['category_id'] : null;
+            $categoryId = $this->resolvePreviewCategoryId($entryCategoryId ?: $fallbackCategoryId);
+            $sourceUrl = $this->toValidUrl($entry['source_url'] ?? null);
+
+            if (! $sourceUrl) {
+                $fallbackBase = 'https://import.lmx.ba/product-' . ($index + 1);
+                $sourceUrl = rtrim($fallbackBase, '/');
+            }
+
+            if (! $categoryId) {
+                $failedCount++;
+                $results[] = [
+                    'index' => $index,
+                    'source_url' => $sourceUrl,
+                    'ok' => false,
+                    'message' => 'Kategorija nije odabrana ili nije validna.',
+                ];
+                continue;
+            }
+
+            if (! $this->isEntryMeaningful($entry, $sourceUrl)) {
+                $failedCount++;
+                $results[] = [
+                    'index' => $index,
+                    'source_url' => $sourceUrl,
+                    'ok' => false,
+                    'message' => 'Zapis nema dovoljno podataka za kreiranje oglasa.',
+                ];
+                continue;
+            }
+
+            $virtualImport = new InstagramImport([
+                'user_id' => $userId,
+                'category_id' => $categoryId,
+                'feed_format' => 'api',
+            ]);
+
+            try {
+                $item = $this->upsertItemFromEntry($virtualImport, $entry, $sourceUrl);
+                if (! $item) {
+                    $failedCount++;
+                    $results[] = [
+                        'index' => $index,
+                        'source_url' => $sourceUrl,
+                        'ok' => false,
+                        'message' => 'Nije moguće kreirati ili ažurirati oglas.',
+                    ];
+                    continue;
+                }
+
+                $itemId = (int) $item->id;
+                $itemIds[] = $itemId;
+                $importedCount++;
+
+                $results[] = [
+                    'index' => $index,
+                    'source_url' => $sourceUrl,
+                    'ok' => true,
+                    'item_id' => $itemId,
+                    'slug' => $item->slug,
+                    'message' => 'Oglas je uspješno kreiran/ažuriran.',
+                ];
+            } catch (Throwable $th) {
+                $failedCount++;
+                $results[] = [
+                    'index' => $index,
+                    'source_url' => $sourceUrl,
+                    'ok' => false,
+                    'message' => 'Greška obrade: ' . Str::limit((string) $th->getMessage(), 180, '...'),
+                ];
+            }
+        }
+
+        return [
+            'requested_count' => count($entries),
+            'imported_count' => $importedCount,
+            'failed_count' => $failedCount,
+            'item_ids' => array_values(array_unique($itemIds)),
+            'results' => $results,
+        ];
+    }
+
+    private function buildPreviewEntry(array $entry, string $sourceUrl, ?int $forcedCategoryId, int $rowNumber): array
+    {
+        $title = trim((string) ($entry['title'] ?? ''));
+        if ($title === '') {
+            $title = $this->titleFromUrl($sourceUrl);
+        }
+
+        $description = trim((string) ($entry['description'] ?? ''));
+        $price = $this->normalizePrice($entry['price'] ?? null);
+        $oldPrice = $this->normalizePrice($entry['old_price'] ?? null);
+
+        if (($price === null || $price <= 0) && $oldPrice !== null && $oldPrice > 0) {
+            $price = $oldPrice;
+            $oldPrice = null;
+        }
+
+        $images = $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl);
+        $image = $this->toValidUrl($entry['image'] ?? null, $sourceUrl) ?: ($images[0] ?? null);
+        $video = $this->toValidUrl($entry['video'] ?? ($entry['video_link'] ?? null), $sourceUrl);
+        $specs = $this->normalizeSpecs($entry['specs'] ?? null);
+
+        $quality = $this->evaluatePreviewQuality([
+            'title' => $title,
+            'description' => $description,
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $image,
+            'images' => $images,
+            'video' => $video,
+            'specs' => $specs,
+        ], $sourceUrl);
+
+        $categoryHint = $this->suggestCategoryHintsForEntry(
+            [
+                'title' => $title,
+                'description' => $description,
+                'specs' => $specs,
+            ],
+            $forcedCategoryId
+        );
+
+        $selectedCategoryId = $this->resolvePreviewCategoryId(
+            $forcedCategoryId ?: ($categoryHint['primary']['id'] ?? null)
+        );
+
+        $host = parse_url($sourceUrl, PHP_URL_HOST) ?: null;
+        $previewId = 'preview_' . substr(
+            sha1(($host ?: 'source') . '|' . $sourceUrl . '|' . $title . '|' . ($price ?? 'none') . '|' . $rowNumber),
+            0,
+            16
+        );
+
+        return [
+            'preview_id' => $previewId,
+            'source_url' => $sourceUrl,
+            'source_host' => $host,
+            'title' => $title,
+            'description' => $description,
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $image,
+            'images' => $images,
+            'video' => $video,
+            'specs' => $specs,
+            'quality_score' => $quality['score'],
+            'quality_level' => $quality['level'],
+            'warnings' => $quality['warnings'],
+            'is_ready' => $quality['is_ready'],
+            'selected_category_id' => $selectedCategoryId,
+            'category_suggestion' => $categoryHint['primary'],
+            'category_candidates' => $categoryHint['candidates'],
+        ];
+    }
+
+    private function sanitizePreparedEntry(array $entry): array
+    {
+        $sourceUrl = $this->toValidUrl($entry['source_url'] ?? null);
+        $title = trim((string) ($entry['title'] ?? ''));
+        $description = trim((string) ($entry['description'] ?? ''));
+        $price = $entry['price'] ?? null;
+        $oldPrice = $entry['old_price'] ?? null;
+        $image = $this->toValidUrl($entry['image'] ?? null, $sourceUrl);
+        $images = $this->normalizeImageUrls($entry['images'] ?? [], $sourceUrl);
+        $video = $this->toValidUrl($entry['video'] ?? ($entry['video_link'] ?? null), $sourceUrl);
+        $specs = $this->normalizeSpecs($entry['specs'] ?? []);
+
+        if (! $image && count($images) > 0) {
+            $image = $images[0];
+        }
+
+        return [
+            'source_url' => $sourceUrl,
+            'title' => Str::limit($title, 180, ''),
+            'description' => Str::limit($description, 5000, ''),
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $image,
+            'images' => array_slice($images, 0, 16),
+            'video' => $video,
+            'specs' => array_slice($specs, 0, 16),
+            'category_id' => isset($entry['category_id']) ? (int) $entry['category_id'] : null,
+        ];
+    }
+
+    private function evaluatePreviewQuality(array $entry, string $sourceUrl): array
+    {
+        $score = 0;
+        $warnings = [];
+
+        $title = trim((string) ($entry['title'] ?? ''));
+        $description = trim((string) ($entry['description'] ?? ''));
+        $price = $this->normalizePrice($entry['price'] ?? null);
+        $oldPrice = $this->normalizePrice($entry['old_price'] ?? null);
+        $image = $this->toValidUrl($entry['image'] ?? null, $sourceUrl);
+        $images = $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl);
+        $video = $this->toValidUrl($entry['video'] ?? null, $sourceUrl);
+        $specs = $this->normalizeSpecs($entry['specs'] ?? null);
+
+        if ($title !== '' && strlen($title) >= 6 && ! $this->looksGenericBlockedTitle($title)) {
+            $score += 25;
+        } else {
+            $warnings[] = 'Nedostaje kvalitetan naslov.';
+        }
+
+        if ($description !== '' && strlen($description) >= 30) {
+            $score += 18;
+        } else {
+            $warnings[] = 'Opis je kratak ili nedostaje.';
+        }
+
+        if ($price !== null && $price > 0) {
+            $score += 24;
+        } elseif ($oldPrice !== null && $oldPrice > 0) {
+            $score += 10;
+            $warnings[] = 'Pronađena je samo stara cijena.';
+        } else {
+            $warnings[] = 'Cijena nije pronađena.';
+        }
+
+        if ($image || count($images) > 0) {
+            $score += 18;
+        } else {
+            $warnings[] = 'Nedostaje slika proizvoda.';
+        }
+
+        if (count($specs) >= 3) {
+            $score += 10;
+        } elseif (count($specs) > 0) {
+            $score += 4;
+        } else {
+            $warnings[] = 'Nema tehničkih specifikacija.';
+        }
+
+        if ($video) {
+            $score += 3;
+        }
+
+        $isMeaningful = $this->isEntryMeaningful([
+            'title' => $title,
+            'description' => $description,
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $image,
+            'images' => $images,
+            'video' => $video,
+            'specs' => $specs,
+        ], $sourceUrl);
+
+        $score = min(100, max(0, $score));
+        $level = 'low';
+        if ($score >= 75) {
+            $level = 'high';
+        } elseif ($score >= 50) {
+            $level = 'medium';
+        }
+
+        return [
+            'score' => $score,
+            'level' => $level,
+            'warnings' => array_values(array_unique($warnings)),
+            'is_ready' => $isMeaningful && $score >= 35,
+        ];
+    }
+
+    private function suggestCategoryHintsForEntry(array $entry, ?int $forcedCategoryId = null): array
+    {
+        $forced = $this->resolvePreviewCategoryId($forcedCategoryId);
+        if ($forced) {
+            $forcedCategory = Category::without('translations')
+                ->select('id', 'name', 'slug')
+                ->find($forced);
+
+            if ($forcedCategory) {
+                $payload = [
+                    'id' => (int) $forcedCategory->id,
+                    'name' => (string) $forcedCategory->name,
+                    'slug' => (string) ($forcedCategory->slug ?? ''),
+                    'score' => 100,
+                    'source' => 'manual',
+                ];
+
+                return [
+                    'primary' => $payload,
+                    'candidates' => [$payload],
+                ];
+            }
+        }
+
+        $textChunks = [
+            trim((string) ($entry['title'] ?? '')),
+            trim((string) ($entry['description'] ?? '')),
+        ];
+
+        $specs = $this->normalizeSpecs($entry['specs'] ?? null);
+        if (count($specs) > 0) {
+            $textChunks[] = implode(' ', array_slice($specs, 0, 12));
+        }
+
+        $fullText = trim(implode(' ', array_filter($textChunks)));
+        if ($fullText === '') {
+            return [
+                'primary' => null,
+                'candidates' => [],
+            ];
+        }
+
+        $textTokens = array_values(array_unique(array_filter(
+            preg_split('/\s+/', $this->normalizeKeyword($fullText)) ?: [],
+            static fn ($token) => strlen((string) $token) >= 3
+        )));
+
+        if (count($textTokens) === 0) {
+            return [
+                'primary' => null,
+                'candidates' => [],
+            ];
+        }
+
+        $candidates = [];
+        foreach ($this->getCategoryHintPool() as $row) {
+            $categoryTokens = $row['tokens'] ?? [];
+            if (count($categoryTokens) === 0) {
+                continue;
+            }
+
+            $intersection = array_intersect($textTokens, $categoryTokens);
+            if (count($intersection) === 0) {
+                continue;
+            }
+
+            $nameNorm = $row['name_norm'] ?? '';
+            $pathNorm = $row['path_norm'] ?? '';
+            $matchedWeight = count($intersection) * 14;
+            $coverage = (int) round((count($intersection) / max(1, min(12, count($categoryTokens)))) * 60);
+            $bonus = 0;
+
+            if ($nameNorm !== '' && str_contains($this->normalizeKeyword($fullText), $nameNorm)) {
+                $bonus += 18;
+            }
+
+            if (($row['is_leaf'] ?? false) === true) {
+                $bonus += 4;
+            }
+
+            if ($pathNorm !== '' && str_contains($this->normalizeKeyword($fullText), $pathNorm)) {
+                $bonus += 10;
+            }
+
+            $score = min(99, $matchedWeight + $coverage + $bonus);
+            if ($score < 28) {
+                continue;
+            }
+
+            $candidates[] = [
+                'id' => (int) $row['id'],
+                'name' => (string) $row['name'],
+                'slug' => (string) ($row['slug'] ?? ''),
+                'score' => (int) $score,
+                'source' => 'auto',
+            ];
+        }
+
+        usort($candidates, static function (array $a, array $b) {
+            if (($a['score'] ?? 0) === ($b['score'] ?? 0)) {
+                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+            }
+            return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
+        });
+
+        $candidates = array_values(array_slice($candidates, 0, 5));
+
+        return [
+            'primary' => $candidates[0] ?? null,
+            'candidates' => $candidates,
+        ];
+    }
+
+    private function getCategoryHintPool(): array
+    {
+        if (is_array(self::$cachedCategoryHintPool)) {
+            return self::$cachedCategoryHintPool;
+        }
+
+        $rows = Category::without('translations')
+            ->select('id', 'name', 'slug', 'parent_category_id', 'status')
+            ->where('status', 1)
+            ->get()
+            ->map(static function (Category $category) {
+                return [
+                    'id' => (int) $category->id,
+                    'name' => trim((string) $category->name),
+                    'slug' => trim((string) ($category->slug ?? '')),
+                    'parent_category_id' => $category->parent_category_id ? (int) $category->parent_category_id : null,
+                ];
+            })
+            ->filter(static fn (array $row) => $row['name'] !== '')
+            ->values()
+            ->all();
+
+        $byId = [];
+        $childrenMap = [];
+        foreach ($rows as $row) {
+            $byId[$row['id']] = $row;
+            if (! empty($row['parent_category_id'])) {
+                $childrenMap[$row['parent_category_id']] = ($childrenMap[$row['parent_category_id']] ?? 0) + 1;
+            }
+        }
+
+        $buildPath = static function (int $id) use (&$buildPath, $byId): string {
+            $parts = [];
+            $current = $byId[$id] ?? null;
+            $guard = 0;
+            while ($current && $guard < 12) {
+                $parts[] = trim((string) ($current['name'] ?? ''));
+                $parentId = $current['parent_category_id'] ?? null;
+                if (! $parentId || ! isset($byId[$parentId])) {
+                    break;
+                }
+                $current = $byId[$parentId];
+                $guard++;
+            }
+
+            $parts = array_values(array_filter(array_reverse($parts)));
+            return implode(' > ', $parts);
+        };
+
+        self::$cachedCategoryHintPool = collect($rows)->map(function (array $row) use ($buildPath, $childrenMap) {
+            $path = $buildPath((int) $row['id']);
+            $nameNorm = $this->normalizeKeyword((string) $row['name']);
+            $pathNorm = $this->normalizeKeyword($path);
+            $slugNorm = $this->normalizeKeyword(str_replace('-', ' ', (string) ($row['slug'] ?? '')));
+
+            $tokenPool = trim(implode(' ', array_filter([$nameNorm, $pathNorm, $slugNorm])));
+            $tokens = array_values(array_unique(array_filter(
+                preg_split('/\s+/', $tokenPool) ?: [],
+                static fn ($token) => strlen((string) $token) >= 3
+            )));
+
+            return [
+                'id' => (int) $row['id'],
+                'name' => (string) $row['name'],
+                'slug' => (string) ($row['slug'] ?? ''),
+                'path' => $path,
+                'name_norm' => $nameNorm,
+                'path_norm' => $pathNorm,
+                'tokens' => $tokens,
+                'is_leaf' => empty($childrenMap[$row['id']]),
+            ];
+        })->filter(static fn (array $row) => count($row['tokens']) > 0)->values()->all();
+
+        return self::$cachedCategoryHintPool;
+    }
+
+    private function resolvePreviewCategoryId(?int $categoryId): ?int
+    {
+        if (! $categoryId || $categoryId <= 0) {
+            return self::$cachedFallbackCategoryId ?? $this->resolveCategoryId(new InstagramImport());
+        }
+
+        $exists = Category::where('id', $categoryId)->exists();
+        if ($exists) {
+            return $categoryId;
+        }
+
+        return self::$cachedFallbackCategoryId ?? $this->resolveCategoryId(new InstagramImport());
     }
 
     private function processSingleUrl(InstagramImport $import, string $url): array

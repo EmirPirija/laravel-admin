@@ -94,7 +94,9 @@ Route::get('health', [SystemHealthController::class, 'index']);
 // ============================================
 Route::prefix('instagram')->group(function () {
     Route::get('products', [\App\Http\Controllers\Api\InstagramController::class, 'getProducts']);
+    Route::post('preview', [\App\Http\Controllers\Api\InstagramController::class, 'previewImport']);
     Route::post('import', [\App\Http\Controllers\Api\InstagramController::class, 'importProducts']);
+    Route::post('commit-import', [\App\Http\Controllers\Api\InstagramController::class, 'commitImport']);
     Route::get('import-history', [\App\Http\Controllers\Api\InstagramController::class, 'getImportHistory']);
     Route::post('sync', [\App\Http\Controllers\Api\InstagramController::class, 'syncProduct']);
     Route::get('sync-status/{itemId}', [\App\Http\Controllers\Api\InstagramController::class, 'getSyncStatus']);

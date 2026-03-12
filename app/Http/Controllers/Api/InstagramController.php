@@ -192,6 +192,271 @@ class InstagramController extends Controller
         }
     }
 
+    public function previewImport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'source_url' => 'nullable|url|max:1000',
+                'source_urls' => 'nullable',
+                'category_id' => 'nullable|integer|exists:categories,id',
+                'max_entries_per_source' => 'nullable|integer|min:1|max:50',
+                'format' => 'nullable|in:api,csv,xml',
+                'feed_file' => 'nullable|file|max:15360|mimes:csv,txt,xml',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $user = Auth::user();
+            if (! $user) {
+                return ResponseService::errorResponse('Neautorizovan pristup', null, 401);
+            }
+
+            $sourceUrl = $request->filled('source_url')
+                ? trim((string) $request->input('source_url'))
+                : null;
+
+            $urls = $this->normalizeUrls($request->input('source_urls'));
+            if (! empty($sourceUrl)) {
+                $urls[] = $sourceUrl;
+            }
+
+            $uploadedFile = $request->file('feed_file');
+            $format = $this->resolveImportFormat($request->input('format'), $uploadedFile);
+            if ($uploadedFile instanceof UploadedFile) {
+                $urls = array_merge($urls, $this->extractUrlsFromUpload($uploadedFile, $format));
+            }
+
+            $urls = array_values(array_unique(array_filter($urls)));
+            if (count($urls) === 0) {
+                return ResponseService::validationError('Pošaljite barem jedan važeći URL ili feed datoteku sa URL-ovima');
+            }
+
+            $maxEntriesPerSource = (int) ($request->input('max_entries_per_source', 15));
+            $preview = app(FeedImportProcessorService::class)->previewSources(
+                $urls,
+                $request->filled('category_id') ? (int) $request->input('category_id') : null,
+                $maxEntriesPerSource
+            );
+
+            return ResponseService::successResponse('Preview importa uspješno generisan', [
+                'preview' => $preview,
+                'queued_urls' => $urls,
+                'format' => $format,
+                'category_id' => $request->filled('category_id') ? (int) $request->input('category_id') : null,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'InstagramController -> previewImport');
+            return ResponseService::errorResponse('Greška pri generisanju preview importa');
+        }
+    }
+
+    public function commitImport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'entries' => 'required',
+                'entries.*.title' => 'nullable|string|max:220',
+                'entries.*.description' => 'nullable|string|max:12000',
+                'entries.*.source_url' => 'nullable|url|max:1000',
+                'entries.*.price' => 'nullable',
+                'entries.*.old_price' => 'nullable',
+                'entries.*.image' => 'nullable|string|max:2000',
+                'entries.*.images' => 'nullable|array|max:24',
+                'entries.*.images.*' => 'nullable|string|max:2000',
+                'entries.*.video' => 'nullable|string|max:2000',
+                'entries.*.specs' => 'nullable|array|max:32',
+                'entries.*.specs.*' => 'nullable|string|max:450',
+                'entries.*.category_id' => 'nullable|integer|exists:categories,id',
+                'entries.*.selected' => 'nullable|boolean',
+                'source_url' => 'nullable|url|max:1000',
+                'source_urls' => 'nullable',
+                'category_id' => 'nullable|integer|exists:categories,id',
+                'format' => 'nullable|in:api,csv,xml',
+            ]);
+
+            if ($validator->fails()) {
+                return ResponseService::validationError($validator->errors()->first());
+            }
+
+            $user = Auth::user();
+            if (! $user) {
+                return ResponseService::errorResponse('Neautorizovan pristup', null, 401);
+            }
+
+            $rawEntries = $request->input('entries', []);
+            if (is_string($rawEntries)) {
+                $decoded = json_decode($rawEntries, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $rawEntries = $decoded;
+                } else {
+                    $rawEntries = [];
+                }
+            }
+
+            if (! is_array($rawEntries)) {
+                return ResponseService::validationError('Pošaljite listu proizvoda za import.');
+            }
+
+            $entries = collect($rawEntries)
+                ->filter(static function ($entry) {
+                    if (! is_array($entry)) {
+                        return false;
+                    }
+
+                    if (! array_key_exists('selected', $entry)) {
+                        return true;
+                    }
+
+                    return filter_var($entry['selected'], FILTER_VALIDATE_BOOLEAN);
+                })
+                ->values()
+                ->all();
+
+            if (count($entries) === 0) {
+                return ResponseService::validationError('Nema odabranih proizvoda za import.');
+            }
+
+            $sourceUrl = $request->filled('source_url')
+                ? trim((string) $request->input('source_url'))
+                : null;
+
+            $sourceUrls = $this->normalizeUrls($request->input('source_urls'));
+            if (! empty($sourceUrl)) {
+                $sourceUrls[] = $sourceUrl;
+            }
+
+            if (count($sourceUrls) === 0) {
+                $sourceUrls = collect($entries)
+                    ->map(fn ($entry) => is_array($entry) ? trim((string) ($entry['source_url'] ?? '')) : '')
+                    ->filter(fn ($url) => filter_var($url, FILTER_VALIDATE_URL))
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+
+            $sourceUrls = array_values(array_unique(array_filter($sourceUrls)));
+            $format = $this->resolveImportFormat($request->input('format'));
+            $fallbackCategoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+
+            $importPayload = [
+                'user_id' => $user->id,
+                'products_requested' => count($entries),
+                'products_imported' => 0,
+                'products_failed' => 0,
+                'category_id' => $fallbackCategoryId,
+            ];
+
+            if (Schema::hasColumn('instagram_imports', 'source_url')) {
+                $importPayload['source_url'] = $sourceUrl ?: ($sourceUrls[0] ?? null);
+            }
+            if (Schema::hasColumn('instagram_imports', 'source_urls_json')) {
+                $importPayload['source_urls_json'] = $sourceUrls;
+            }
+            if (Schema::hasColumn('instagram_imports', 'feed_format')) {
+                $importPayload['feed_format'] = $format;
+            }
+            if (Schema::hasColumn('instagram_imports', 'status')) {
+                $importPayload['status'] = 'processing';
+            }
+            if (Schema::hasColumn('instagram_imports', 'message')) {
+                $importPayload['message'] = 'Wizard import je započet.';
+            }
+            if (Schema::hasColumn('instagram_imports', 'meta')) {
+                $importPayload['meta'] = [
+                    'source' => 'wizard',
+                    'selected_entries' => count($entries),
+                ];
+            }
+
+            $import = InstagramImport::create($importPayload);
+
+            $summary = app(FeedImportProcessorService::class)->importPreparedEntries(
+                (int) $user->id,
+                $entries,
+                $fallbackCategoryId
+            );
+
+            $importedCount = (int) ($summary['imported_count'] ?? 0);
+            $failedCount = (int) ($summary['failed_count'] ?? 0);
+            $requestedCount = max((int) ($summary['requested_count'] ?? count($entries)), count($entries));
+
+            $status = 'completed';
+            if ($importedCount <= 0 && $failedCount > 0) {
+                $status = 'failed';
+            } elseif ($failedCount > 0) {
+                $status = 'partial';
+            }
+
+            $message = match ($status) {
+                'completed' => "Wizard import završen. Kreirano/ažurirano oglasa: {$importedCount}.",
+                'partial' => "Wizard import djelimično završen. Kreirano/ažurirano: {$importedCount}, greške: {$failedCount}.",
+                default => "Wizard import nije uspio. Greške: {$failedCount}.",
+            };
+
+            $meta = is_array($import->meta) ? $import->meta : [];
+            $meta['summary'] = [
+                'status' => $status,
+                'requested' => $requestedCount,
+                'imported' => $importedCount,
+                'failed' => $failedCount,
+                'processed_at' => now()->toIso8601String(),
+            ];
+            $meta['results'] = $summary['results'] ?? [];
+            $meta['source'] = 'wizard';
+            $meta['source_urls_count'] = count($sourceUrls);
+
+            $updatePayload = [
+                'products_requested' => $requestedCount,
+                'products_imported' => $importedCount,
+                'products_failed' => $failedCount,
+                'status' => $status,
+                'message' => $message,
+                'meta' => $meta,
+                'processed_at' => now(),
+            ];
+
+            if (Schema::hasColumn('instagram_imports', 'source_url') && ! empty($sourceUrl)) {
+                $updatePayload['source_url'] = $sourceUrl;
+            }
+            if (Schema::hasColumn('instagram_imports', 'source_urls_json') && count($sourceUrls) > 0) {
+                $updatePayload['source_urls_json'] = $sourceUrls;
+            }
+
+            foreach ($updatePayload as $column => $value) {
+                if (! Schema::hasColumn('instagram_imports', $column)) {
+                    unset($updatePayload[$column]);
+                }
+            }
+
+            if (count($updatePayload) > 0) {
+                $import->fill($updatePayload);
+                $import->save();
+            }
+
+            return ResponseService::successResponse('Wizard import uspješno obrađen', [
+                'import' => [
+                    'id' => $import->id,
+                    'products_requested' => $import->products_requested,
+                    'products_imported' => $import->products_imported,
+                    'products_failed' => $import->products_failed,
+                    'status' => $import->status ?? $status,
+                    'message' => $import->message ?? $message,
+                    'category_id' => $import->category_id,
+                    'source_url' => $import->source_url ?? ($sourceUrls[0] ?? null),
+                    'format' => $import->feed_format ?? $format,
+                    'created_at' => optional($import->created_at)->toIso8601String(),
+                    'processed_at' => optional($import->processed_at)->toIso8601String(),
+                ],
+                'summary' => $summary,
+            ]);
+        } catch (Throwable $th) {
+            ResponseService::logErrorResponse($th, 'InstagramController -> commitImport');
+            return ResponseService::errorResponse('Greška pri wizard importu proizvoda');
+        }
+    }
+
     public function getImportHistory(Request $request)
     {
         try {
