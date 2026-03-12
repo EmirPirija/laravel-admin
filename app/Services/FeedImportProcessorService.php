@@ -23,6 +23,8 @@ class FeedImportProcessorService
     private const DEFAULT_COUNTRY = 'Bosna i Hercegovina';
     private const DEFAULT_CITY = 'Online';
     private const DEFAULT_STATE = 'Online';
+    private const MAX_IMPORTED_IMAGES = 15;
+    private const MAX_IMPORTED_SPECS = 16;
 
     private static ?float $cachedLatitude = null;
     private static ?float $cachedLongitude = null;
@@ -439,9 +441,9 @@ class FeedImportProcessorService
             'price' => $price,
             'old_price' => $oldPrice,
             'image' => $image,
-            'images' => array_slice($images, 0, 16),
+            'images' => array_slice($images, 0, self::MAX_IMPORTED_IMAGES),
             'video' => $video,
-            'specs' => array_slice($specs, 0, 16),
+            'specs' => array_slice($specs, 0, self::MAX_IMPORTED_SPECS),
             'category_id' => isset($entry['category_id']) ? (int) $entry['category_id'] : null,
         ];
     }
@@ -1905,7 +1907,7 @@ class FeedImportProcessorService
             }
         }
 
-        return array_values(array_unique(array_slice(array_filter($specs), 0, 16)));
+        return array_values(array_unique(array_slice(array_filter($specs), 0, self::MAX_IMPORTED_SPECS)));
     }
 
     private function extractSpecsFromDom(\DOMXPath $xpath): array
@@ -2143,7 +2145,7 @@ class FeedImportProcessorService
         }
 
         $fields['images'] = $this->normalizeImageUrls($fields['images']);
-        $fields['specs'] = array_values(array_unique(array_slice(array_filter($fields['specs']), 0, 16)));
+        $fields['specs'] = array_values(array_unique(array_slice(array_filter($fields['specs']), 0, self::MAX_IMPORTED_SPECS)));
 
         return $fields;
     }
@@ -3175,7 +3177,7 @@ class FeedImportProcessorService
             ->all();
 
         $toInsert = [];
-        foreach (array_slice($imageUrls, 0, 12) as $url) {
+        foreach (array_slice($imageUrls, 0, self::MAX_IMPORTED_IMAGES) as $url) {
             if (in_array($url, $existingRaw, true)) {
                 continue;
             }
