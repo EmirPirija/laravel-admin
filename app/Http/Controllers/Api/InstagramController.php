@@ -200,6 +200,7 @@ class InstagramController extends Controller
                 'source_urls' => 'nullable',
                 'category_id' => 'nullable|integer|exists:categories,id',
                 'max_entries_per_source' => 'nullable|integer|min:1|max:50',
+                'api_profiles' => 'nullable',
                 'format' => 'nullable|in:api,csv,xml',
                 'feed_file' => 'nullable|file|max:15360|mimes:csv,txt,xml',
             ]);
@@ -234,16 +235,27 @@ class InstagramController extends Controller
             }
 
             $maxEntriesPerSource = (int) ($request->input('max_entries_per_source', 15));
+            $apiProfiles = $request->input('api_profiles', []);
+            if (is_string($apiProfiles)) {
+                $decodedProfiles = json_decode($apiProfiles, true);
+                $apiProfiles = json_last_error() === JSON_ERROR_NONE ? $decodedProfiles : [];
+            }
+            if (! is_array($apiProfiles)) {
+                $apiProfiles = [];
+            }
+
             $preview = app(FeedImportProcessorService::class)->previewSources(
                 $urls,
                 $request->filled('category_id') ? (int) $request->input('category_id') : null,
-                $maxEntriesPerSource
+                $maxEntriesPerSource,
+                $apiProfiles
             );
 
             return ResponseService::successResponse('Preview importa uspješno generisan', [
                 'preview' => $preview,
                 'queued_urls' => $urls,
                 'format' => $format,
+                'api_profiles_count' => count($apiProfiles),
                 'category_id' => $request->filled('category_id') ? (int) $request->input('category_id') : null,
             ]);
         } catch (Throwable $th) {

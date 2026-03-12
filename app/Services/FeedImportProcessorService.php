@@ -115,7 +115,12 @@ class FeedImportProcessorService
      *   generated_at:string
      * }
      */
-    public function previewSources(array $rawUrls, ?int $forcedCategoryId = null, int $maxEntriesPerSource = 15): array
+    public function previewSources(
+        array $rawUrls,
+        ?int $forcedCategoryId = null,
+        int $maxEntriesPerSource = 15,
+        array $apiProfiles = []
+    ): array
     {
         $urls = collect($rawUrls)
             ->map(fn ($url) => $this->toValidUrl($url))
@@ -125,6 +130,7 @@ class FeedImportProcessorService
             ->all();
 
         $maxEntriesPerSource = max(1, min(50, $maxEntriesPerSource));
+        $apiProfileMap = $this->normalizeApiProfiles($apiProfiles);
         $allEntries = [];
         $sourceResults = [];
         $successSources = 0;
@@ -138,31 +144,50 @@ class FeedImportProcessorService
                 'http_status' => null,
                 'message' => null,
                 'blocked' => false,
+                'api_used' => false,
+                'api_provider' => null,
                 'entries_count' => 0,
             ];
 
             try {
-                $response = $this->fetchUrl($url);
-                $body = (string) $response->body();
-                $contentType = (string) $response->header('Content-Type', '');
-                $sourceResult['http_status'] = $response->status();
-
-                if ($response->status() === 404 || $response->serverError()) {
-                    $sourceResult['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
-                    $failedSources++;
-                    $sourceResults[] = $sourceResult;
-                    continue;
+                $entries = [];
+                $apiProfile = $this->resolveApiProfileForUrl($url, $apiProfileMap);
+                if ($apiProfile) {
+                    $apiEntries = $this->extractEntriesViaApiProfile($url, $apiProfile);
+                    if (count($apiEntries) > 0) {
+                        $entries = $this->enrichApiEntriesWithPageSignals($apiEntries, $url);
+                        $sourceResult['api_used'] = true;
+                        $sourceResult['api_provider'] = (string) ($apiProfile['provider'] ?? 'custom_json');
+                        $sourceResult['message'] = 'Preview generisan preko API profila.';
+                    }
                 }
 
-                if ($this->looksLikeAccessProtectionPage($body)) {
-                    $sourceResult['blocked'] = true;
-                    $sourceResult['message'] = 'Udaljeni sajt je blokirao automatski pristup (Cloudflare/anti-bot).';
-                    $failedSources++;
-                    $sourceResults[] = $sourceResult;
-                    continue;
+                if (count($entries) === 0) {
+                    $response = $this->fetchUrl($url);
+                    $body = (string) $response->body();
+                    $contentType = (string) $response->header('Content-Type', '');
+                    $sourceResult['http_status'] = $response->status();
+
+                    if ($response->status() === 404 || $response->serverError()) {
+                        $sourceResult['message'] = 'URL nije dostupan (HTTP ' . $response->status() . ').';
+                        $failedSources++;
+                        $sourceResults[] = $sourceResult;
+                        continue;
+                    }
+
+                    if ($this->looksLikeAccessProtectionPage($body)) {
+                        $sourceResult['blocked'] = true;
+                        $sourceResult['message'] = $apiProfile
+                            ? 'Sajt je blokirao HTML pristup, a API profil nije vratio podatke.'
+                            : 'Udaljeni sajt je blokirao automatski pristup (Cloudflare/anti-bot).';
+                        $failedSources++;
+                        $sourceResults[] = $sourceResult;
+                        continue;
+                    }
+
+                    $entries = $this->extractEntriesFromResponse($url, $body, $contentType, 'api');
                 }
 
-                $entries = $this->extractEntriesFromResponse($url, $body, $contentType, 'api');
                 if (count($entries) === 0) {
                     $sourceResult['message'] = 'Nisu pronađeni proizvodi za preview.';
                     $failedSources++;
@@ -190,9 +215,11 @@ class FeedImportProcessorService
 
                 $sourceResult['status'] = 'ok';
                 $sourceResult['entries_count'] = $preparedCount;
-                $sourceResult['message'] = $preparedCount > 0
-                    ? 'Preview uspješno generisan.'
-                    : 'Izvor obrađen, ali nije bilo dovoljno podataka za preview.';
+                if (! $sourceResult['message']) {
+                    $sourceResult['message'] = $preparedCount > 0
+                        ? 'Preview uspješno generisan.'
+                        : 'Izvor obrađen, ali nije bilo dovoljno podataka za preview.';
+                }
 
                 if ($preparedCount > 0) {
                     $successSources++;
@@ -2434,6 +2461,693 @@ class FeedImportProcessorService
         }
 
         return array_values(array_unique($values));
+    }
+
+    private function normalizeApiProfiles(array $apiProfiles): array
+    {
+        $normalized = [];
+
+        if (array_is_list($apiProfiles)) {
+            foreach ($apiProfiles as $profile) {
+                if (! is_array($profile)) {
+                    continue;
+                }
+
+                $host = $this->normalizeHostName(
+                    (string) ($profile['host'] ?? (parse_url((string) ($profile['base_url'] ?? ''), PHP_URL_HOST) ?: ''))
+                );
+                if ($host === '') {
+                    continue;
+                }
+
+                $provider = Str::lower(trim((string) ($profile['provider'] ?? $profile['type'] ?? 'custom_json')));
+                $profile['provider'] = $provider !== '' ? $provider : 'custom_json';
+                $normalized[$host] = $profile;
+            }
+
+            return $normalized;
+        }
+
+        foreach ($apiProfiles as $key => $profile) {
+            if (! is_array($profile)) {
+                continue;
+            }
+
+            $host = $this->normalizeHostName((string) ($profile['host'] ?? $key));
+            if ($host === '') {
+                continue;
+            }
+
+            $provider = Str::lower(trim((string) ($profile['provider'] ?? $profile['type'] ?? 'custom_json')));
+            $profile['provider'] = $provider !== '' ? $provider : 'custom_json';
+            $normalized[$host] = $profile;
+        }
+
+        return $normalized;
+    }
+
+    private function resolveApiProfileForUrl(string $url, array $apiProfileMap): ?array
+    {
+        if (count($apiProfileMap) === 0) {
+            return null;
+        }
+
+        $host = $this->normalizeHostName((string) (parse_url($url, PHP_URL_HOST) ?: ''));
+        if ($host === '') {
+            return null;
+        }
+
+        $hostWithoutWww = str_starts_with($host, 'www.') ? substr($host, 4) : $host;
+        $candidates = array_values(array_unique(array_filter([$host, $hostWithoutWww, 'www.' . $hostWithoutWww])));
+
+        foreach ($candidates as $candidateHost) {
+            if (array_key_exists($candidateHost, $apiProfileMap)) {
+                return $apiProfileMap[$candidateHost];
+            }
+        }
+
+        foreach ($apiProfileMap as $profileHost => $profile) {
+            $profileHost = $this->normalizeHostName((string) $profileHost);
+            if ($profileHost === '') {
+                continue;
+            }
+
+            if (str_starts_with($profileHost, '*.')) {
+                $suffix = substr($profileHost, 1);
+                if ($suffix && str_ends_with($host, $suffix)) {
+                    return $profile;
+                }
+                continue;
+            }
+
+            if (str_ends_with($host, '.' . $profileHost)) {
+                return $profile;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeHostName(string $host): string
+    {
+        $host = trim(Str::lower($host));
+        $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+        return trim($host);
+    }
+
+    private function extractEntriesViaApiProfile(string $sourceUrl, array $profile): array
+    {
+        $provider = Str::lower(trim((string) ($profile['provider'] ?? 'custom_json')));
+
+        return match ($provider) {
+            'prestashop', 'presta' => $this->extractPrestashopEntriesViaApi($sourceUrl, $profile),
+            'woocommerce', 'woo', 'wc' => $this->extractWoocommerceEntriesViaApi($sourceUrl, $profile),
+            'shopify' => $this->extractShopifyEntriesViaApi($sourceUrl, $profile),
+            default => $this->extractCustomJsonEntriesViaApi($sourceUrl, $profile),
+        };
+    }
+
+    private function extractPrestashopEntriesViaApi(string $sourceUrl, array $profile): array
+    {
+        $apiKey = trim((string) ($profile['api_key'] ?? $profile['token'] ?? ''));
+        if ($apiKey === '') {
+            return [];
+        }
+
+        $baseUrl = $this->resolveApiBaseUrl($sourceUrl, $profile);
+        $slug = trim((string) basename(trim((string) parse_url($sourceUrl, PHP_URL_PATH), '/')));
+        if ($baseUrl === '' || $slug === '') {
+            return [];
+        }
+
+        try {
+            $response = Http::retry(1, 250, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->acceptJson()
+                ->withBasicAuth($apiKey, '')
+                ->get(rtrim($baseUrl, '/') . '/api/products', [
+                    'output_format' => 'JSON',
+                    'display' => 'full',
+                    'filter[link_rewrite]' => '[' . $slug . ']',
+                    'limit' => 5,
+                ]);
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                return [];
+            }
+
+            $products = $payload['products'] ?? [];
+            if (! is_array($products)) {
+                return [];
+            }
+
+            if (! array_is_list($products)) {
+                $products = [$products];
+            }
+
+            $entries = [];
+            foreach ($products as $product) {
+                if (! is_array($product)) {
+                    continue;
+                }
+
+                $entry = $this->mapPrestashopApiProductToEntry($product, $sourceUrl, $baseUrl);
+                if ($this->isEntryMeaningful($entry, $sourceUrl)) {
+                    $entries[] = $entry;
+                }
+            }
+
+            return $entries;
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    private function mapPrestashopApiProductToEntry(array $product, string $sourceUrl, string $baseUrl): array
+    {
+        $name = $this->extractLocalizedScalarValue($product['name'] ?? null);
+        $descriptionShort = $this->extractLocalizedScalarValue($product['description_short'] ?? null);
+        $descriptionLong = $this->extractLocalizedScalarValue($product['description'] ?? null);
+        $linkRewrite = $this->extractLocalizedScalarValue($product['link_rewrite'] ?? null);
+
+        $description = trim((string) ($descriptionShort ?: $descriptionLong ?: ''));
+        $description = trim((string) preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($description, ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
+        if ($description === '') {
+            $description = 'Automatski uvezeno sa: ' . $sourceUrl;
+        }
+
+        $slug = trim((string) ($linkRewrite ?: basename(trim((string) parse_url($sourceUrl, PHP_URL_PATH), '/'))));
+        $imageIds = [];
+        if (! empty($product['id_default_image'])) {
+            $imageIds[] = (string) $product['id_default_image'];
+        }
+
+        $associationImages = $product['associations']['images']['image'] ?? ($product['associations']['images'] ?? []);
+        if (is_array($associationImages)) {
+            $items = array_is_list($associationImages) ? $associationImages : [$associationImages];
+            foreach ($items as $imageNode) {
+                if (is_array($imageNode) && ! empty($imageNode['id'])) {
+                    $imageIds[] = (string) $imageNode['id'];
+                }
+            }
+        }
+
+        $imageIds = array_values(array_unique(array_filter($imageIds)));
+        $images = [];
+        foreach ($imageIds as $imageId) {
+            $idInt = (int) $imageId;
+            if ($idInt <= 0) {
+                continue;
+            }
+
+            $images[] = rtrim($baseUrl, '/') . '/' . $idInt . '-large_default/' . $slug . '.jpg';
+            $images[] = rtrim($baseUrl, '/') . '/' . $idInt . '-medium_default/' . $slug . '.jpg';
+
+            $digitPath = implode('/', str_split((string) $idInt));
+            if ($digitPath !== '') {
+                $images[] = rtrim($baseUrl, '/') . '/img/p/' . $digitPath . '/' . $idInt . '-large_default.jpg';
+            }
+        }
+
+        $specs = $this->extractSpecsFromRichText($descriptionShort ?: $descriptionLong);
+        $manufacturer = trim((string) ($product['manufacturer_name'] ?? ''));
+        if ($manufacturer !== '') {
+            $specs[] = 'Brend: ' . $manufacturer;
+        }
+        $reference = trim((string) ($product['reference'] ?? ''));
+        if ($reference !== '') {
+            $specs[] = 'Šifra: ' . $reference;
+        }
+
+        return [
+            'title' => $name ?: $this->titleFromUrl($sourceUrl),
+            'description' => $description,
+            'price' => $product['price'] ?? ($product['price_amount'] ?? null),
+            'old_price' => $product['price_without_reduction'] ?? null,
+            'image' => $images[0] ?? null,
+            'images' => $images,
+            'video' => null,
+            'specs' => array_values(array_unique(array_filter($specs))),
+            'source_url' => $sourceUrl,
+        ];
+    }
+
+    private function extractWoocommerceEntriesViaApi(string $sourceUrl, array $profile): array
+    {
+        $baseUrl = $this->resolveApiBaseUrl($sourceUrl, $profile);
+        $slug = trim((string) basename(trim((string) parse_url($sourceUrl, PHP_URL_PATH), '/')));
+        if ($baseUrl === '' || $slug === '') {
+            return [];
+        }
+
+        $headers = ['Accept' => 'application/json'];
+        $entries = [];
+
+        // Public Woo Store API
+        try {
+            $response = Http::retry(1, 200, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->withHeaders($headers)
+                ->get(rtrim($baseUrl, '/') . '/wp-json/wc/store/v1/products', [
+                    'slug' => $slug,
+                    'per_page' => 1,
+                ]);
+
+            if ($response->successful()) {
+                $payload = $response->json();
+                if (is_array($payload)) {
+                    $items = array_is_list($payload) ? $payload : [$payload];
+                    foreach ($items as $item) {
+                        if (is_array($item)) {
+                            $entries[] = $this->mapWoocommerceStoreProductToEntry($item, $sourceUrl);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable) {
+            // Continue to WC v3 fallback.
+        }
+
+        if (count($entries) > 0) {
+            return array_values(array_filter($entries, fn ($entry) => $this->isEntryMeaningful($entry, $sourceUrl)));
+        }
+
+        // WooCommerce REST v3 (with optional credentials)
+        $query = [
+            'slug' => $slug,
+            'per_page' => 1,
+        ];
+        $ck = trim((string) ($profile['consumer_key'] ?? ''));
+        $cs = trim((string) ($profile['consumer_secret'] ?? ''));
+        if ($ck !== '' && $cs !== '') {
+            $query['consumer_key'] = $ck;
+            $query['consumer_secret'] = $cs;
+        }
+
+        try {
+            $response = Http::retry(1, 200, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->withHeaders($headers)
+                ->get(rtrim($baseUrl, '/') . '/wp-json/wc/v3/products', $query);
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                return [];
+            }
+
+            $items = array_is_list($payload) ? $payload : [$payload];
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $entries[] = $this->mapWoocommerceV3ProductToEntry($item, $sourceUrl);
+            }
+        } catch (Throwable) {
+            return [];
+        }
+
+        return array_values(array_filter($entries, fn ($entry) => $this->isEntryMeaningful($entry, $sourceUrl)));
+    }
+
+    private function mapWoocommerceStoreProductToEntry(array $product, string $sourceUrl): array
+    {
+        $minorUnits = (int) ($product['prices']['currency_minor_unit'] ?? 2);
+        $priceRaw = $product['prices']['price'] ?? null;
+        $regularRaw = $product['prices']['regular_price'] ?? null;
+
+        $price = $priceRaw;
+        if (is_scalar($priceRaw) && is_numeric((string) $priceRaw) && $minorUnits > 0) {
+            $price = ((float) $priceRaw) / (10 ** $minorUnits);
+        }
+
+        $oldPrice = $regularRaw;
+        if (is_scalar($regularRaw) && is_numeric((string) $regularRaw) && $minorUnits > 0) {
+            $oldPrice = ((float) $regularRaw) / (10 ** $minorUnits);
+        }
+
+        $images = [];
+        foreach (($product['images'] ?? []) as $image) {
+            if (is_array($image)) {
+                $candidate = $this->toValidUrl($image['src'] ?? ($image['thumbnail'] ?? null), $sourceUrl);
+                if ($candidate) {
+                    $images[] = $candidate;
+                }
+            }
+        }
+
+        $specs = [];
+        foreach (($product['attributes'] ?? []) as $attribute) {
+            if (! is_array($attribute)) {
+                continue;
+            }
+            $label = trim((string) ($attribute['name'] ?? ''));
+            $value = '';
+            if (is_array($attribute['terms'] ?? null)) {
+                $value = implode(', ', array_map(static function ($term) {
+                    return trim((string) ($term['name'] ?? ''));
+                }, $attribute['terms']));
+            } elseif (is_array($attribute['options'] ?? null)) {
+                $value = implode(', ', array_map(static fn ($opt) => trim((string) $opt), $attribute['options']));
+            } else {
+                $value = trim((string) ($attribute['option'] ?? ''));
+            }
+
+            if ($label !== '' && trim($value) !== '') {
+                $specs[] = $label . ': ' . trim($value);
+            }
+        }
+
+        $description = trim((string) preg_replace('/\s+/', ' ', strip_tags((string) ($product['short_description'] ?? ($product['description'] ?? '')))));
+        if ($description === '') {
+            $description = 'Automatski uvezeno sa: ' . $sourceUrl;
+        }
+
+        return [
+            'title' => trim((string) ($product['name'] ?? '')) ?: $this->titleFromUrl($sourceUrl),
+            'description' => $description,
+            'price' => $price,
+            'old_price' => $oldPrice,
+            'image' => $images[0] ?? null,
+            'images' => $images,
+            'video' => null,
+            'specs' => $specs,
+            'source_url' => $this->toValidUrl($product['permalink'] ?? null, $sourceUrl) ?: $sourceUrl,
+        ];
+    }
+
+    private function mapWoocommerceV3ProductToEntry(array $product, string $sourceUrl): array
+    {
+        $images = [];
+        foreach (($product['images'] ?? []) as $image) {
+            if (! is_array($image)) {
+                continue;
+            }
+            $candidate = $this->toValidUrl($image['src'] ?? null, $sourceUrl);
+            if ($candidate) {
+                $images[] = $candidate;
+            }
+        }
+
+        $specs = [];
+        foreach (($product['attributes'] ?? []) as $attribute) {
+            if (! is_array($attribute)) {
+                continue;
+            }
+
+            $label = trim((string) ($attribute['name'] ?? ''));
+            $options = is_array($attribute['options'] ?? null) ? $attribute['options'] : [];
+            $value = implode(', ', array_map(static fn ($opt) => trim((string) $opt), $options));
+            if ($label !== '' && trim($value) !== '') {
+                $specs[] = $label . ': ' . trim($value);
+            }
+        }
+
+        $description = trim((string) preg_replace('/\s+/', ' ', strip_tags((string) ($product['short_description'] ?? ($product['description'] ?? '')))));
+        if ($description === '') {
+            $description = 'Automatski uvezeno sa: ' . $sourceUrl;
+        }
+
+        return [
+            'title' => trim((string) ($product['name'] ?? '')) ?: $this->titleFromUrl($sourceUrl),
+            'description' => $description,
+            'price' => $product['sale_price'] ?: ($product['price'] ?? null),
+            'old_price' => $product['regular_price'] ?? null,
+            'image' => $images[0] ?? null,
+            'images' => $images,
+            'video' => null,
+            'specs' => $specs,
+            'source_url' => $this->toValidUrl($product['permalink'] ?? null, $sourceUrl) ?: $sourceUrl,
+        ];
+    }
+
+    private function extractShopifyEntriesViaApi(string $sourceUrl, array $profile): array
+    {
+        $endpoint = trim((string) ($profile['endpoint'] ?? ''));
+        if ($endpoint === '') {
+            $cleanUrl = preg_replace('/\?.*$/', '', $sourceUrl) ?? $sourceUrl;
+            $endpoint = Str::endsWith($cleanUrl, '.json') ? $cleanUrl : rtrim($cleanUrl, '/') . '.json';
+        } else {
+            $endpoint = $this->applyTemplateVariables($endpoint, $sourceUrl);
+        }
+
+        try {
+            $response = Http::retry(1, 200, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->acceptJson()
+                ->get($endpoint);
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload) || ! is_array($payload['product'] ?? null)) {
+                return [];
+            }
+
+            $product = $payload['product'];
+            $images = [];
+            foreach (($product['images'] ?? []) as $image) {
+                if (is_array($image)) {
+                    $candidate = $this->toValidUrl($image['src'] ?? ($image['url'] ?? null), $sourceUrl);
+                    if ($candidate) {
+                        $images[] = $candidate;
+                    }
+                }
+            }
+
+            $specs = [];
+            foreach (($product['options'] ?? []) as $option) {
+                if (! is_array($option)) {
+                    continue;
+                }
+                $label = trim((string) ($option['name'] ?? ''));
+                $values = is_array($option['values'] ?? null) ? $option['values'] : [];
+                $value = implode(', ', array_map(static fn ($v) => trim((string) $v), $values));
+                if ($label !== '' && trim($value) !== '') {
+                    $specs[] = $label . ': ' . trim($value);
+                }
+            }
+
+            $firstVariant = is_array($product['variants'][0] ?? null) ? $product['variants'][0] : [];
+            $entry = [
+                'title' => trim((string) ($product['title'] ?? '')) ?: $this->titleFromUrl($sourceUrl),
+                'description' => trim((string) preg_replace('/\s+/', ' ', strip_tags((string) ($product['body_html'] ?? '')))) ?: ('Automatski uvezeno sa: ' . $sourceUrl),
+                'price' => $firstVariant['price'] ?? null,
+                'old_price' => $firstVariant['compare_at_price'] ?? null,
+                'image' => $images[0] ?? null,
+                'images' => $images,
+                'video' => null,
+                'specs' => $specs,
+                'source_url' => $sourceUrl,
+            ];
+
+            return $this->isEntryMeaningful($entry, $sourceUrl) ? [$entry] : [];
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    private function extractCustomJsonEntriesViaApi(string $sourceUrl, array $profile): array
+    {
+        $endpoint = trim((string) ($profile['endpoint'] ?? ($profile['api_url'] ?? ($profile['url_template'] ?? ''))));
+        if ($endpoint === '') {
+            return [];
+        }
+
+        $endpoint = $this->applyTemplateVariables($endpoint, $sourceUrl);
+        $method = Str::upper(trim((string) ($profile['method'] ?? 'GET')));
+        $headers = is_array($profile['headers'] ?? null) ? $profile['headers'] : [];
+
+        $bearer = trim((string) ($profile['bearer_token'] ?? ($profile['token'] ?? '')));
+        if ($bearer !== '') {
+            $headers['Authorization'] = str_starts_with(Str::lower($bearer), 'bearer ') ? $bearer : ('Bearer ' . $bearer);
+        }
+
+        $apiKey = trim((string) ($profile['api_key'] ?? ''));
+        $apiKeyHeader = trim((string) ($profile['api_key_header'] ?? ''));
+        if ($apiKey !== '' && $apiKeyHeader !== '') {
+            $headers[$apiKeyHeader] = $apiKey;
+        }
+
+        try {
+            $client = Http::retry(1, 200, null, false)
+                ->timeout(20)
+                ->connectTimeout(8)
+                ->acceptJson()
+                ->withHeaders($headers);
+
+            if ($method === 'POST') {
+                $body = $profile['body'] ?? ['url' => $sourceUrl];
+                if (is_string($body)) {
+                    $body = ['payload' => $this->applyTemplateVariables($body, $sourceUrl)];
+                }
+                $response = $client->post($endpoint, $body);
+            } else {
+                $params = is_array($profile['params'] ?? null) ? $profile['params'] : [];
+                foreach ($params as $key => $value) {
+                    if (is_string($value)) {
+                        $params[$key] = $this->applyTemplateVariables($value, $sourceUrl);
+                    }
+                }
+                $response = $client->get($endpoint, $params);
+            }
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                return [];
+            }
+
+            $responsePath = trim((string) ($profile['response_path'] ?? ''));
+            if ($responsePath !== '') {
+                $scoped = $this->readArrayPath($payload, $responsePath);
+                if ($scoped !== null) {
+                    $payload = $scoped;
+                }
+            }
+
+            return $this->entriesFromJsonPayload($payload, $sourceUrl);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    private function enrichApiEntriesWithPageSignals(array $entries, string $sourceUrl): array
+    {
+        if (count($entries) === 0) {
+            return [];
+        }
+
+        try {
+            $response = $this->fetchUrl($sourceUrl);
+            if (! $response->successful()) {
+                return $entries;
+            }
+
+            $body = (string) $response->body();
+            if ($this->looksLikeAccessProtectionPage($body)) {
+                return $entries;
+            }
+
+            $pageEntry = $this->entryFromHtml($body, $sourceUrl);
+            if (! is_array($pageEntry)) {
+                return $entries;
+            }
+
+            return array_map(function (array $entry) use ($pageEntry, $sourceUrl) {
+                $merged = $this->mergeEntryWithKeywordFields($entry, $pageEntry);
+                $merged['images'] = $this->normalizeImageUrls(array_merge(
+                    $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl),
+                    $this->normalizeImageUrls($pageEntry['images'] ?? null, $sourceUrl),
+                    $this->normalizeImageUrls($entry['image'] ?? null, $sourceUrl),
+                    $this->normalizeImageUrls($pageEntry['image'] ?? null, $sourceUrl)
+                ), $sourceUrl);
+                if (empty($merged['image']) && count($merged['images']) > 0) {
+                    $merged['image'] = $merged['images'][0];
+                }
+                $merged['specs'] = array_values(array_unique(array_merge(
+                    $this->normalizeSpecs($entry['specs'] ?? null),
+                    $this->normalizeSpecs($pageEntry['specs'] ?? null)
+                )));
+                return $merged;
+            }, $entries);
+        } catch (Throwable) {
+            return $entries;
+        }
+    }
+
+    private function resolveApiBaseUrl(string $sourceUrl, array $profile): string
+    {
+        $baseUrl = trim((string) ($profile['base_url'] ?? ''));
+        if ($baseUrl !== '') {
+            return rtrim($baseUrl, '/');
+        }
+
+        $scheme = parse_url($sourceUrl, PHP_URL_SCHEME) ?: 'https';
+        $host = parse_url($sourceUrl, PHP_URL_HOST) ?: '';
+        if ($host === '') {
+            return '';
+        }
+
+        return $scheme . '://' . $host;
+    }
+
+    private function applyTemplateVariables(string $template, string $sourceUrl): string
+    {
+        $slug = trim((string) basename(trim((string) parse_url($sourceUrl, PHP_URL_PATH), '/')));
+        $host = (string) (parse_url($sourceUrl, PHP_URL_HOST) ?: '');
+
+        return str_replace(
+            ['{url}', '{slug}', '{host}'],
+            [$sourceUrl, $slug, $host],
+            $template
+        );
+    }
+
+    private function readArrayPath(array $payload, string $path)
+    {
+        $segments = array_values(array_filter(explode('.', $path), static fn ($segment) => trim($segment) !== ''));
+        $current = $payload;
+        foreach ($segments as $segment) {
+            if (! is_array($current) || ! array_key_exists($segment, $current)) {
+                return null;
+            }
+            $current = $current[$segment];
+        }
+
+        return $current;
+    }
+
+    private function extractLocalizedScalarValue($value): ?string
+    {
+        if (is_scalar($value)) {
+            $text = trim((string) $value);
+            return $text !== '' ? $text : null;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        if (array_key_exists('value', $value) && is_scalar($value['value'])) {
+            $text = trim((string) $value['value']);
+            if ($text !== '') {
+                return $text;
+            }
+        }
+
+        if (array_key_exists('language', $value)) {
+            $nested = $this->extractLocalizedScalarValue($value['language']);
+            if ($nested !== null) {
+                return $nested;
+            }
+        }
+
+        foreach ($value as $item) {
+            $nested = $this->extractLocalizedScalarValue($item);
+            if ($nested !== null) {
+                return $nested;
+            }
+        }
+
+        return null;
     }
 
     private function extractImageUrlsFromHtmlAttributes(string $html, string $sourceUrl): array
