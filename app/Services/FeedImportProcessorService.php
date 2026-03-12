@@ -1037,16 +1037,69 @@ class FeedImportProcessorService
                 continue;
             }
 
+            $descriptionFromNode = $this->firstNonEmpty($node, [
+                'description',
+                'description_short',
+                'short_description',
+                'desc',
+                'details',
+                'summary',
+                'body',
+            ]);
+
+            $specCandidates = array_merge(
+                $this->normalizeSpecs($node['attributes'] ?? null),
+                $this->normalizeSpecs($node['specs'] ?? null),
+                $this->normalizeSpecs($node['properties'] ?? null),
+                $this->normalizeSpecs($node['features'] ?? null),
+                $this->normalizeSpecs($node['characteristics'] ?? null),
+                $this->extractSpecsFromRichText($node['description_short'] ?? null)
+            );
+
+            $imageCandidates = array_merge(
+                $this->normalizeImageUrls($node['images'] ?? null, $fallbackUrl),
+                $this->normalizeImageUrls($node['gallery'] ?? null, $fallbackUrl),
+                $this->normalizeImageUrls($node['cover'] ?? null, $fallbackUrl),
+                $this->normalizeImageUrls($node['image'] ?? null, $fallbackUrl)
+            );
+
             $entry = [
-                'title' => $this->firstNonEmpty($node, ['title', 'name', 'product_name', 'label', 'headline']),
-                'description' => $this->firstNonEmpty($node, ['description', 'desc', 'details', 'summary', 'body']),
-                'price' => $this->firstNonEmpty($node, ['price', 'amount', 'regular_price', 'sale_price', 'unit_price']),
-                'old_price' => $this->firstNonEmpty($node, ['old_price', 'list_price', 'compare_at_price', 'original_price', 'regular_price']),
+                'title' => $this->firstNonEmpty($node, [
+                    'title',
+                    'name',
+                    'product_name',
+                    'meta_title',
+                    'label',
+                    'headline',
+                ]),
+                'description' => $descriptionFromNode,
+                'price' => $this->firstNonEmpty($node, [
+                    'price',
+                    'price_amount',
+                    'amount',
+                    'current_price',
+                    'regular_price',
+                    'sale_price',
+                    'price_with_reduction',
+                    'unit_price',
+                ]),
+                'old_price' => $this->firstNonEmpty($node, [
+                    'old_price',
+                    'list_price',
+                    'compare_at_price',
+                    'original_price',
+                    'regular_price',
+                    'price_without_reduction',
+                ]),
                 'image' => $this->extractImageFromNode($node, $fallbackUrl),
-                'images' => $node['images'] ?? $node['gallery'] ?? null,
+                'images' => $imageCandidates,
                 'video' => $this->firstNonEmpty($node, ['video', 'video_url', 'video_link', 'trailer']),
-                'specs' => $node['attributes'] ?? $node['specs'] ?? $node['properties'] ?? null,
-                'source_url' => $this->firstValidUrl($node, ['url', 'link', 'product_url', 'permalink', 'source_url'], $fallbackUrl),
+                'specs' => array_values(array_unique(array_filter($specCandidates))),
+                'source_url' => $this->firstValidUrl(
+                    $node,
+                    ['url', 'link', 'product_url', 'permalink', 'source_url'],
+                    $fallbackUrl
+                ),
             ];
 
             $entry = $this->mergeEntryWithKeywordFields($entry, $this->extractKeywordFieldsFromNode($node));
@@ -1105,25 +1158,132 @@ class FeedImportProcessorService
 
     private function entriesFromHtml(string $html, string $sourceUrl): array
     {
-        $jsonLdEntries = $this->entriesFromJsonLdHtml($html, $sourceUrl);
-        if (count($jsonLdEntries) > 0) {
-            $globalKeywordFields = $this->extractKeywordFieldsFromHtml($html);
-            $jsonLdEntries = array_map(function (array $entry) use ($globalKeywordFields) {
-                return $this->mergeEntryWithKeywordFields($entry, $globalKeywordFields);
-            }, $jsonLdEntries);
-            return $jsonLdEntries;
+        $globalKeywordFields = $this->extractKeywordFieldsFromHtml($html);
+        $htmlAttributeImages = $this->extractImageUrlsFromHtmlAttributes($html, $sourceUrl);
+
+        $candidateEntries = [];
+        $candidateEntries = array_merge($candidateEntries, $this->entriesFromJsonLdHtml($html, $sourceUrl));
+        $candidateEntries = array_merge($candidateEntries, $this->entriesFromEmbeddedJsonScripts($html, $sourceUrl));
+        $candidateEntries = array_merge($candidateEntries, $this->entriesFromDataProductAttributes($html, $sourceUrl));
+        $candidateEntries[] = $this->entryFromHtml($html, $sourceUrl);
+
+        $preparedEntries = [];
+        foreach ($candidateEntries as $candidate) {
+            if (! is_array($candidate)) {
+                continue;
+            }
+
+            $entry = $this->mergeEntryWithKeywordFields($candidate, $globalKeywordFields);
+            $entry['source_url'] = $this->toValidUrl($entry['source_url'] ?? null, $sourceUrl) ?: $sourceUrl;
+
+            $mergedImages = array_merge(
+                $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl),
+                $this->normalizeImageUrls($entry['image'] ?? null, $sourceUrl),
+                $htmlAttributeImages
+            );
+            $entry['images'] = $this->normalizeImageUrls($mergedImages, $sourceUrl);
+            if (empty($entry['image']) && count($entry['images']) > 0) {
+                $entry['image'] = $entry['images'][0];
+            }
+
+            $entry['specs'] = array_values(array_unique(array_merge(
+                $this->normalizeSpecs($entry['specs'] ?? null),
+                $this->extractSpecsFromRichText($entry['description'] ?? null)
+            )));
+
+            $preparedEntries[] = $entry;
         }
 
-        $embeddedEntries = $this->entriesFromEmbeddedJsonScripts($html, $sourceUrl);
-        if (count($embeddedEntries) > 0) {
-            $globalKeywordFields = $this->extractKeywordFieldsFromHtml($html);
-            $embeddedEntries = array_map(function (array $entry) use ($globalKeywordFields) {
-                return $this->mergeEntryWithKeywordFields($entry, $globalKeywordFields);
-            }, $embeddedEntries);
-            return $embeddedEntries;
+        return $this->consolidateExtractedHtmlEntries($preparedEntries, $sourceUrl);
+    }
+
+    private function consolidateExtractedHtmlEntries(array $entries, string $sourceUrl): array
+    {
+        if (count($entries) === 0) {
+            return [$this->buildFallbackEntryFromUrl($sourceUrl)];
         }
 
-        return [$this->entryFromHtml($html, $sourceUrl)];
+        $byKey = [];
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $resolvedUrl = $this->toValidUrl($entry['source_url'] ?? null, $sourceUrl) ?: $sourceUrl;
+            $urlKey = $this->normalizeKeyword($resolvedUrl);
+            $titleKey = $this->normalizeKeyword((string) ($entry['title'] ?? ''));
+            $key = $urlKey !== '' ? sha1($urlKey) : sha1($urlKey . '|' . $titleKey);
+
+            if (! array_key_exists($key, $byKey)) {
+                $byKey[$key] = $entry;
+                continue;
+            }
+
+            $existing = $byKey[$key];
+            $merged = $this->mergeEntryWithKeywordFields($existing, $entry);
+            $merged['images'] = $this->normalizeImageUrls(array_merge(
+                $this->normalizeImageUrls($existing['images'] ?? null, $sourceUrl),
+                $this->normalizeImageUrls($entry['images'] ?? null, $sourceUrl),
+                $this->normalizeImageUrls($existing['image'] ?? null, $sourceUrl),
+                $this->normalizeImageUrls($entry['image'] ?? null, $sourceUrl)
+            ), $sourceUrl);
+            if (empty($merged['image']) && count($merged['images']) > 0) {
+                $merged['image'] = $merged['images'][0];
+            }
+
+            $merged['specs'] = array_values(array_unique(array_merge(
+                $this->normalizeSpecs($existing['specs'] ?? null),
+                $this->normalizeSpecs($entry['specs'] ?? null)
+            )));
+
+            $byKey[$key] = $merged;
+        }
+
+        $result = array_values($byKey);
+        $meaningful = array_values(array_filter($result, function (array $entry) use ($sourceUrl) {
+            return $this->isEntryMeaningful($entry, $sourceUrl);
+        }));
+
+        if (count($meaningful) > 0) {
+            return $meaningful;
+        }
+
+        return count($result) > 0 ? $result : [$this->buildFallbackEntryFromUrl($sourceUrl)];
+    }
+
+    private function entriesFromDataProductAttributes(string $html, string $sourceUrl): array
+    {
+        $entries = [];
+        $patterns = [
+            '/\bdata-product\s*=\s*"([^"]+)"/iu',
+            "/\bdata-product\s*=\s*'([^']+)'/iu",
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $html, $matches)) {
+                foreach (($matches[1] ?? []) as $rawCandidate) {
+                    $decodedCandidate = html_entity_decode((string) $rawCandidate, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $decodedCandidate = trim($decodedCandidate);
+                    if (! $this->looksLikeJson($decodedCandidate)) {
+                        continue;
+                    }
+
+                    $decoded = json_decode($decodedCandidate, true);
+                    if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                        continue;
+                    }
+
+                    $payloadEntries = $this->entriesFromJsonPayload($decoded, $sourceUrl);
+                    foreach ($payloadEntries as $payloadEntry) {
+                        if (is_array($payloadEntry)) {
+                            $entries[] = $payloadEntry;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $entries;
     }
 
     private function entriesFromJsonLdHtml(string $html, string $sourceUrl): array
@@ -1168,7 +1328,48 @@ class FeedImportProcessorService
                 }
             }
         } catch (Throwable) {
+            // Fallback handled below.
+        }
+
+        if (count($entries) === 0) {
+            $entries = $this->entriesFromJsonLdRegex($html, $sourceUrl);
+        }
+
+        return $entries;
+    }
+
+    private function entriesFromJsonLdRegex(string $html, string $sourceUrl): array
+    {
+        $entries = [];
+        if (! preg_match_all('/<script[^>]*type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', $html, $matches)) {
             return [];
+        }
+
+        foreach (($matches[1] ?? []) as $rawJson) {
+            $rawJson = trim(html_entity_decode((string) $rawJson, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($rawJson === '') {
+                continue;
+            }
+
+            $decoded = json_decode($rawJson, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                // Common recovery for trailing commas in schema blocks.
+                $sanitized = preg_replace('/,\s*([}\]])/m', '$1', $rawJson) ?? $rawJson;
+                $decoded = json_decode($sanitized, true);
+            }
+
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                continue;
+            }
+
+            $productNodes = [];
+            $this->collectJsonLdProductNodes($decoded, $productNodes);
+            foreach ($productNodes as $productNode) {
+                $entry = $this->buildEntryFromJsonLdProductNode($productNode, $sourceUrl);
+                if (! empty($entry['title']) || ! empty($entry['price']) || ! empty($entry['image'])) {
+                    $entries[] = $entry;
+                }
+            }
         }
 
         return $entries;
@@ -1265,6 +1466,17 @@ class FeedImportProcessorService
 
         $assignmentPattern = '/(?:window\.)?(?:__NEXT_DATA__|__INITIAL_STATE__|__PRELOADED_STATE__|__NUXT__|INITIAL_STATE|PRELOADED_STATE)\s*=\s*/i';
         if (preg_match_all($assignmentPattern, $scriptBody, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $match) {
+                $offset = (int) $match[1] + strlen((string) $match[0]);
+                $json = $this->extractBalancedJsonFragment($scriptBody, $offset);
+                if ($json !== null) {
+                    $candidates[] = $json;
+                }
+            }
+        }
+
+        $variableAssignmentPattern = '/\b(?:var|let|const)\s+(?:prestashop|product|productData|product_details|__PRODUCT__|__PRODUCT_DATA__)\s*=\s*/i';
+        if (preg_match_all($variableAssignmentPattern, $scriptBody, $matches, PREG_OFFSET_CAPTURE)) {
             foreach ($matches[0] as $match) {
                 $offset = (int) $match[1] + strlen((string) $match[0]);
                 $json = $this->extractBalancedJsonFragment($scriptBody, $offset);
@@ -1588,8 +1800,19 @@ class FeedImportProcessorService
             }
 
             $specs = $this->extractSpecsFromDom($xpath);
+            $attributeImages = $this->extractImageUrlsFromHtmlAttributes($html, $sourceUrl);
+            if (count($attributeImages) > 0) {
+                $images = array_values(array_unique(array_merge($images, $attributeImages)));
+                if (! $image && count($images) > 0) {
+                    $image = $images[0];
+                }
+            }
         } catch (Throwable) {
             // fallback is handled below
+        }
+
+        if (count($specs) === 0) {
+            $specs = $this->extractSpecsFromRichText($description ?? null);
         }
 
         $entry = [
@@ -1609,6 +1832,17 @@ class FeedImportProcessorService
 
     private function extractVisiblePriceFromHtml(string $html): ?string
     {
+        $scriptPatterns = [
+            '/"price_amount"\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)/i',
+            '/"price_with_reduction"\s*:\s*"([^"]+)"/i',
+            '/product:price:amount["\']?\s*(?:content=)?["\']\s*([0-9]+(?:[.,][0-9]{1,2})?)/i',
+        ];
+        foreach ($scriptPatterns as $pattern) {
+            if (preg_match($pattern, $html, $matches) === 1 && ! empty($matches[1])) {
+                return trim((string) $matches[1]);
+            }
+        }
+
         $plain = trim(preg_replace('/\s+/', ' ', strip_tags($html)) ?? '');
         if ($plain === '') {
             return null;
@@ -1626,6 +1860,52 @@ class FeedImportProcessorService
         }
 
         return null;
+    }
+
+    private function extractSpecsFromRichText($content): array
+    {
+        if (! is_scalar($content)) {
+            return [];
+        }
+
+        $raw = trim((string) $content);
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = str_replace("\u{00A0}", ' ', $decoded);
+        $specs = [];
+
+        if (preg_match_all('/<strong[^>]*>\s*([^:<]{2,120})\s*:?\s*<\/strong>\s*([^<]{1,260})/iu', $decoded, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $label = trim((string) ($match[1] ?? ''));
+                $value = trim((string) ($match[2] ?? ''));
+                if ($label !== '' && $value !== '') {
+                    $specs[] = $label . ': ' . $value;
+                }
+            }
+        }
+
+        $lineSource = preg_replace('/<\/p>|<br\s*\/?>/iu', "\n", $decoded) ?? $decoded;
+        $lineSource = strip_tags($lineSource);
+        $lines = preg_split('/\r\n|\r|\n/', $lineSource) ?: [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^([^:]{2,120})\s*:\s*(.{1,220})$/u', $line, $parts) === 1) {
+                $label = trim((string) $parts[1]);
+                $value = trim((string) $parts[2]);
+                if ($label !== '' && $value !== '') {
+                    $specs[] = $label . ': ' . $value;
+                }
+            }
+        }
+
+        return array_values(array_unique(array_slice(array_filter($specs), 0, 16)));
     }
 
     private function extractSpecsFromDom(\DOMXPath $xpath): array
@@ -2154,6 +2434,76 @@ class FeedImportProcessorService
         return array_values(array_unique($values));
     }
 
+    private function extractImageUrlsFromHtmlAttributes(string $html, string $sourceUrl): array
+    {
+        $urls = [];
+        $patterns = [
+            '/\bdata-image-large-src\s*=\s*"([^"]+)"/iu',
+            "/\bdata-image-large-src\s*=\s*'([^']+)'/iu",
+            '/\bdata-image-medium-src\s*=\s*"([^"]+)"/iu',
+            "/\bdata-image-medium-src\s*=\s*'([^']+)'/iu",
+            '/\bdata-image-src\s*=\s*"([^"]+)"/iu',
+            "/\bdata-image-src\s*=\s*'([^']+)'/iu",
+            '/\bdata-full-size-image-url\s*=\s*"([^"]+)"/iu',
+            "/\bdata-full-size-image-url\s*=\s*'([^']+)'/iu",
+            '/\bdata-zoom-image\s*=\s*"([^"]+)"/iu',
+            "/\bdata-zoom-image\s*=\s*'([^']+)'/iu",
+            '/\bdata-large-image\s*=\s*"([^"]+)"/iu',
+            "/\bdata-large-image\s*=\s*'([^']+)'/iu",
+            '/\bdata-src\s*=\s*"([^"]+)"/iu',
+            "/\bdata-src\s*=\s*'([^']+)'/iu",
+            '/\bsrcset\s*=\s*"([^"]+)"/iu',
+            "/\bsrcset\s*=\s*'([^']+)'/iu",
+            '/\bdata-image-medium-sources\s*=\s*"([^"]+)"/iu',
+            "/\bdata-image-medium-sources\s*=\s*'([^']+)'/iu",
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (! preg_match_all($pattern, $html, $matches)) {
+                continue;
+            }
+
+            foreach (($matches[1] ?? []) as $rawValue) {
+                $value = html_entity_decode((string) $rawValue, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $value = trim($value);
+                if ($value === '') {
+                    continue;
+                }
+
+                if ($this->looksLikeJson($value)) {
+                    $decoded = json_decode($value, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $urls = array_merge($urls, $this->normalizeImageUrls($decoded, $sourceUrl));
+                    }
+                    continue;
+                }
+
+                if (str_contains($value, ',')) {
+                    $parts = explode(',', $value);
+                    foreach ($parts as $part) {
+                        $token = trim((string) $part);
+                        if ($token === '') {
+                            continue;
+                        }
+                        $candidateUrl = preg_split('/\s+/', $token)[0] ?? '';
+                        $candidate = $this->toValidUrl($candidateUrl, $sourceUrl);
+                        if ($candidate && $this->looksLikeImageUrl($candidate)) {
+                            $urls[] = $candidate;
+                        }
+                    }
+                    continue;
+                }
+
+                $candidate = $this->toValidUrl($value, $sourceUrl);
+                if ($candidate && $this->looksLikeImageUrl($candidate)) {
+                    $urls[] = $candidate;
+                }
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
     private function fetchUrl(string $url)
     {
         $headers = [
@@ -2455,21 +2805,27 @@ class FeedImportProcessorService
 
     private function extractImageFromNode(array $node, ?string $baseUrl = null): ?string
     {
-        $direct = $this->firstValidUrl($node, ['image', 'image_url', 'thumbnail', 'photo', 'picture', 'main_image'], $baseUrl);
+        $direct = $this->firstValidUrl($node, [
+            'image',
+            'image_url',
+            'thumbnail',
+            'photo',
+            'picture',
+            'main_image',
+            'cover',
+        ], $baseUrl);
         if ($direct) {
             return $direct;
         }
 
-        foreach (['images', 'gallery'] as $key) {
+        foreach (['images', 'gallery', 'cover', 'bySize', 'sources'] as $key) {
             if (! array_key_exists($key, $node) || ! is_array($node[$key])) {
                 continue;
             }
 
-            foreach ($node[$key] as $candidate) {
-                $url = $this->toValidUrl($candidate, $baseUrl);
-                if ($url) {
-                    return $url;
-                }
+            $candidates = $this->normalizeImageUrls($node[$key], $baseUrl);
+            if (count($candidates) > 0) {
+                return $candidates[0];
             }
         }
 
@@ -2692,35 +3048,109 @@ class FeedImportProcessorService
             return [];
         }
 
-        if (is_string($images)) {
-            $url = $this->toValidUrl($images, $baseUrl);
-            return $url ? [$url] : [];
+        $this->collectImageUrlsFromMixedData($images, $baseUrl, $urls);
+        $unique = array_values(array_unique($urls));
+        usort($unique, function (string $a, string $b) {
+            return $this->scoreImageUrlCandidate($b) <=> $this->scoreImageUrlCandidate($a);
+        });
+        return array_slice($unique, 0, 48);
+    }
+
+    private function collectImageUrlsFromMixedData($value, ?string $baseUrl, array &$collector, int $depth = 0, string $path = ''): void
+    {
+        if ($depth > 8 || is_null($value)) {
+            return;
         }
 
-        if (! is_array($images)) {
-            return [];
-        }
-
-        foreach ($images as $image) {
-            if (is_array($image)) {
-                foreach (['url', 'src', 'image', 'image_url'] as $key) {
-                    if (array_key_exists($key, $image)) {
-                        $candidate = $this->toValidUrl($image[$key], $baseUrl);
-                        if ($candidate) {
-                            $urls[] = $candidate;
-                        }
-                    }
-                }
-                continue;
+        if (is_scalar($value)) {
+            $candidate = $this->toValidUrl($value, $baseUrl);
+            if (! $candidate) {
+                return;
             }
 
-            $candidate = $this->toValidUrl($image, $baseUrl);
-            if ($candidate) {
-                $urls[] = $candidate;
+            $pathNorm = $this->normalizeKeyword($path);
+            $pathSuggestsImage = str_contains($pathNorm, 'image') ||
+                str_contains($pathNorm, 'cover') ||
+                str_contains($pathNorm, 'thumb') ||
+                str_contains($pathNorm, 'photo') ||
+                str_contains($pathNorm, 'picture') ||
+                str_contains($pathNorm, 'src') ||
+                str_contains($pathNorm, 'large') ||
+                str_contains($pathNorm, 'medium') ||
+                str_contains($pathNorm, 'small');
+
+            if ($pathSuggestsImage || $this->looksLikeImageUrl($candidate)) {
+                $collector[] = $candidate;
+            }
+            return;
+        }
+
+        if (! is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $key => $nested) {
+            $nextPath = is_string($key) && $key !== '' ? ($path === '' ? $key : ($path . '.' . $key)) : $path;
+            $this->collectImageUrlsFromMixedData($nested, $baseUrl, $collector, $depth + 1, $nextPath);
+        }
+    }
+
+    private function looksLikeImageUrl(string $url): bool
+    {
+        $path = Str::lower((string) parse_url($url, PHP_URL_PATH));
+        if ($path === '') {
+            return false;
+        }
+
+        if (preg_match('/\.(jpg|jpeg|png|webp|gif|bmp|svg|avif)$/i', $path) === 1) {
+            return true;
+        }
+
+        $markers = [
+            'large_default',
+            'medium_default',
+            'small_default',
+            '/img/p/',
+            '/images/',
+            '/image/',
+            '/product/',
+            '/thumb',
+        ];
+
+        foreach ($markers as $marker) {
+            if (str_contains($path, $marker)) {
+                return true;
             }
         }
 
-        return array_values(array_unique($urls));
+        return false;
+    }
+
+    private function scoreImageUrlCandidate(string $url): int
+    {
+        $path = Str::lower((string) parse_url($url, PHP_URL_PATH));
+        $score = 0;
+
+        if (str_contains($path, 'large_default')) {
+            $score += 50;
+        }
+        if (str_contains($path, 'medium_default')) {
+            $score += 32;
+        }
+        if (str_contains($path, 'home_default')) {
+            $score += 24;
+        }
+        if (str_contains($path, 'small_default')) {
+            $score -= 8;
+        }
+        if (str_contains($path, 'thumb')) {
+            $score -= 4;
+        }
+        if (preg_match('/\.(avif|webp)$/i', $path) === 1) {
+            $score += 3;
+        }
+
+        return $score;
     }
 
     private function syncGalleryImages(Item $item, array $imageUrls): void
