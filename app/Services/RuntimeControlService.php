@@ -52,6 +52,7 @@ class RuntimeControlService
         'maintenance',
         'services',
         'ad_controls',
+        'promo_banners',
         'client_defaults',
     ];
 
@@ -219,6 +220,7 @@ class RuntimeControlService
         $maintenance = $this->resolveMaintenance($settingsMap, $user);
         $services = $this->resolveServices($settingsMap);
         $adControls = $this->resolveAdControls($settingsMap);
+        $promoBanners = $this->resolvePromoBanners($settingsMap, $user);
         $featureFlags = $this->resolveFeatureFlags($user);
         $announcements = $this->resolveAnnouncements($user);
         $limits = $this->resolveLimits($user);
@@ -229,6 +231,7 @@ class RuntimeControlService
             'maintenance' => $maintenance,
             'services' => $services,
             'ad_controls' => $adControls,
+            'promo_banners' => $promoBanners,
             'feature_flags' => $featureFlags,
             'announcements' => $announcements,
             'limits' => $limits,
@@ -453,6 +456,106 @@ class RuntimeControlService
                 'metadata' => is_array($row->metadata) ? $row->metadata : [],
             ];
         }
+
+        return $result;
+    }
+
+    private function resolvePromoBanners(array $settingsMap, ?User $user): array
+    {
+        $rows = $settingsMap['promo_banners'] ?? [];
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $now = now();
+        $result = [];
+
+        foreach ($rows as $index => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $key = trim((string) ($row['key'] ?? ''));
+            if ($key === '') {
+                $key = "promo_banner_{$index}";
+            }
+
+            $title = trim((string) ($row['title'] ?? ''));
+            $message = trim((string) ($row['message'] ?? ''));
+            if ($title === '' && $message === '') {
+                continue;
+            }
+
+            $isActive = array_key_exists('is_active', $row)
+                ? $this->toBoolean($row['is_active'])
+                : true;
+            if (!$isActive) {
+                continue;
+            }
+
+            if (!$this->isWithinWindow($row['starts_at'] ?? null, $row['ends_at'] ?? null, $now)) {
+                continue;
+            }
+
+            $roles = $this->normalizeStringArray($row['roles'] ?? []);
+            $userIds = $this->normalizeIntArray($row['user_ids'] ?? []);
+            $rolloutPercentage = array_key_exists('rollout_percentage', $row)
+                ? (is_numeric($row['rollout_percentage']) ? (int) $row['rollout_percentage'] : null)
+                : null;
+
+            $matchesRollout = $this->passesRolloutRule(
+                "promo-banner:{$key}",
+                'hybrid',
+                $rolloutPercentage,
+                $roles,
+                $userIds,
+                $user,
+            );
+
+            $hasTargeting = !empty($roles) || !empty($userIds) || $rolloutPercentage !== null;
+            if ($hasTargeting && !$matchesRollout) {
+                continue;
+            }
+
+            $slot = trim((string) ($row['slot'] ?? $row['placement'] ?? 'home_top'));
+            if ($slot === '') {
+                $slot = 'home_top';
+            }
+
+            $level = trim((string) ($row['level'] ?? 'info'));
+            if ($level === '') {
+                $level = 'info';
+            }
+
+            $metadata = is_array($row['metadata'] ?? null) ? $row['metadata'] : [];
+            $priority = is_numeric($row['priority'] ?? null) ? (int) $row['priority'] : 0;
+
+            $result[] = [
+                'key' => $key,
+                'title' => $title,
+                'message' => $message,
+                'slot' => $slot,
+                'level' => $level,
+                'cta_label' => $this->nullableTrimmedString($row['cta_label'] ?? null),
+                'cta_url' => $this->nullableTrimmedString($row['cta_url'] ?? null),
+                'is_dismissible' => array_key_exists('is_dismissible', $row)
+                    ? $this->toBoolean($row['is_dismissible'])
+                    : false,
+                'priority' => $priority,
+                'starts_at' => $this->normalizeDateOutput($row['starts_at'] ?? null),
+                'ends_at' => $this->normalizeDateOutput($row['ends_at'] ?? null),
+                'metadata' => $metadata,
+            ];
+        }
+
+        usort($result, function (array $a, array $b): int {
+            $priorityCompare = ($b['priority'] ?? 0) <=> ($a['priority'] ?? 0);
+            if ($priorityCompare !== 0) {
+                return $priorityCompare;
+            }
+
+            return strcmp((string) ($a['key'] ?? ''), (string) ($b['key'] ?? ''));
+        });
 
         return $result;
     }
@@ -719,6 +822,16 @@ class RuntimeControlService
         }
 
         return array_values(array_unique($normalized));
+    }
+
+    private function nullableTrimmedString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+        return $normalized === '' ? null : $normalized;
     }
 
     private function toBoolean(mixed $value): bool

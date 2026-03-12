@@ -47,6 +47,7 @@ class RuntimeControlController extends Controller
             'maintenance_json' => $this->toPrettyJson($settingsMap['maintenance'] ?? []),
             'services_json' => $this->toPrettyJson($settingsMap['services'] ?? []),
             'ad_controls_json' => $this->toPrettyJson($settingsMap['ad_controls'] ?? []),
+            'promo_banners_json' => $this->toPrettyJson($settingsMap['promo_banners'] ?? []),
             'client_defaults_json' => $this->toPrettyJson($settingsMap['client_defaults'] ?? []),
             'feature_flags_json' => $this->toPrettyJson($featureFlags->map(fn ($row) => [
                 'key' => $row->key,
@@ -120,17 +121,19 @@ class RuntimeControlController extends Controller
             $maintenance = $this->decodeJsonInput($request->input('maintenance_json', '{}'), 'maintenance_json');
             $services = $this->decodeJsonInput($request->input('services_json', '{}'), 'services_json');
             $adControls = $this->decodeJsonInput($request->input('ad_controls_json', '{}'), 'ad_controls_json');
+            $promoBanners = $this->decodeJsonInput($request->input('promo_banners_json', '[]'), 'promo_banners_json');
             $clientDefaults = $this->decodeJsonInput($request->input('client_defaults_json', '{}'), 'client_defaults_json');
 
-            if (!is_array($maintenance) || !is_array($services) || !is_array($adControls) || !is_array($clientDefaults)) {
-                ResponseService::validationError('Runtime settings JSON mora biti validan objekat.');
+            if (!is_array($maintenance) || !is_array($services) || !is_array($adControls) || !is_array($promoBanners) || !is_array($clientDefaults)) {
+                ResponseService::validationError('Runtime settings JSON mora biti validan JSON objekat/niz.');
             }
 
-            DB::transaction(function () use ($runtimeControlService, $maintenance, $services, $adControls, $clientDefaults) {
+            DB::transaction(function () use ($runtimeControlService, $maintenance, $services, $adControls, $promoBanners, $clientDefaults) {
                 $runtimeControlService->putRuntimeSettings([
                     'maintenance' => $maintenance,
                     'services' => $services,
                     'ad_controls' => $adControls,
+                    'promo_banners' => $promoBanners,
                     'client_defaults' => $clientDefaults,
                 ], Auth::id());
 

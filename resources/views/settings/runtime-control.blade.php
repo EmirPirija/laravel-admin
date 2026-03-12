@@ -50,6 +50,10 @@
                                     <textarea name="ad_controls_json" class="form-control font-monospace" rows="12">{{ $ad_controls_json }}</textarea>
                                 </div>
                                 <div class="col-12 col-lg-6">
+                                    <label class="form-label fw-bold">promo_banners_json</label>
+                                    <textarea name="promo_banners_json" class="form-control font-monospace" rows="12">{{ $promo_banners_json }}</textarea>
+                                </div>
+                                <div class="col-12 col-lg-6">
                                     <label class="form-label fw-bold">client_defaults_json</label>
                                     <textarea name="client_defaults_json" class="form-control font-monospace" rows="12">{{ $client_defaults_json }}</textarea>
                                 </div>
