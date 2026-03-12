@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InstagramImport;
 use App\Models\Item;
+use App\Models\Setting;
 use App\Models\SocialAccount;
 use App\Services\FeedImportProcessorService;
 use App\Services\ResponseService;
@@ -242,6 +243,15 @@ class InstagramController extends Controller
             }
             if (! is_array($apiProfiles)) {
                 $apiProfiles = [];
+            }
+            if (count($apiProfiles) === 0) {
+                $configuredProfiles = Setting::where('name', 'import_api_profiles')->value('value');
+                if (is_string($configuredProfiles) && trim($configuredProfiles) !== '') {
+                    $decodedProfiles = json_decode($configuredProfiles, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decodedProfiles)) {
+                        $apiProfiles = $decodedProfiles;
+                    }
+                }
             }
 
             $preview = app(FeedImportProcessorService::class)->previewSources(
