@@ -394,6 +394,13 @@ protected static function booted()
                     }
                 }
 
+                // Ukloni stari firebase_id zapis ako je vezan za drugog korisnika
+                // (isti UID se re-loguje na drugačiji broj ili novi uređaj)
+                SocialLogin::where('firebase_id', $firebase_id)
+                    ->where('type', $type)
+                    ->where('user_id', '!=', $user->id)
+                    ->delete();
+
                 SocialLogin::updateOrCreate([
                     'type' => $type,
                     'user_id' => $user->id,
