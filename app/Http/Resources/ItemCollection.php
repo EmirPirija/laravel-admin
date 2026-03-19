@@ -269,6 +269,10 @@ class ItemCollection extends ResourceCollection {
                         $response[$key]['user']['country_code'] = '';
                         $response[$key]['user']['email'] = '';
                     }
+                    // Propagate membership flags onto the user object so frontend components
+                    // that receive only the user (not the full item) can resolve the badge.
+                    $response[$key]['user']['is_pro']  = $response[$key]['is_pro']  ?? false;
+                    $response[$key]['user']['is_shop'] = $response[$key]['is_shop'] ?? false;
                 }
  
                 // Resolve city translation from preloaded lookup.

@@ -15,7 +15,7 @@ class MembershipController extends Controller
     public function getUserMembership(Request $request)
     {
         $userId = $request->user_id ?? auth()->id();
-        
+
         $membership = UserMembership::with('membershipTier')
             ->where('user_id', $userId)
             ->first();
@@ -27,11 +27,25 @@ class MembershipController extends Controller
                 'message' => 'User has free membership',
                 'data' => [
                     'tier' => 'free',
+                    'is_pro' => false,
+                    'is_shop' => false,
                     'started_at' => null,
                     'expires_at' => null,
                     'status' => 'active',
+                    'is_active' => false,
                 ]
             ]);
+        }
+
+        $tier = strtolower($membership->tier ?? '');
+        $isShop = str_contains($tier, 'shop') || str_contains($tier, 'business');
+        $isPro  = $isShop || str_contains($tier, 'pro') || str_contains($tier, 'premium');
+
+        // Fallback na tier_id ako string nije prepoznat
+        if (!$isPro && !empty($membership->tier_id)) {
+            $tierId = (int) $membership->tier_id;
+            if ($tierId === 3) { $isPro = true; $isShop = true; }
+            elseif ($tierId === 2) { $isPro = true; }
         }
 
         return response()->json([
@@ -39,7 +53,10 @@ class MembershipController extends Controller
             'message' => 'User membership fetched successfully',
             'data' => [
                 'tier' => $membership->tier,
+                'tier_id' => $membership->tier_id,
                 'tier_name' => $membership->membershipTier->name ?? 'Free',
+                'is_pro' => $isPro,
+                'is_shop' => $isShop,
                 'started_at' => $membership->started_at,
                 'expires_at' => $membership->expires_at,
                 'status' => $membership->status,

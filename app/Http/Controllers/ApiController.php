@@ -5817,6 +5817,11 @@ public function getSeller(Request $request)
         }
         
  
+        // Stampa is_pro/is_shop i na seller objekt da frontend komponente
+        // koje čitaju seller.is_pro direktno isto rade ispravno.
+        $seller->is_pro  = $isPro;
+        $seller->is_shop = $isShop;
+
         $responseData = [
             'seller' => $seller,
             'ratings' => $ratings,
