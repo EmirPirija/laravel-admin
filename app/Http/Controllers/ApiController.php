@@ -7140,7 +7140,12 @@ public function getMyReview(Request $request)
 
     private function canUseLocalOtpDebugFallback(): bool
     {
-        return app()->environment(['local', 'development']) || (bool) config('app.debug');
+        // Never expose OTP codes in production, regardless of APP_DEBUG setting.
+        if (app()->environment('production')) {
+            return false;
+        }
+
+        return app()->environment(['local', 'development', 'testing', 'staging']);
     }
 
     private function upsertOtpCode(string $toNumber): array
