@@ -13,16 +13,16 @@ class MembershipTierSeeder extends Seeder
             [
                 'name' => 'LMX Pro',
                 'slug' => 'pro',
-                'description' => 'Za power korisnike koji žele da maksimiziraju svoj potencijal',
+                'description' => 'Za napredne prodavače koji žele povećati vidljivost i optimizirati ROI',
                 'price' => 9.99,
                 'duration_days' => 30,
                 'features' => [
-                    'Unlimited Listings',
-                    'Priority Support',
-                    'Advanced Analytics',
-                    'Pro Badge',
-                    'Highlighted Listings',
-                    'No Ads',
+                    'Neograničen broj oglasa',
+                    'Prioritetna podrška',
+                    'Napredna analitika',
+                    'PRO oznaka na profilu',
+                    'Istaknuti oglasi',
+                    'Bez reklama',
                 ],
                 'permissions' => [
                     'unlimited_items' => true,
@@ -37,17 +37,17 @@ class MembershipTierSeeder extends Seeder
             [
                 'name' => 'LMX Shop',
                 'slug' => 'shop',
-                'description' => 'Za vlasnike biznisa i trgovce',
+                'description' => 'Za vlasnike shopova i trgovce koji žele upravljati zalihama i brendingom',
                 'price' => 29.99,
                 'duration_days' => 30,
                 'features' => [
-                    'All Pro Features',
-                    'Business Profile Page',
-                    'Multiple Locations',
-                    'Bulk Upload',
-                    'Dedicated Account Manager',
-                    'API Access',
-                    'Custom Branding',
+                    'Sve Pro pogodnosti',
+                    'Poslovni profil shopa',
+                    'Upravljanje zalihama i SKU',
+                    'Skupni upload artikala',
+                    'Prilagođeni brending',
+                    'SHOP oznaka na profilu',
+                    'Pristup API-ju',
                 ],
                 'permissions' => [
                     'unlimited_items' => true,
@@ -65,7 +65,10 @@ class MembershipTierSeeder extends Seeder
         ];
 
         foreach ($tiers as $tier) {
-            MembershipTier::create($tier);
+            MembershipTier::updateOrCreate(
+                ['slug' => $tier['slug']],
+                $tier
+            );
         }
     }
 }
