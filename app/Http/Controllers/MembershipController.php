@@ -85,6 +85,7 @@ class MembershipController extends Controller
         $userId = auth()->id();
         $tierId = $request->tier_id;
         $paymentMethod = $request->payment_method ?? 'stripe';
+        $isPromo = filter_var($request->is_promo, FILTER_VALIDATE_BOOLEAN);
 
         $tier = MembershipTier::find($tierId);
         if (!$tier) {
@@ -95,19 +96,22 @@ class MembershipController extends Controller
         $transaction = MembershipTransaction::create([
             'user_id' => $userId,
             'tier_id' => $tierId,
-            'amount' => $tier->price,
+            'amount' => $isPromo ? 0 : $tier->price,
             'payment_method' => $paymentMethod,
-            'payment_status' => 'pending',
+            'payment_status' => $isPromo ? 'completed' : 'pending',
+            'paid_at' => $isPromo ? now() : null,
+            'transaction_id' => $isPromo ? 'PROMO_' . time() : null,
         ]);
 
-        // TODO: Integrisati sa Stripe/Razorpay payment gateway ovdje
-        // Za sada ćemo simulirati uspješnu uplatu
-
-        $transaction->update([
-            'payment_status' => 'completed',
-            'paid_at' => now(),
-            'transaction_id' => 'TRANS_' . time(),
-        ]);
+        if (!$isPromo) {
+            // TODO: Integrisati sa Stripe/Razorpay payment gateway ovdje
+            // Za sada ćemo simulirati uspješnu uplatu
+            $transaction->update([
+                'payment_status' => 'completed',
+                'paid_at' => now(),
+                'transaction_id' => 'TRANS_' . time(),
+            ]);
+        }
 
         // Upgrade user membership
         $membership = UserMembership::updateOrCreate(
