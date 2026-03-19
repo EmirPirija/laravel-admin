@@ -614,7 +614,8 @@ protected static function booted()
 
             $identifierType = (string) $request->input('identifier_type', 'auto');
             if ($identifierType === 'phone') {
-                $phone = $this->normalizePhoneInput($request->input('country_code'), $identifier);
+                $rawCountryCode = trim((string) ($request->input('country_code') ?? ''));
+                $phone = $this->normalizePhoneInput($rawCountryCode ?: null, $identifier);
                 if ($phone['full'] === '') {
                     ResponseService::validationError(__('Unesite ispravan broj telefona.'));
                 }
